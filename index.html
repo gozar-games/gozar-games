@@ -364,7 +364,7 @@ button{font-family:inherit;color:inherit;cursor:pointer}
   font-size:12px;
   white-space:nowrap;
   display:none;
-  z-index:20;
+  z-index:40;
 }
 
 @media(max-width:360px){
@@ -373,6 +373,30 @@ button{font-family:inherit;color:inherit;cursor:pointer}
   .card-icon{font-size:24px;min-width:28px}
   .claim-button{min-width:110px;padding:10px}
 }
+
+.game-picker{
+  position:fixed;inset:0;z-index:30;background:#080808;
+  padding:calc(22px + env(safe-area-inset-top)) 17px calc(25px + env(safe-area-inset-bottom));
+  overflow-y:auto;display:none
+}
+.game-picker.open{display:block}
+.picker-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:25px}
+.picker-title{font-size:23px;font-weight:900}
+.picker-title span{color:var(--red)}
+.picker-close{background:#191919;border:1px solid #383838;border-radius:12px;padding:9px 13px;color:#fff}
+.picker-sub{color:#aaa;font-size:12px;margin:-13px 0 20px}
+.game-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.game-option{
+  min-height:150px;text-align:right;padding:15px 12px;border-radius:18px;
+  background:linear-gradient(145deg,#202020,#101010);border:1px solid #363636;color:#fff
+}
+.game-option.available{border-color:#42d66b}
+.game-option:active{transform:scale(.97)}
+.game-emoji{font-size:34px;display:block;margin-bottom:10px}
+.game-option strong{display:block;font-size:15px}
+.game-option small{display:block;color:#999;font-size:11px;margin-top:5px}
+.game-option .available-label{color:#42d66b}
+
 </style>
 </head>
 
@@ -455,7 +479,7 @@ button{font-family:inherit;color:inherit;cursor:pointer}
   <div class="slogan">بازی کن، سرگرم شو!</div>
 </section>
 
-<button class="main-button" onclick="window.location.href='/snake.html'">
+<button class="main-button" onclick="openGamePicker()">
   <span class="play-icon">🎮</span>
   <div>
     <div class="main-title">شروع بازی</div>
@@ -518,6 +542,37 @@ button{font-family:inherit;color:inherit;cursor:pointer}
   </button>
 </nav>
 
+
+<div class="game-picker" id="gamePicker" aria-hidden="true">
+  <div class="picker-head">
+    <button class="picker-close" onclick="closeGamePicker()">✕ بستن</button>
+    <div class="picker-title">انتخاب <span>بازی</span></div>
+  </div>
+  <div class="picker-sub">بازی مورد علاقه‌ات رو انتخاب کن و شروع کن.</div>
+  <div class="game-list">
+    <button class="game-option available" onclick="location.href='/snake.html'">
+      <span class="game-emoji">🐍</span>
+      <strong>Snake</strong>
+      <small class="available-label">● آماده بازی</small>
+    </button>
+    <button class="game-option" onclick="showToast('بازی Cards به زودی اضافه می‌شود')">
+      <span class="game-emoji">🃏</span>
+      <strong>Cards</strong>
+      <small>به‌زودی</small>
+    </button>
+    <button class="game-option" onclick="showToast('بازی Board Game به زودی اضافه می‌شود')">
+      <span class="game-emoji">🎲</span>
+      <strong>Board Game</strong>
+      <small>به‌زودی</small>
+    </button>
+    <button class="game-option" onclick="showToast('بازی‌های جدید به زودی اضافه می‌شوند')">
+      <span class="game-emoji">🎮</span>
+      <strong>بازی‌های بیشتر</strong>
+      <small>در راه‌اند</small>
+    </button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -525,6 +580,18 @@ const tg = window.Telegram?.WebApp;
 
 let dailyRewardLoaded = false;
 let claimingReward = false;
+
+
+function openGamePicker(){
+  const picker = document.getElementById('gamePicker');
+  picker.classList.add('open');
+  picker.setAttribute('aria-hidden','false');
+}
+function closeGamePicker(){
+  const picker = document.getElementById('gamePicker');
+  picker.classList.remove('open');
+  picker.setAttribute('aria-hidden','true');
+}
 
 function showToast(message){
   const toast = document.getElementById('toast');
