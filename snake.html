@@ -19,8 +19,14 @@ button{font:inherit;cursor:pointer}
 .scorebar{display:flex;justify-content:space-between;align-items:center;margin:12px 2px;font-weight:900}
 .score{font-size:27px;color:var(--green);direction:ltr}
 .best{font-size:12px;color:#aaa}
-.board-wrap{background:var(--green);border:5px solid #269e4a;border-radius:19px;padding:8px;box-shadow:0 0 25px #42d66b20}
-canvas{display:block;width:100%;height:auto;aspect-ratio:1/1.35;touch-action:none;border:3px dotted #123b1c;border-radius:5px;background:var(--green)}
+.color-panel{display:grid;gap:9px;margin:4px 0 13px;padding:11px 12px;background:#141414;border:1px solid #292929;border-radius:14px}
+.color-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.color-label{font-size:12px;font-weight:800;color:#ddd;white-space:nowrap}
+.swatches{display:flex;align-items:center;gap:8px;direction:ltr}
+.swatch{width:25px;height:25px;padding:0;border-radius:50%;background:var(--swatch);border:2px solid #ffffff55;box-shadow:inset 0 0 0 1px #0003;position:relative}
+.swatch.active{outline:2px solid #fff;outline-offset:2px}
+.board-wrap{background:var(--board-color,#42d66b);border:5px solid var(--board-border,#269e4a);border-radius:19px;padding:8px;box-shadow:0 0 25px #42d66b20}
+canvas{display:block;width:100%;height:auto;aspect-ratio:1/1.35;touch-action:none;border:3px dotted #123b1c;border-radius:5px;background:var(--board-color,#42d66b)}
 .hint{text-align:center;color:#bdbdbd;font-size:12px;margin:12px 0 15px}
 .modes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .mode{border:1px solid #383838;border-radius:13px;background:#191919;color:#bbb;padding:12px 4px;font-weight:900;font-size:12px}
@@ -44,6 +50,29 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:1/1.35;touch-action:non
     <div><div class="score" id="score">00000</div><div class="best">امتیاز</div></div>
     <div style="text-align:left"><div class="score" id="best">00000</div><div class="best">BEST</div></div>
   </div>
+
+  <section class="color-panel" aria-label="تنظیم رنگ بازی">
+    <div class="color-row">
+      <span class="color-label">رنگ پس‌زمینه</span>
+      <div class="swatches" id="backgroundSwatches">
+        <button class="swatch active" data-color="#42d66b" style="--swatch:#42d66b" aria-label="سبز"></button>
+        <button class="swatch" data-color="#58b9ff" style="--swatch:#58b9ff" aria-label="آبی"></button>
+        <button class="swatch" data-color="#b58cff" style="--swatch:#b58cff" aria-label="بنفش"></button>
+        <button class="swatch" data-color="#ff9fbd" style="--swatch:#ff9fbd" aria-label="صورتی"></button>
+        <button class="swatch" data-color="#f2c66d" style="--swatch:#f2c66d" aria-label="طلایی"></button>
+      </div>
+    </div>
+    <div class="color-row">
+      <span class="color-label">رنگ مار</span>
+      <div class="swatches" id="snakeSwatches">
+        <button class="swatch active" data-color="#0b421d" style="--swatch:#0b421d" aria-label="سبز تیره"></button>
+        <button class="swatch" data-color="#123a80" style="--swatch:#123a80" aria-label="آبی تیره"></button>
+        <button class="swatch" data-color="#632c91" style="--swatch:#632c91" aria-label="بنفش تیره"></button>
+        <button class="swatch" data-color="#9a2851" style="--swatch:#9a2851" aria-label="زرشکی"></button>
+        <button class="swatch" data-color="#713d16" style="--swatch:#713d16" aria-label="قهوه‌ای"></button>
+      </div>
+    </div>
+  </section>
 
   <div class="board-wrap">
     <canvas id="game" width="360" height="486" aria-label="بازی مار"></canvas>
@@ -96,6 +125,45 @@ let running = false, ended = false, lastTick = 0, touchStart = null;
 let normalFoods = 0, bonusFood = null, bonusExpiryTimer = null;
 let biteUntil = 0, swallowed = null, visualFrame = null, scorePopup = null;
 
+const defaultBackground = '#42d66b';
+const defaultSnake = '#0b421d';
+let backgroundColor = localStorage.getItem('gozar_snake_background') || defaultBackground;
+let snakeColor = localStorage.getItem('gozar_snake_color') || defaultSnake;
+const foodColor = '#f04444';
+
+function applyColors(){
+  const board = document.querySelector('.board-wrap');
+  const canvasEl = document.getElementById('game');
+  document.documentElement.style.setProperty('--green', backgroundColor);
+  board.style.setProperty('--board-color', backgroundColor);
+  board.style.setProperty('--board-border', shadeColor(backgroundColor, -18));
+  canvasEl.style.backgroundColor = backgroundColor;
+  document.querySelectorAll('#backgroundSwatches .swatch').forEach(b=>b.classList.toggle('active',b.dataset.color.toLowerCase()===backgroundColor.toLowerCase()));
+  document.querySelectorAll('#snakeSwatches .swatch').forEach(b=>b.classList.toggle('active',b.dataset.color.toLowerCase()===snakeColor.toLowerCase()));
+  document.querySelector('.brand span').style.color = backgroundColor;
+  document.querySelectorAll('.mode.active,.action.primary').forEach(el=>el.style.backgroundColor=backgroundColor);
+  draw();
+}
+function shadeColor(hex, percent){
+  const n=parseInt(hex.slice(1),16), amt=Math.round(2.55*percent);
+  const r=Math.max(0,Math.min(255,(n>>16)+amt));
+  const g=Math.max(0,Math.min(255,((n>>8)&255)+amt));
+  const b=Math.max(0,Math.min(255,(n&255)+amt));
+  return '#'+(0x1000000+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
+document.getElementById('backgroundSwatches').addEventListener('click',e=>{
+  const btn=e.target.closest('.swatch'); if(!btn)return;
+  backgroundColor=btn.dataset.color;
+  localStorage.setItem('gozar_snake_background',backgroundColor);
+  applyColors();
+});
+document.getElementById('snakeSwatches').addEventListener('click',e=>{
+  const btn=e.target.closest('.swatch'); if(!btn)return;
+  snakeColor=btn.dataset.color;
+  localStorage.setItem('gozar_snake_color',snakeColor);
+  applyColors();
+});
+
 function keyBest(){ return 'gozar_snake_best_' + mode; }
 function getBest(){ return Number(localStorage.getItem(keyBest()) || 0); }
 function pad(n){ return String(n).padStart(5, '0'); }
@@ -139,7 +207,7 @@ function draw(){
   ctx.fillRect(0,0,canvas.width,canvas.height);
 
   // subtle pixel grid
-  ctx.fillStyle = '#31c65c';
+  ctx.fillStyle = 'rgba(255,255,255,0.13)';
   for(let x=0;x<COLS;x++){
     for(let y=0;y<ROWS;y++){
       if((x+y)%2===0) ctx.fillRect(x*CELL+CELL/2-1,y*CELL+CELL/2-1,2,2);
@@ -177,7 +245,7 @@ function draw(){
 
   // Snake body and head
   snake.forEach((part,i)=>{
-    ctx.fillStyle = i===0 ? '#062b12' : '#0b421d';
+    ctx.fillStyle = i===0 ? shadeColor(snakeColor,-18) : snakeColor;
     ctx.fillRect(part.x*CELL+1,part.y*CELL+1,CELL-2,CELL-2);
 
     if(i===0){
@@ -185,7 +253,7 @@ function draw(){
       const jawOpen = Date.now() < biteUntil;
       const eye = Math.max(2,CELL*.12);
 
-      ctx.fillStyle = '#b8ffc8';
+      ctx.fillStyle = '#ffffff';
       if(direction.x !== 0){
         ctx.fillRect(part.x*CELL+CELL*.57,part.y*CELL+CELL*.2,eye,eye);
         ctx.fillRect(part.x*CELL+CELL*.57,part.y*CELL+CELL*.68,eye,eye);
@@ -349,7 +417,7 @@ function tick(){
       messageEl.textContent='غذای ویژه رو خوردی! +۵۰ امتیاز';
     }else{
       score+=10;
-      startBiteAnimation('#092b14',10);
+      startBiteAnimation(foodColor,10);
       normalFoods++;food=makeFood();
       if(normalFoods%3===0){
         createBonusFood();
