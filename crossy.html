@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#080808">
+<title>GOZAR GAMES | Crossy Road</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800;900&display=swap');
+:root{--bg:#080808;--panel:#151515;--line:#303030;--accent:#ed1725;--muted:#aaa}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:#f5f5f5;font-family:Vazirmatn,sans-serif;overscroll-behavior:none}
+body{min-height:100vh;min-height:100dvh;overflow:hidden;touch-action:pan-x pan-y}
+button{font:inherit;color:inherit;cursor:pointer}
+.app{width:min(100%,560px);height:100vh;height:100dvh;margin:auto;padding:calc(10px + env(safe-area-inset-top)) 13px calc(10px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:9px}
+.top{height:43px;flex:none;display:flex;align-items:center;justify-content:space-between}
+.back{border:1px solid #383838;background:#191919;border-radius:11px;padding:8px 12px;font-size:12px}
+.brand{font-weight:900;letter-spacing:.4px}.brand span{color:var(--accent)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:9px;flex:none}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:6px 12px;text-align:center}
+.stat strong{display:block;font-size:22px;line-height:1.3;color:#fff;direction:ltr}
+.stat small{font-size:10px;color:var(--muted)}
+.stage{position:relative;flex:1;min-height:220px;overflow:hidden;border:1px solid #333;border-radius:18px;background:linear-gradient(#8bd5ff,#d2efff 55%,#b6e1a1);box-shadow:0 12px 35px #0008;touch-action:none}
+#game{display:block;width:100%;height:100%;touch-action:none;outline:none}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:22px;background:#05090dcc;backdrop-filter:blur(5px);text-align:center}
+.overlay.hidden{display:none}
+.dialog{width:min(100%,300px);background:#151515ed;border:1px solid #454545;border-radius:19px;padding:20px 17px;box-shadow:0 15px 45px #0008}
+.dialog .emoji{font-size:42px}
+.dialog h1{font-size:23px;margin:5px 0 4px}
+.dialog p{font-size:12px;color:#bbb;line-height:1.9;margin:5px 0 15px}
+.primary{border:0;border-radius:12px;background:var(--accent);padding:11px 22px;font-weight:900;min-width:145px}
+.secondary{border:1px solid #444;border-radius:12px;background:#242424;padding:10px 16px;font-weight:800;margin-right:6px}
+.controls{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;flex:none;direction:ltr}
+.control{height:51px;border:1px solid #383838;border-radius:14px;background:#191919;font-size:21px;font-weight:900;touch-action:none;user-select:none;-webkit-user-select:none}
+.control.forward{background:#292020;border-color:#713038;color:#ff7078}
+.control:active{transform:scale(.96);background:#333}
+.hint{flex:none;text-align:center;color:#999;font-size:10px;line-height:1.7}
+.toast{position:absolute;top:12px;left:50%;transform:translateX(-50%);padding:7px 12px;background:#151515dd;border:1px solid #555;border-radius:20px;font-size:11px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .2s}
+.toast.show{opacity:1}
+@media(min-height:760px){.app{gap:11px}.control{height:56px}.hint{font-size:11px}}
+@media(max-height:620px){.app{gap:6px;padding-top:5px;padding-bottom:5px}.top{height:34px}.stat{padding:3px 9px}.stat strong{font-size:18px}.control{height:43px}.hint{font-size:9px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <button class="back" id="backButton">← بازگشت</button>
+    <div class="brand">GOZAR <span>GAMES</span></div>
+  </header>
+
+  <section class="stats">
+    <div class="stat"><strong id="score">0</strong><small>امتیاز</small></div>
+    <div class="stat"><strong id="best">0</strong><small>رکورد</small></div>
+  </section>
+
+  <main class="stage" id="stage">
+    <canvas id="game" aria-label="بازی سه بعدی Crossy Road"></canvas>
+    <div class="toast" id="toast"></div>
+    <section class="overlay" id="startOverlay">
+      <div class="dialog">
+        <div class="emoji">🐤</div>
+        <h1>Crossy Road</h1>
+        <p>از جاده‌ها، رودخانه‌ها و ریل قطار عبور کن.<br>تا می‌توانی جلو برو و مراقب موانع باش!</p>
+        <button class="primary" id="startButton">شروع بازی</button>
+      </div>
+    </section>
+    <section class="overlay hidden" id="gameOverOverlay">
+      <div class="dialog">
+        <div class="emoji">💥</div>
+        <h1>GAME OVER</h1>
+        <p id="finalText">امتیاز: 0</p>
+        <button class="primary" id="retryButton">بازی دوباره</button>
+        <button class="secondary" id="homeButton">بازگشت</button>
+      </div>
+    </section>
+  </main>
+
+  <section class="controls" aria-label="کنترل بازی">
+    <button class="control" id="leftButton" aria-label="چپ">◀</button>
+    <button class="control forward" id="forwardButton" aria-label="جلو">▲</button>
+    <button class="control" id="rightButton" aria-label="راست">▶</button>
+  </section>
+  <div class="hint">برای حرکت به جلو روی ▲ بزن؛ برای چپ و راست از دکمه‌ها یا کشیدن انگشت استفاده کن.</div>
+</div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+
+const canvas = document.getElementById('game');
+const stage = document.getElementById('stage');
+const scoreEl = document.getElementById('score');
+const bestEl = document.getElementById('best');
+const startOverlay = document.getElementById('startOverlay');
+const gameOverOverlay = document.getElementById('gameOverOverlay');
+const finalText = document.getElementById('finalText');
+const toastEl = document.getElementById('toast');
+
+const BEST_KEY = 'gozar_crossy_best_v1';
+let best = Number(localStorage.getItem(BEST_KEY) || 0);
+if (!Number.isFinite(best) || best < 0) best = 0;
+bestEl.textContent = String(best);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x9bdcff);
+scene.fog = new THREE.Fog(0x9bdcff, 17, 39);
+
+const camera = new THREE.PerspectiveCamera(43, 1, 0.1, 100);
+camera.position.set(7.5, 9.5, 11.5);
+camera.lookAt(0, 0, -2);
+
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
+} catch (err) {
+  startOverlay.classList.remove('hidden');
+  startOverlay.querySelector('p').textContent = 'مرورگر دستگاه از WebGL پشتیبانی نمی‌کند. لطفاً مرورگر دیگری را امتحان کن.';
+  document.getElementById('startButton').disabled = true;
+  throw err;
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.7));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x68805b, 2.0));
+const sun = new THREE.DirectionalLight(0xffffff, 2.4);
+sun.position.set(-5, 12, 7);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.camera.left = -12; sun.shadow.camera.right = 12;
+sun.shadow.camera.top = 15; sun.shadow.camera.bottom = -15;
+scene.add(sun);
+
+const materials = {
+  grass: new THREE.MeshStandardMaterial({color:0x64b94f, roughness:1}),
+  grassAlt: new THREE.MeshStandardMaterial({color:0x70c75a, roughness:1}),
+  road: new THREE.MeshStandardMaterial({color:0x42464c, roughness:1}),
+  roadLine: new THREE.MeshStandardMaterial({color:0xf4e7a4, roughness:1}),
+  water: new THREE.MeshStandardMaterial({color:0x2798cf, roughness:.35, metalness:.05}),
+  rail: new THREE.MeshStandardMaterial({color:0x777d85, metalness:.65, roughness:.35}),
+  sleeper: new THREE.MeshStandardMaterial({color:0x79563d, roughness:1}),
+  log: new THREE.MeshStandardMaterial({color:0x95602f, roughness:1}),
+  leaf: new THREE.MeshStandardMaterial({color:0x268b43, roughness:1}),
+  trunk: new THREE.MeshStandardMaterial({color:0x80502b, roughness:1}),
+  white: new THREE.MeshStandardMaterial({color:0xffffff, roughness:.8}),
+  dark: new THREE.MeshStandardMaterial({color:0x25282c, roughness:.8})
+};
+
+const unitBox = new THREE.BoxGeometry(1,1,1);
+const unitCylinder = new THREE.CylinderGeometry(.5,.5,1,8);
+const world = new THREE.Group();
+scene.add(world);
+
+function box(parent, x,y,z, sx,sy,sz, material, cast=true, receive=true) {
+  const mesh = new THREE.Mesh(unitBox, material);
+  mesh.position.set(x,y,z);
+  mesh.scale.set(sx,sy,sz);
+  mesh.castShadow = cast;
+  mesh.receiveShadow = receive;
+  parent.add(mesh);
+  return mesh;
+}
+function makeMaterial(color, roughness=0.8) {
+  return new THREE.MeshStandardMaterial({color, roughness});
+}
+function randomItem(items){ return items[Math.floor(Math.random()*items.length)]; }
+
+const player = new THREE.Group();
+world.add(player);
+const playerBody = new THREE.Group();
+player.add(playerBody);
+const bodyMat = makeMaterial(0xffc447);
+const bellyMat = makeMaterial(0xfff0c5);
+const beakMat = makeMaterial(0xf18a27);
+const eyeMat = makeMaterial(0x171717, .3);
+box(playerBody,0,.52,0,.62,.72,.58,bodyMat);
+box(playerBody,0,.22,.02,.48,.24,.48,bellyMat);
+box(playerBody,0,.91,-.04,.58,.13,.54,bodyMat);
+box(playerBody,0,.48,-.31,.22,.13,.15,beakMat);
+for (const x of [-.17,.17]) {
+  box(playerBody,x,.69,-.296,.09,.11,.035,materials.white,false,false);
+  box(playerBody,x,.69,-.318,.045,.065,.025,eyeMat,false,false);
+}
+for (const x of [-.2,.2]) box(playerBody,x,.1,.02,.15,.18,.18,beakMat);
+player.position.set(0,0,0);
+
+const rows = new Map();
+const moving = [];
+const decorations = [];
+let running = false;
+let ended = false;
+let score = 0;
+let maxForward = 0;
+let playerX = 0;
+let playerRow = 0;
+let jump = null;
+let lastTime = 0;
+let animationId = 0;
+let toastTimer = 0;
+let trainWarning = null;
+const LANE_WIDTH = 1.35;
+const ROAD_WIDTH = 7.2;
+const VISIBLE_BACK = 8;
+const VISIBLE_FRONT = 20;
+
+function laneGroup(z, type, index) {
+  const group = new THREE.Group();
+  group.position.z = z;
+  world.add(group);
+  const data = {group, type, index, objects:[], speed:0, direction:1, safe:false, train:null, warning:null};
+  rows.set(index, data);
+  if (type === 'grass') buildGrass(data);
+  if (type === 'road') buildRoad(data);
+  if (type === 'river') buildRiver(data);
+  if (type === 'rail') buildRail(data);
+  return data;
+}
+function buildGrass(row) {
+  box(row.group,0,-.12,0,ROAD_WIDTH,.24,1.35,materials.grass);
+  if (Math.random() < .72) {
+    const count = 1 + Math.floor(Math.random()*3);
+    for(let i=0;i<count;i++){
+      const x = (Math.random()-.5)*5.9;
+      if(Math.abs(x-playerX)<.8 && row.index===playerRow) continue;
+      const tree = new THREE.Group();
+      tree.position.set(x,0,(Math.random()-.5)*.48);
+      row.group.add(tree);
+      box(tree,0,.42,0,.22,.85,.22,materials.trunk);
+      const shade = randomItem([0x268b43,0x2d9b4c,0x3aa653]);
+      const leaves = makeMaterial(shade);
+      box(tree,0,1.05,0,.86,.72,.82,leaves);
+      box(tree,0,1.48,0,.58,.48,.58,leaves);
+      decorations.push(tree);
+    }
+  }
+}
+function buildRoad(row) {
+  box(row.group,0,-.12,0,ROAD_WIDTH,.24,1.35,materials.road);
+  for(let x=-3;x<=3;x+=2){
+    box(row.group,x,.012,0,.72,.025,.045,materials.roadLine,false,false);
+  }
+  row.speed = (1.7 + Math.random()*1.1) * (Math.random()<.5?-1:1);
+  const count = 2 + Math.floor(Math.random()*2);
+  for(let i=0;i<count;i++){
+    const car = new THREE.Group();
+    const color = randomItem([0xe74c3c,0x3498db,0xf1c40f,0x9b59b6,0xecf0f1,0x27ae60]);
+    const carMat = makeMaterial(color);
+    box(car,0,.3,0,1.05,.42,.72,carMat);
+    box(car,0,.57,-.02,.58,.28,.62,makeMaterial(0xbfe7f7,.25));
+    for(const wx of [-.32,.32]) for(const wz of [-.29,.29]){
+      const wheel = new THREE.Mesh(unitCylinder,materials.dark);
+      wheel.rotation.z=Math.PI/2; wheel.scale.set(.18,.12,.18);
+      wheel.position.set(wx,.14,wz); car.add(wheel);
+    }
+    const startX = (i-(count-1)/2)*3.4 + (Math.random()-.5)*.6;
+    car.position.set(startX,0,0);
+    row.group.add(car);
+    row.objects.push({mesh:car,x:startX,width:1.08,kind:'car'});
+    moving.push({row,object:row.objects[row.objects.length-1]});
+  }
+}
+function buildRiver(row) {
+  box(row.group,0,-.13,0,ROAD_WIDTH,.26,1.35,materials.water);
+  row.speed = (1.15 + Math.random()*.8) * (Math.random()<.5?-1:1);
+  const count = 2 + Math.floor(Math.random()*2);
+  for(let i=0;i<count;i++){
+    const log = new THREE.Group();
+    const length = 1.8 + Math.random()*1.1;
+    const logMat = makeMaterial(randomItem([0x9b6634,0x80502b,0xb17a42]));
+    box(log,0,.13,0,length,.28,.48,logMat);
+    for(const side of [-1,1]){
+      const end = new THREE.Mesh(unitCylinder,logMat);
+      end.rotation.z=Math.PI/2; end.scale.set(.48,.28,.28);
+      end.position.x=side*length/2; log.add(end);
+    }
+    const startX=(i-(count-1)/2)*3.6+(Math.random()-.5)*.5;
+    log.position.set(startX,0,0);
+    row.group.add(log);
+    row.objects.push({mesh:log,x:startX,width:length,kind:'log'});
+    moving.push({row,object:row.objects[row.objects.length-1]});
+  }
+}
+function buildRail(row) {
+  box(row.group,0,-.12,0,ROAD_WIDTH,.24,1.35,materials.grass);
+  for(const x of [-.42,.42]){
+    box(row.group,x,.04,0,.09,.09,1.35,materials.rail);
+  }
+  for(let z=-.58;z<=.58;z+=.29) box(row.group,0,.015,z,1.15,.08,.12,materials.sleeper);
+  row.speed = 0;
+  row.warning = null;
+  row.train = null;
+}
+function makeTrain(row) {
+  if(row.train) return;
+  const train = new THREE.Group();
+  const red = makeMaterial(0xc83232);
+  const cream = makeMaterial(0xf3e5c6);
+  box(train,0,.42,0,2.25,.62,.94,red);
+  box(train,0,.79,-.05,1.45,.22,.9,cream);
+  for(const x of [-.62,0,.62]) box(train,x,.59,-.49,.3,.28,.035,makeMaterial(0x9dd8ed,.25));
+  for(const x of [-.7,.7]) for(const z of [-.38,.38]){
+    const wheel = new THREE.Mesh(unitCylinder,materials.dark);
+    wheel.rotation.z=Math.PI/2;wheel.scale.set(.2,.12,.2);wheel.position.set(x,.13,z);train.add(wheel);
+  }
+  train.position.set(-12,0,0);
+  row.group.add(train);
+  row.train=train;
+  row.speed=11.5;
+  row.direction=1;
+}
+function buildRow(index) {
+  const z = -index*1.35;
+  let type;
+  if(index<=1) type='grass';
+  else {
+    const roll=Math.random();
+    if(roll<.48) type='grass';
+    else if(roll<.76) type='road';
+    else if(roll<.94) type='river';
+    else type='rail';
+    const previous=rows.get(index-1);
+    if(previous && previous.type===type && type!=='grass' && Math.random()<.65) type='grass';
+  }
+  return laneGroup(z,type,index);
+}
+function ensureRows() {
+  const lastNeeded = playerRow + VISIBLE_FRONT;
+  for(let i=0;i<=lastNeeded;i++) if(!rows.has(i)) buildRow(i);
+}
+function clearWorld() {
+  for(const child of [...world.children]) world.remove(child);
+  rows.clear();moving.length=0;decorations.length=0;
+  world.add(player);
+}
+function resetGame() {
+  clearWorld();
+  score=0;maxForward=0;playerX=0;playerRow=0;jump=null;
+  running=false;ended=false;
+  scoreEl.textContent='0';
+  player.position.set(0,0,0);
+  playerBody.position.y=0;
+  playerBody.rotation.set(0,0,0);
+  laneGroup(0,'grass',0);
+  laneGroup(-1.35,'grass',1);
+  ensureRows();
+  camera.position.set(7.5,9.5,11.5);
+  camera.lookAt(0,0,-2);
+  startOverlay.classList.remove('hidden');
+  gameOverOverlay.classList.add('hidden');
+  updateCamera(0);
+  render();
+}
+function updateCamera(dt) {
+  const targetZ = -Math.max(0,playerRow-2)*1.35 - 2.0;
+  const desired = new THREE.Vector3(7.5,9.5,targetZ+13.5);
+  camera.position.lerp(desired,Math.min(1,dt*3.2));
+  camera.lookAt(0,0,targetZ-3.5);
+}
+function updateScore() {
+  score=Math.max(score,maxForward);
+  scoreEl.textContent=String(score);
+}
+function showToast(message) {
+  toastEl.textContent=message;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>toastEl.classList.remove('show'),1300);
+}
+function movePlayer(dx,dz) {
+  if(!running || ended || jump) return;
+  if(dx!==0) {
+    const nx=THREE.MathUtils.clamp(playerX+dx,-2,2);
+    if(nx===playerX) return;
+    playerX=nx;
+  }
+  if(dz!==0) {
+    playerRow+=1;
+    maxForward=Math.max(maxForward,playerRow-1);
+    updateScore();
+    ensureRows();
+  }
+  const target=new THREE.Vector3(playerX*LANE_WIDTH,0,-playerRow*1.35);
+  jump={from:player.position.clone(),to:target,elapsed:0,duration:.17};
+  playerBody.rotation.z=dx*.22;
+  if(playerRow>maxForward+VISIBLE_FRONT-3) ensureRows();
+  checkLanding();
+}
+function checkLanding() {
+  const row=rows.get(playerRow);
+  if(!row) return;
+  if(row.type==='river') {
+    const log=row.objects.find(o=>Math.abs(o.x-playerX*LANE_WIDTH)<(o.width/2+.22));
+    if(!log) { setTimeout(()=>finishGame('در آب افتادی!'),190); return; }
+    player.userData.riding=log;
+  } else player.userData.riding=null;
+}
+function finishGame(reason) {
+  if(ended) return;
+  running=false;ended=true;jump=null;
+  best=Math.max(best,score);
+  localStorage.setItem(BEST_KEY,String(best));
+  bestEl.textContent=String(best);
+  finalText.textContent=`${reason} امتیاز تو: ${score}`;
+  gameOverOverlay.classList.remove('hidden');
+}
+function startGame() {
+  if(ended) resetGame();
+  running=true;ended=false;
+  startOverlay.classList.add('hidden');
+  gameOverOverlay.classList.add('hidden');
+  lastTime=performance.now();
+  if(!animationId) animationId=requestAnimationFrame(loop);
+}
+function animatePlayer(dt) {
+  if(!jump) return;
+  jump.elapsed+=dt;
+  const t=Math.min(1,jump.elapsed/jump.duration);
+  const eased=t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+  player.position.lerpVectors(jump.from,jump.to,eased);
+  player.position.y=Math.sin(t*Math.PI)*.48;
+  if(t>=1) {
+    player.position.copy(jump.to);player.position.y=0;jump=null;
+    playerBody.rotation.z=0;
+    const row=rows.get(playerRow);
+    if(row?.type==='rail' && row.train && Math.abs(row.train.position.x-playerX*LANE_WIDTH)<1.55) finishGame('قطار بهت برخورد کرد!');
+  }
+}
+function updateTraffic(dt) {
+  const elapsedSpeed=1+Math.min(score*.018,.9);
+  for(const row of rows.values()) {
+    if(row.type==='road') {
+      for(const obj of row.objects) {
+        obj.x+=row.speed*elapsedSpeed*dt;
+        if(row.speed>0 && obj.x>8) obj.x=-8;
+        if(row.speed<0 && obj.x<-8) obj.x=8;
+        obj.mesh.position.x=obj.x;
+      }
+    } else if(row.type==='river') {
+      for(const obj of row.objects) {
+        obj.x+=row.speed*dt;
+        if(row.speed>0 && obj.x>8) obj.x=-8;
+        if(row.speed<0 && obj.x<-8) obj.x=8;
+        obj.mesh.position.x=obj.x;
+      }
+    } else if(row.type==='rail') {
+      const dist=playerRow-row.index;
+      if(!row.train && !row.warning && Math.abs(dist)<7 && Math.random()<dt*.18) {
+        row.warning=2.0;
+        if(row.index===playerRow || Math.abs(dist)<=2) showToast('⚠️ قطار نزدیک می‌شود!');
+      }
+      if(row.warning!==null) {
+        row.warning-=dt;
+        if(row.warning<=0) {row.warning=null;makeTrain(row);}
+      }
+      if(row.train) {
+        row.train.position.x+=row.speed*dt;
+        if(row.train.position.x>13) {row.group.remove(row.train);row.train=null;row.warning=null;}
+      }
+    }
+  }
+  const current=rows.get(playerRow);
+  if(current?.type==='road') {
+    for(const obj of current.objects) {
+      if(Math.abs(obj.x-playerX*LANE_WIDTH)<.78) {finishGame('ماشین بهت برخورد کرد!');break;}
+    }
+  }
+  if(current?.type==='river' && !jump) {
+    const riding=player.userData.riding;
+    if(!riding || !current.objects.includes(riding)) {finishGame('در آب افتادی!');return;}
+    playerX += (current.speed*dt)/LANE_WIDTH;
+    playerX=THREE.MathUtils.clamp(playerX,-3.2,3.2);
+    player.position.x=playerX*LANE_WIDTH;
+    if(Math.abs(playerX*LANE_WIDTH-riding.x)>riding.width/2+.15) finishGame('از کنده جا ماندی!');
+  }
+  const rail=rows.get(playerRow);
+  if(rail?.type==='rail' && rail.train && Math.abs(rail.train.position.x-playerX*LANE_WIDTH)<1.55) finishGame('قطار بهت برخورد کرد!');
+}
+function cleanupRows() {
+  const min=playerRow-VISIBLE_BACK;
+  for(const [index,row] of rows) {
+    if(index<min) {
+      world.remove(row.group);rows.delete(index);
+    }
+  }
+}
+function loop(now) {
+  animationId=0;
+  const dt=Math.min((now-lastTime)/1000,.05);
+  lastTime=now;
+  if(running) {
+    animatePlayer(dt);
+    updateTraffic(dt);
+    cleanupRows();
+    updateCamera(dt);
+  }
+  render();
+  if(running) animationId=requestAnimationFrame(loop);
+}
+function render() {
+  if(!renderer) return;
+  const w=stage.clientWidth,h=stage.clientHeight;
+  if(w&&h) {
+    renderer.setSize(w,h,false);
+    camera.aspect=w/h;
+    camera.updateProjectionMatrix();
+  }
+  renderer.render(scene,camera);
+}
+function handleMove(kind) {
+  if(!running) return;
+  if(kind==='forward') movePlayer(0,1);
+  if(kind==='left') movePlayer(-1,0);
+  if(kind==='right') movePlayer(1,0);
+}
+document.getElementById('startButton').addEventListener('click',startGame);
+document.getElementById('retryButton').addEventListener('click',()=>{resetGame();startGame();});
+document.getElementById('homeButton').addEventListener('click',()=>{gameOverOverlay.classList.add('hidden');startOverlay.classList.remove('hidden');resetGame();});
+document.getElementById('leftButton').addEventListener('pointerdown',e=>{e.preventDefault();handleMove('left');});
+document.getElementById('rightButton').addEventListener('pointerdown',e=>{e.preventDefault();handleMove('right');});
+document.getElementById('forwardButton').addEventListener('pointerdown',e=>{e.preventDefault();handleMove('forward');});
+document.getElementById('backButton').addEventListener('click',()=>{
+  if(tg && tg.close) tg.close();
+  else if(history.length>1) history.back();
+  else location.href='/';
+});
+let pointerStart=null;
+stage.addEventListener('pointerdown',e=>{
+  if(e.target.closest('.overlay') || !running) return;
+  pointerStart={x:e.clientX,y:e.clientY,id:e.pointerId};
+  try{stage.setPointerCapture(e.pointerId);}catch(_){}
+},{passive:false});
+stage.addEventListener('pointerup',e=>{
+  if(!pointerStart || pointerStart.id!==e.pointerId) return;
+  const dx=e.clientX-pointerStart.x,dy=e.clientY-pointerStart.y;
+  pointerStart=null;
+  if(Math.max(Math.abs(dx),Math.abs(dy))<18) {handleMove('forward');return;}
+  if(Math.abs(dx)>Math.abs(dy)) handleMove(dx>0?'right':'left');
+  else if(dy<0) handleMove('forward');
+  else showToast('برای پیشروی، انگشت را به بالا بکش');
+});
+stage.addEventListener('pointercancel',()=>pointerStart=null);
+document.addEventListener('keydown',e=>{
+  const keys={ArrowUp:'forward',w:'forward',ArrowLeft:'left',a:'left',ArrowRight:'right',d:'right'};
+  if(keys[e.key]){e.preventDefault();handleMove(keys[e.key]);}
+});
+window.addEventListener('resize',render);
+document.addEventListener('visibilitychange',()=>{if(document.hidden && running){running=false;showToast('بازی متوقف شد');}});
+if(renderer) resetGame();
+</script>
+</body>
+</html>
