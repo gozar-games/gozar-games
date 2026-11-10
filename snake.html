@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#080808">
+<title>GOZAR GAMES | Snake</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800;900&display=swap');
+:root{--bg:#080808;--green:#42d66b;--dark:#102b18;--ink:#08200f;--muted:#9a9a9a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:#f5f5f5;font-family:Vazirmatn,sans-serif;min-height:100vh}
+button{font:inherit;cursor:pointer}
+.app{max-width:520px;margin:auto;padding:16px 15px 30px}
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.back{background:#171717;border:1px solid #333;border-radius:12px;color:#fff;padding:9px 14px}
+.brand{font-weight:900;letter-spacing:.5px}.brand span{color:var(--green)}
+.scorebar{display:flex;justify-content:space-between;align-items:center;margin:12px 2px;font-weight:900}
+.score{font-size:27px;color:var(--green);direction:ltr}
+.best{font-size:12px;color:#aaa}
+.board-wrap{background:var(--green);border:5px solid #269e4a;border-radius:19px;padding:8px;box-shadow:0 0 25px #42d66b20}
+canvas{display:block;width:100%;height:auto;aspect-ratio:1/1.35;touch-action:none;border:3px dotted #123b1c;border-radius:5px;background:var(--green)}
+.hint{text-align:center;color:#bdbdbd;font-size:12px;margin:12px 0 15px}
+.modes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mode{border:1px solid #383838;border-radius:13px;background:#191919;color:#bbb;padding:12px 4px;font-weight:900;font-size:12px}
+.mode.active{background:var(--green);color:var(--ink);border-color:#72f28e;box-shadow:0 0 14px #42d66b33}
+.actions{display:flex;gap:10px;margin-top:13px}
+.action{flex:1;border:0;border-radius:12px;padding:12px;background:#292929;color:#fff;font-weight:800}
+.action.primary{background:var(--green);color:var(--ink)}
+.message{text-align:center;color:#aaa;font-size:12px;min-height:22px;margin:12px 0}
+.controls{display:grid;grid-template-columns:repeat(3,58px);grid-template-rows:repeat(2,48px);gap:6px;justify-content:center;margin:12px auto}
+.controls button{border:1px solid #444;border-radius:12px;background:#1a1a1a;color:white;font-size:21px}
+.controls .up{grid-column:2;grid-row:1}.controls .left{grid-column:1;grid-row:2}.controls .down{grid-column:2;grid-row:2}.controls .right{grid-column:3;grid-row:2}
+.foot{text-align:center;color:#777;font-size:10px;margin-top:14px}
+@media(min-width:430px){canvas{aspect-ratio:1/1.15}.mode{font-size:14px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <button class="back" id="backButton">← بازگشت</button>
+    <div class="brand">GOZAR <span>GAMES</span></div>
+  </header>
+
+  <div class="scorebar">
+    <div><div class="score" id="score">00000</div><div class="best">امتیاز</div></div>
+    <div style="text-align:left"><div class="score" id="best">00000</div><div class="best">BEST</div></div>
+  </div>
+
+  <div class="board-wrap">
+    <canvas id="game" width="360" height="486" aria-label="بازی مار"></canvas>
+  </div>
+
+  <div class="hint" id="hint">برای شروع، انگشتت رو روی صفحه بکش یا دکمه شروع رو بزن.</div>
+
+  <div class="modes">
+    <button class="mode active" data-mode="nowalls">No walls</button>
+    <button class="mode" data-mode="walls">Walls</button>
+    <button class="mode" data-mode="advanced">Advanced</button>
+  </div>
+
+  <div class="actions">
+    <button class="action primary" id="startBtn">شروع بازی</button>
+    <button class="action" id="pauseBtn">توقف</button>
+    <button class="action" id="restartBtn">شروع مجدد</button>
+  </div>
+
+  <div class="message" id="message">حالت بازی رو انتخاب کن و آماده شو!</div>
+
+  <div class="controls" aria-label="کنترل بازی">
+    <button class="up" data-dir="up">↑</button>
+    <button class="left" data-dir="left">←</button>
+    <button class="down" data-dir="down">↓</button>
+    <button class="right" data-dir="right">→</button>
+  </div>
+
+  <div class="foot">GOZAR GAMES · SNAKE</div>
+</div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const bestEl = document.getElementById('best');
+const messageEl = document.getElementById('message');
+const hintEl = document.getElementById('hint');
+const startBtn = document.getElementById('startBtn');
+const pauseBtn = document.getElementById('pauseBtn');
+
+const COLS = 20, ROWS = 27;
+const CELL = canvas.width / COLS;
+const modes = {
+  nowalls: { label: 'No walls', speed: 145, wrap: true, acceleration: false },
+  walls: { label: 'Walls', speed: 145, wrap: false, acceleration: false },
+  advanced: { label: 'Advanced', speed: 112, wrap: false, acceleration: true }
+};
+
+let mode = 'nowalls';
+let snake, food, direction, nextDirection, score, timer;
+let running = false, ended = false, lastTick = 0, touchStart = null;
+
+function keyBest(){ return 'gozar_snake_best_' + mode; }
+function getBest(){ return Number(localStorage.getItem(keyBest()) || 0); }
+function pad(n){ return String(n).padStart(5, '0'); }
+
+function updateScore(){
+  scoreEl.textContent = pad(score);
+  bestEl.textContent = pad(getBest());
+}
+
+function resetGame(){
+  clearInterval(timer);
+  running = false;
+  ended = false;
+  score = 0;
+  snake = [
+    {x:9,y:13},{x:8,y:13},{x:7,y:13}
+  ];
+  direction = {x:1,y:0};
+  nextDirection = {x:1,y:0};
+  food = makeFood();
+  updateScore();
+  startBtn.textContent = 'شروع بازی';
+  pauseBtn.textContent = 'توقف';
+  messageEl.textContent = 'برای شروع آماده‌ای؟';
+  draw();
+}
+
+function makeFood(){
+  let p;
+  do {
+    p = {x:Math.floor(Math.random()*COLS),y:Math.floor(Math.random()*ROWS)};
+  } while (snake.some(s => s.x===p.x && s.y===p.y));
+  return p;
+}
+
+function draw(){
+  ctx.fillStyle = '#42d66b';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // subtle pixel grid
+  ctx.fillStyle = '#31c65c';
+  for(let x=0;x<COLS;x++){
+    for(let y=0;y<ROWS;y++){
+      if((x+y)%2===0) ctx.fillRect(x*CELL+CELL/2-1,y*CELL+CELL/2-1,2,2);
+    }
+  }
+
+  // food
+  ctx.fillStyle = '#092b14';
+  ctx.fillRect(food.x*CELL+CELL*.25,food.y*CELL+CELL*.25,CELL*.5,CELL*.5);
+
+  // snake
+  snake.forEach((part,i)=>{
+    ctx.fillStyle = i===0 ? '#062b12' : '#0b421d';
+    ctx.fillRect(part.x*CELL+1,part.y*CELL+1,CELL-2,CELL-2);
+    if(i===0){
+      ctx.fillStyle = '#b8ffc8';
+      const eye = Math.max(2,CELL*.12);
+      ctx.fillRect(part.x*CELL+CELL*.62,part.y*CELL+CELL*.22,eye,eye);
+      ctx.fillRect(part.x*CELL+CELL*.62,part.y*CELL+CELL*.66,eye,eye);
+    }
+  });
+
+  if(!running){
+    ctx.fillStyle = '#062b12';
+    ctx.textAlign = 'center';
+    ctx.font = '900 21px Vazirmatn, sans-serif';
+    const title = ended ? 'GAME OVER' : 'SNAKE';
+    ctx.fillText(title,canvas.width/2,canvas.height/2-8);
+    ctx.font = '700 12px Vazirmatn, sans-serif';
+    ctx.fillText(ended ? 'برای بازی دوباره شروع را بزن' : 'برای شروع دکمه را بزن',canvas.width/2,canvas.height/2+20);
+  }
+}
+
+function startGame(){
+  if(ended) resetGame();
+  if(running) return;
+  running = true;
+  startBtn.textContent = 'در حال بازی';
+  messageEl.textContent = 'بازی شروع شد؛ موفق باشی!';
+  hintEl.textContent = 'برای تغییر جهت، روی صفحه بکش یا از دکمه‌ها استفاده کن.';
+  clearInterval(timer);
+  timer = setInterval(tick, modes[mode].speed);
+  draw();
+}
+
+function pauseGame(){
+  if(!running) return;
+  running = false;
+  clearInterval(timer);
+  startBtn.textContent = 'ادامه بازی';
+  messageEl.textContent = 'بازی متوقف شد.';
+  draw();
+}
+
+function finishGame(){
+  running = false;
+  ended = true;
+  clearInterval(timer);
+  const oldBest = getBest();
+  if(score > oldBest) localStorage.setItem(keyBest(),String(score));
+  updateScore();
+  startBtn.textContent = 'بازی دوباره';
+  messageEl.textContent = 'بازی تموم شد! امتیاز: ' + score;
+  draw();
+}
+
+function tick(){
+  if(!running) return;
+  direction = nextDirection;
+  let head = {x:snake[0].x+direction.x,y:snake[0].y+direction.y};
+
+  if(modes[mode].wrap){
+    head.x = (head.x+COLS)%COLS;
+    head.y = (head.y+ROWS)%ROWS;
+  }else if(head.x<0 || head.x>=COLS || head.y<0 || head.y>=ROWS){
+    finishGame(); return;
+  }
+
+  const eating = head.x===food.x && head.y===food.y;
+  const bodyToCheck = eating ? snake : snake.slice(0,-1);
+  if(bodyToCheck.some(p=>p.x===head.x && p.y===head.y)){
+    finishGame(); return;
+  }
+
+  snake.unshift(head);
+  if(eating){
+    score += 10;
+    food = makeFood();
+    if(score > getBest()) {
+      localStorage.setItem(keyBest(),String(score));
+    }
+    updateScore();
+    if(modes[mode].acceleration && score % 50 === 0){
+      clearInterval(timer);
+      timer = setInterval(tick,Math.max(55,modes[mode].speed-score/10));
+    }
+  }else{
+    snake.pop();
+  }
+  draw();
+}
+
+function changeDirection(dir){
+  const dirs = {
+    up:{x:0,y:-1},down:{x:0,y:1},left:{x:-1,y:0},right:{x:1,y:0}
+  };
+  const chosen = dirs[dir];
+  if(!chosen) return;
+  if(chosen.x === -direction.x && chosen.y === -direction.y) return;
+  nextDirection = chosen;
+  if(!running && !ended) startGame();
+}
+
+document.querySelectorAll('[data-mode]').forEach(button=>{
+  button.addEventListener('click',()=>{
+    if(running) pauseGame();
+    mode = button.dataset.mode;
+    document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b===button));
+    resetGame();
+    bestEl.textContent = pad(getBest());
+    messageEl.textContent = 'حالت ' + modes[mode].label + ' انتخاب شد.';
+  });
+});
+
+document.querySelectorAll('[data-dir]').forEach(button=>{
+  button.addEventListener('click',()=>changeDirection(button.dataset.dir));
+});
+
+document.addEventListener('keydown',e=>{
+  const map = {ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',s:'down',a:'left',d:'right'};
+  if(map[e.key]){e.preventDefault();changeDirection(map[e.key]);}
+});
+
+canvas.addEventListener('pointerdown',e=>{
+  touchStart = {x:e.clientX,y:e.clientY};
+});
+canvas.addEventListener('pointerup',e=>{
+  if(!touchStart) return;
+  const dx=e.clientX-touchStart.x, dy=e.clientY-touchStart.y;
+  touchStart=null;
+  if(Math.max(Math.abs(dx),Math.abs(dy))<18) return;
+  if(Math.abs(dx)>Math.abs(dy)) changeDirection(dx>0?'right':'left');
+  else changeDirection(dy>0?'down':'up');
+});
+
+startBtn.addEventListener('click',()=>running?null:startGame());
+pauseBtn.addEventListener('click',pauseGame);
+document.getElementById('restartBtn').addEventListener('click',resetGame);
+document.getElementById('backButton').addEventListener('click',()=>{
+  if(tg && tg.close) tg.close();
+  else if(history.length>1) history.back();
+  else location.href='/';
+});
+
+resetGame();
+</script>
+</body>
+</html>
