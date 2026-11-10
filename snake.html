@@ -94,7 +94,7 @@ let mode = 'nowalls';
 let snake, food, direction, nextDirection, score, timer;
 let running = false, ended = false, lastTick = 0, touchStart = null;
 let normalFoods = 0, bonusFood = null, bonusExpiryTimer = null;
-let biteUntil = 0, swallowed = null;
+let biteUntil = 0, swallowed = null, visualFrame = null, scorePopup = null;
 
 function keyBest(){ return 'gozar_snake_best_' + mode; }
 function getBest(){ return Number(localStorage.getItem(keyBest()) || 0); }
@@ -116,7 +116,8 @@ function resetGame(){
   direction = {x:1,y:0};
   nextDirection = {x:1,y:0};
   clearTimeout(bonusExpiryTimer);
-  normalFoods = 0; bonusFood = null; biteUntil = 0; swallowed = null;
+  normalFoods = 0; bonusFood = null; biteUntil = 0; swallowed = null; scorePopup = null;
+  if (visualFrame) cancelAnimationFrame(visualFrame); visualFrame = null;
   food = makeFood();
   updateScore();
   startBtn.textContent = 'شروع بازی';
@@ -145,21 +146,43 @@ function draw(){
     }
   }
 
-  // food
+  // Normal food
   ctx.fillStyle = '#092b14';
   ctx.fillRect(food.x*CELL+CELL*.25,food.y*CELL+CELL*.25,CELL*.5,CELL*.5);
 
-  // Snake body and animated head
+  // Large bonus food with a visible five-second countdown
+  if (bonusFood) {
+    const elapsed = Date.now() - bonusFood.started;
+    const remaining = Math.max(0, 1 - elapsed / 5000);
+    const cx = (bonusFood.x + .5) * CELL, cy = (bonusFood.y + .5) * CELL;
+    const pulse = 1 + Math.sin(Date.now()/90) * .08;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(pulse, pulse);
+    ctx.fillStyle = '#ffe36e';
+    ctx.beginPath();
+    for (let k=0;k<10;k++) {
+      const r = k%2===0 ? CELL*.48 : CELL*.22;
+      const a = -Math.PI/2 + k*Math.PI/5;
+      const x = Math.cos(a)*r, y = Math.sin(a)*r;
+      if(k===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#8a4d00'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.restore();
+    ctx.strokeStyle = '#fff4bd'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(cx,cy,CELL*.62,-Math.PI/2,-Math.PI/2+Math.PI*2*remaining);
+    ctx.stroke();
+  }
+
+  // Snake body and head
   snake.forEach((part,i)=>{
     ctx.fillStyle = i===0 ? '#062b12' : '#0b421d';
     ctx.fillRect(part.x*CELL+1,part.y*CELL+1,CELL-2,CELL-2);
 
     if(i===0){
-      const dx = food.x - part.x;
-      const dy = food.y - part.y;
-      const foodAhead = dx*direction.x + dy*direction.y;
-      const foodNear = Math.abs(dx) + Math.abs(dy) <= 4 && foodAhead > 0;
-      const jawOpen = foodNear && Math.sin(Date.now()/75) > -0.15;
+      // The mouth opens only during the actual bite animation.
+      const jawOpen = Date.now() < biteUntil;
       const eye = Math.max(2,CELL*.12);
 
       ctx.fillStyle = '#b8ffc8';
@@ -192,6 +215,32 @@ function draw(){
     }
   });
 
+  // A small piece of food visibly travels from the head into the body.
+  if (swallowed) {
+    const progress = Math.min(1, (Date.now()-swallowed.started)/520);
+    const maxSegment = Math.min(snake.length-1, 5);
+    const segmentPosition = progress * maxSegment;
+    const index = Math.min(maxSegment, Math.floor(segmentPosition));
+    const fraction = segmentPosition-index;
+    const a = snake[index] || snake[0];
+    const b = snake[Math.min(index+1, snake.length-1)] || a;
+    const px = ((a.x + (b.x-a.x)*fraction)+.5)*CELL;
+    const py = ((a.y + (b.y-a.y)*fraction)+.5)*CELL;
+    ctx.fillStyle = swallowed.color;
+    ctx.beginPath(); ctx.arc(px,py,CELL*.19,0,Math.PI*2); ctx.fill();
+  }
+
+  if (scorePopup) {
+    const elapsed = Date.now()-scorePopup.started;
+    if (elapsed < 700) {
+      ctx.save(); ctx.globalAlpha = 1-elapsed/700;
+      ctx.fillStyle = scorePopup.color; ctx.textAlign='center';
+      ctx.font = '900 18px Vazirmatn, sans-serif';
+      ctx.fillText(scorePopup.text, scorePopup.x, scorePopup.y-elapsed*.035);
+      ctx.restore();
+    } else scorePopup = null;
+  }
+
   if(!running){
     ctx.fillStyle = '#062b12';
     ctx.textAlign = 'center';
@@ -203,16 +252,39 @@ function draw(){
   }
 }
 
-function startBiteAnimation(color='#fff2a8'){
-  biteUntil=Date.now()+260;swallowed={started:Date.now(),color};
-  setTimeout(()=>{if(swallowed&&Date.now()-swallowed.started>=500){swallowed=null;draw();}},540);
+function startBiteAnimation(color='#fff2a8', points=10){
+  const now = Date.now();
+  biteUntil = now + 260;
+  swallowed = { started: now, color };
+  scorePopup = { started: now, text: '+' + points, color: points===50 ? '#ffe36e' : '#ffffff', x:(snake[0].x+.5)*CELL, y:(snake[0].y+.2)*CELL };
+  runVisualAnimation();
 }
+
+function runVisualAnimation(){
+  if (visualFrame) return;
+  const frame = () => {
+    draw();
+    const now = Date.now();
+    const biteActive = now < biteUntil;
+    const swallowActive = swallowed && now-swallowed.started < 520;
+    const popupActive = scorePopup && now-scorePopup.started < 700;
+    if (biteActive || swallowActive || popupActive || bonusFood) {
+      visualFrame = requestAnimationFrame(frame);
+    } else {
+      visualFrame = null;
+      swallowed = null;
+    }
+  };
+  visualFrame = requestAnimationFrame(frame);
+}
+
 function createBonusFood(){
   const free=[];
   for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++)
     if(!snake.some(part=>part.x===x&&part.y===y)&&!(food.x===x&&food.y===y))free.push({x,y});
   if(!free.length)return;
   bonusFood={...free[Math.floor(Math.random()*free.length)],started:Date.now()};
+  runVisualAnimation();
   clearTimeout(bonusExpiryTimer);
   bonusExpiryTimer=setTimeout(()=>{bonusFood=null;draw();},5000);
 }
@@ -270,12 +342,15 @@ function tick(){
 
   snake.unshift(head);
   if(eating || eatingBonus){
-    startBiteAnimation(eatingBonus ? '#fff2a8' : '#092b14');
     if(eatingBonus){
-      score+=50;bonusFood=null;clearTimeout(bonusExpiryTimer);
+      score+=50;
+      startBiteAnimation('#ffe36e',50);
+      bonusFood=null;clearTimeout(bonusExpiryTimer);
       messageEl.textContent='غذای ویژه رو خوردی! +۵۰ امتیاز';
     }else{
-      score+=10;normalFoods++;food=makeFood();
+      score+=10;
+      startBiteAnimation('#092b14',10);
+      normalFoods++;food=makeFood();
       if(normalFoods%3===0){
         createBonusFood();
         messageEl.textContent='غذای ویژه ظاهر شد؛ فقط ۵ ثانیه فرصت داری!';
