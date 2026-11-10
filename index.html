@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -52,7 +53,7 @@ button{font-family:inherit;color:inherit;cursor:pointer}
   color:white;
 }
 
-.profile{gap:10px;margin-bottom:43px}
+.profile{gap:10px;margin-bottom:22px}
 .user{justify-content:flex-start;gap:11px}
 
 .avatar{
@@ -110,6 +111,145 @@ button{font-family:inherit;color:inherit;cursor:pointer}
   width:27px;
   height:27px;
   font-size:20px;
+}
+
+/* Daily reward card */
+
+.daily-card{
+  position:relative;
+  overflow:hidden;
+  background:linear-gradient(135deg,#251012,#141414 65%);
+  border:1px solid #642027;
+  border-radius:19px;
+  padding:17px;
+  margin-bottom:30px;
+  box-shadow:0 8px 25px #ed172510;
+}
+
+.daily-card:before{
+  content:"";
+  position:absolute;
+  width:130px;
+  height:130px;
+  border-radius:50%;
+  background:#ed172515;
+  left:-45px;
+  top:-65px;
+  pointer-events:none;
+}
+
+.daily-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  position:relative;
+}
+
+.daily-heading{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.daily-icon{
+  width:45px;
+  height:45px;
+  display:grid;
+  place-items:center;
+  background:#ed17251c;
+  border:1px solid #ed172544;
+  border-radius:13px;
+  font-size:25px;
+}
+
+.daily-title{
+  font-size:15px;
+  font-weight:900;
+}
+
+.daily-subtitle{
+  font-size:11px;
+  color:#aaa;
+  margin-top:4px;
+}
+
+.streak-badge{
+  background:#ed17251c;
+  color:#ff6871;
+  border:1px solid #ed172544;
+  border-radius:20px;
+  padding:6px 10px;
+  font-size:11px;
+  white-space:nowrap;
+}
+
+.daily-divider{
+  height:1px;
+  background:#ffffff12;
+  margin:15px 0;
+}
+
+.daily-bottom{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  position:relative;
+}
+
+.reward-label{
+  color:#aaa;
+  font-size:11px;
+}
+
+.reward-value{
+  font-size:23px;
+  font-weight:900;
+  color:#fff;
+  margin-top:3px;
+}
+
+.reward-value span{
+  color:#ff4b56;
+  font-size:13px;
+}
+
+.claim-button{
+  border:0;
+  border-radius:12px;
+  padding:11px 17px;
+  min-width:125px;
+  background:var(--red);
+  color:white;
+  font-size:12px;
+  font-weight:900;
+  box-shadow:0 5px 16px #ed172533;
+  transition:.2s;
+}
+
+.claim-button:active:not(:disabled){
+  transform:scale(.96);
+}
+
+.claim-button:disabled{
+  cursor:not-allowed;
+  opacity:.65;
+  box-shadow:none;
+}
+
+.claim-button.claimed{
+  background:#252525;
+  color:#aaa;
+  border:1px solid #444;
+}
+
+.daily-message{
+  color:#aaa;
+  font-size:10px;
+  margin-top:12px;
+  position:relative;
+  min-height:15px;
 }
 
 .hero{text-align:center;margin-bottom:30px}
@@ -231,6 +371,7 @@ button{font-family:inherit;color:inherit;cursor:pointer}
   .menu-card{padding:10px 7px;gap:6px}
   .card-title{font-size:12px}
   .card-icon{font-size:24px;min-width:28px}
+  .claim-button{min-width:110px;padding:10px}
 }
 </style>
 </head>
@@ -260,6 +401,49 @@ button{font-family:inherit;color:inherit;cursor:pointer}
     <span class="coin">🪙</span>
     <span id="coinCount">...</span>
     <button class="plus" onclick="showToast('فروشگاه سکه به زودی فعال می‌شود')">+</button>
+  </div>
+
+</section>
+
+<!-- Daily reward -->
+<section class="daily-card">
+
+  <div class="daily-top">
+    <div class="daily-heading">
+      <div class="daily-icon">🎁</div>
+      <div>
+        <div class="daily-title">جایزه روزانه</div>
+        <div class="daily-subtitle">هر روز وارد شو و سکه بگیر!</div>
+      </div>
+    </div>
+
+    <div class="streak-badge" id="streakBadge">
+      🔥 روز ۱
+    </div>
+  </div>
+
+  <div class="daily-divider"></div>
+
+  <div class="daily-bottom">
+    <div>
+      <div class="reward-label">جایزه امروز</div>
+      <div class="reward-value" id="rewardValue">
+        ... <span>سکه</span>
+      </div>
+    </div>
+
+    <button
+      class="claim-button"
+      id="claimButton"
+      onclick="claimDailyReward()"
+      disabled
+    >
+      در حال بارگذاری...
+    </button>
+  </div>
+
+  <div class="daily-message" id="dailyMessage">
+    در حال دریافت وضعیت جایزه...
   </div>
 
 </section>
@@ -339,6 +523,9 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 <script>
 const tg = window.Telegram?.WebApp;
 
+let dailyRewardLoaded = false;
+let claimingReward = false;
+
 function showToast(message){
   const toast = document.getElementById('toast');
 
@@ -394,6 +581,36 @@ function setUserInfo(user){
   }
 }
 
+function setDailyReward(data){
+  const rewardElement = document.getElementById('rewardValue');
+  const streakElement = document.getElementById('streakBadge');
+  const button = document.getElementById('claimButton');
+  const message = document.getElementById('dailyMessage');
+
+  rewardElement.innerHTML =
+    `${formatCoins(data.reward)} <span>سکه</span>`;
+
+  const streak = data.claimed
+    ? data.daily_streak
+    : data.next_streak;
+
+  streakElement.textContent = `🔥 روز ${streak}`;
+
+  if(data.claimed){
+    button.textContent = '✓ دریافت شد';
+    button.disabled = true;
+    button.classList.add('claimed');
+    message.textContent = 'جایزه امروزت رو دریافت کردی؛ فردا دوباره بیا!';
+  }else{
+    button.textContent = 'دریافت جایزه';
+    button.disabled = false;
+    button.classList.remove('claimed');
+    message.textContent = 'جایزه امروزت منتظرته!';
+  }
+
+  dailyRewardLoaded = true;
+}
+
 async function loadWallet(){
   const coinElement = document.getElementById('coinCount');
   const userElement = document.getElementById('userName');
@@ -444,7 +661,107 @@ async function loadWallet(){
   }
 }
 
+async function loadDailyReward(){
+  const button = document.getElementById('claimButton');
+  const message = document.getElementById('dailyMessage');
+
+  if(!tg || !tg.initData){
+    button.textContent = 'ورود به تلگرام';
+    button.disabled = true;
+    message.textContent = 'برای دریافت جایزه وارد ربات تلگرام شو';
+    return;
+  }
+
+  try{
+    const response = await fetch('/api/daily-reward', {
+      method: 'GET',
+      headers: {
+        'X-Telegram-Init-Data': tg.initData
+      },
+      cache: 'no-store'
+    });
+
+    const data = await response.json();
+
+    if(!response.ok || !data.success){
+      throw new Error(data.error || 'Daily reward request failed');
+    }
+
+    setDailyReward(data);
+
+  }catch(error){
+    console.error('Daily reward GET error:', error);
+
+    button.textContent = 'تلاش دوباره';
+    button.disabled = false;
+    message.textContent = 'دریافت وضعیت جایزه ناموفق بود';
+  }
+}
+
+async function claimDailyReward(){
+  if(claimingReward || !tg || !tg.initData) return;
+
+  const button = document.getElementById('claimButton');
+  const message = document.getElementById('dailyMessage');
+  const coinElement = document.getElementById('coinCount');
+
+  claimingReward = true;
+  button.disabled = true;
+  button.textContent = 'در حال دریافت...';
+
+  try{
+    const response = await fetch('/api/daily-reward', {
+      method: 'POST',
+      headers: {
+        'X-Telegram-Init-Data': tg.initData
+      },
+      cache: 'no-store'
+    });
+
+    const data = await response.json();
+
+    if(response.status === 409 && data.already_claimed){
+      await loadDailyReward();
+      showToast('جایزه امروز قبلاً دریافت شده');
+      return;
+    }
+
+    if(!response.ok || !data.success){
+      throw new Error(data.error || 'Claim failed');
+    }
+
+    coinElement.textContent = formatCoins(data.coins);
+
+    setDailyReward({
+      claimed: true,
+      daily_streak: data.daily_streak,
+      next_streak: data.daily_streak,
+      reward: data.reward
+    });
+
+    message.textContent = 'جایزه با موفقیت به حسابت اضافه شد!';
+    showToast(`${formatCoins(data.reward)} سکه دریافت کردی!`);
+
+  }catch(error){
+    console.error('Daily reward POST error:', error);
+
+    button.disabled = false;
+    button.textContent = 'تلاش دوباره';
+    message.textContent = 'دریافت جایزه ناموفق بود؛ دوباره تلاش کن';
+    showToast('دریافت جایزه انجام نشد');
+
+  }finally{
+    claimingReward = false;
+  }
+}
+
+if(tg){
+  tg.ready();
+  tg.expand();
+}
+
 loadWallet();
+loadDailyReward();
 </script>
 
 </body>
