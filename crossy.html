@@ -108,9 +108,9 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9bdcff);
 scene.fog = new THREE.Fog(0x9bdcff, 17, 39);
 
-const camera = new THREE.PerspectiveCamera(43, 1, 0.1, 100);
-camera.position.set(7.5, 9.5, 11.5);
-camera.lookAt(0, 0, -2);
+const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 120);
+camera.position.set(5.2, 10.8, 13.5);
+camera.lookAt(0, 0, -3.5);
 
 let renderer;
 try {
@@ -121,7 +121,7 @@ try {
   document.getElementById('startButton').disabled = true;
   throw err;
 }
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.7));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -132,7 +132,7 @@ scene.add(new THREE.HemisphereLight(0xffffff, 0x68805b, 2.0));
 const sun = new THREE.DirectionalLight(0xffffff, 2.4);
 sun.position.set(-5, 12, 7);
 sun.castShadow = true;
-sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.camera.left = -12; sun.shadow.camera.right = 12;
 sun.shadow.camera.top = 15; sun.shadow.camera.bottom = -15;
 scene.add(sun);
@@ -205,7 +205,7 @@ let animationId = 0;
 let toastTimer = 0;
 let trainWarning = null;
 const LANE_WIDTH = 1.35;
-const ROAD_WIDTH = 7.2;
+const ROAD_WIDTH = 10.8;
 const VISIBLE_BACK = 8;
 const VISIBLE_FRONT = 20;
 
@@ -213,7 +213,9 @@ function laneGroup(z, type, index) {
   const group = new THREE.Group();
   group.position.z = z;
   world.add(group);
-  const data = {group, type, index, objects:[], speed:0, direction:1, safe:false, train:null, warning:null};
+  // Continuous grassy shoulders keep the world from looking like a narrow floating strip.
+  box(group,0,-.23,0,16,.16,1.35,materials.grass,false,true);
+  const data = {group, type, index, objects:[], obstacles:[], speed:0, direction:1, safe:false, train:null, warning:null};
   rows.set(index, data);
   if (type === 'grass') buildGrass(data);
   if (type === 'road') buildRoad(data);
@@ -258,7 +260,7 @@ function buildRoad(row) {
       wheel.rotation.z=Math.PI/2; wheel.scale.set(.18,.12,.18);
       wheel.position.set(wx,.14,wz); car.add(wheel);
     }
-    const startX = (i-(count-1)/2)*3.4 + (Math.random()-.5)*.6;
+    const startX = (i-(count-1)/2)*9.0;
     car.position.set(startX,0,0);
     row.group.add(car);
     row.objects.push({mesh:car,x:startX,width:1.08,kind:'car'});
@@ -279,7 +281,7 @@ function buildRiver(row) {
       end.rotation.z=Math.PI/2; end.scale.set(.48,.28,.28);
       end.position.x=side*length/2; log.add(end);
     }
-    const startX=(i-(count-1)/2)*3.6+(Math.random()-.5)*.5;
+    const startX=(i-(count-1)/2)*4.8+(Math.random()-.5)*.25;
     log.position.set(startX,0,0);
     row.group.add(log);
     row.objects.push({mesh:log,x:startX,width:length,kind:'log'});
@@ -349,8 +351,8 @@ function resetGame() {
   laneGroup(0,'grass',0);
   laneGroup(-1.35,'grass',1);
   ensureRows();
-  camera.position.set(7.5,9.5,11.5);
-  camera.lookAt(0,0,-2);
+  camera.position.set(5.2,10.8,13.5);
+  camera.lookAt(0,0,-3.5);
   startOverlay.classList.remove('hidden');
   gameOverOverlay.classList.add('hidden');
   updateCamera(0);
@@ -358,9 +360,9 @@ function resetGame() {
 }
 function updateCamera(dt) {
   const targetZ = -Math.max(0,playerRow-2)*1.35 - 2.0;
-  const desired = new THREE.Vector3(7.5,9.5,targetZ+13.5);
+  const desired = new THREE.Vector3(5.2,10.8,targetZ+14.5);
   camera.position.lerp(desired,Math.min(1,dt*3.2));
-  camera.lookAt(0,0,targetZ-3.5);
+  camera.lookAt(0,0,targetZ-4.5);
 }
 function updateScore() {
   score=Math.max(score,maxForward);
@@ -389,11 +391,14 @@ function movePlayer(dx,dz) {
   jump={from:player.position.clone(),to:target,elapsed:0,duration:.17};
   playerBody.rotation.z=dx*.22;
   if(playerRow>maxForward+VISIBLE_FRONT-3) ensureRows();
-  checkLanding();
 }
 function checkLanding() {
   const row=rows.get(playerRow);
   if(!row) return;
+  if(row.type==='grass') {
+    const hit = row.obstacles.some(obstacle => Math.abs(obstacle.x-playerX*LANE_WIDTH) < obstacle.radius);
+    if(hit) { finishGame('به درخت برخورد کردی!'); return; }
+  }
   if(row.type==='river') {
     const log=row.objects.find(o=>Math.abs(o.x-playerX*LANE_WIDTH)<(o.width/2+.22));
     if(!log) { setTimeout(()=>finishGame('در آب افتادی!'),190); return; }
@@ -427,6 +432,7 @@ function animatePlayer(dt) {
   if(t>=1) {
     player.position.copy(jump.to);player.position.y=0;jump=null;
     playerBody.rotation.z=0;
+    checkLanding();
     const row=rows.get(playerRow);
     if(row?.type==='rail' && row.train && Math.abs(row.train.position.x-playerX*LANE_WIDTH)<1.55) finishGame('قطار بهت برخورد کرد!');
   }
@@ -502,10 +508,12 @@ function loop(now) {
   render();
   if(running) animationId=requestAnimationFrame(loop);
 }
+let renderWidth=0, renderHeight=0;
 function render() {
   if(!renderer) return;
   const w=stage.clientWidth,h=stage.clientHeight;
-  if(w&&h) {
+  if(w&&h && (w!==renderWidth || h!==renderHeight)) {
+    renderWidth=w; renderHeight=h;
     renderer.setSize(w,h,false);
     camera.aspect=w/h;
     camera.updateProjectionMatrix();
