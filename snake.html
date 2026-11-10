@@ -52,7 +52,7 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:1/1.35;touch-action:non
     <canvas id="game" width="360" height="486" aria-label="بازی مار"></canvas>
   </div>
 
-  <div class="hint" id="hint">برای شروع، انگشتت رو روی صفحه بکش یا دکمه شروع رو بزن.</div>
+  <div class="hint" id="hint">برای تغییر جهت مار، روی صفحه بازی انگشتت رو بکش.</div>
 
   <div class="modes">
     <button class="mode active" data-mode="nowalls">No walls</button>
@@ -68,12 +68,6 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:1/1.35;touch-action:non
 
   <div class="message" id="message">حالت بازی رو انتخاب کن و آماده شو!</div>
 
-  <div class="controls" aria-label="کنترل بازی">
-    <button class="up" data-dir="up">↑</button>
-    <button class="left" data-dir="left">←</button>
-    <button class="down" data-dir="down">↓</button>
-    <button class="right" data-dir="right">→</button>
-  </div>
 
   <div class="foot">GOZAR GAMES · SNAKE</div>
 </div>
@@ -154,15 +148,46 @@ function draw(){
   ctx.fillStyle = '#092b14';
   ctx.fillRect(food.x*CELL+CELL*.25,food.y*CELL+CELL*.25,CELL*.5,CELL*.5);
 
-  // snake
+  // Snake body and animated head
   snake.forEach((part,i)=>{
     ctx.fillStyle = i===0 ? '#062b12' : '#0b421d';
     ctx.fillRect(part.x*CELL+1,part.y*CELL+1,CELL-2,CELL-2);
+
     if(i===0){
-      ctx.fillStyle = '#b8ffc8';
+      const dx = food.x - part.x;
+      const dy = food.y - part.y;
+      const foodAhead = dx*direction.x + dy*direction.y;
+      const foodNear = Math.abs(dx) + Math.abs(dy) <= 4 && foodAhead > 0;
+      const jawOpen = foodNear && Math.sin(Date.now()/75) > -0.15;
       const eye = Math.max(2,CELL*.12);
-      ctx.fillRect(part.x*CELL+CELL*.62,part.y*CELL+CELL*.22,eye,eye);
-      ctx.fillRect(part.x*CELL+CELL*.62,part.y*CELL+CELL*.66,eye,eye);
+
+      ctx.fillStyle = '#b8ffc8';
+      if(direction.x !== 0){
+        ctx.fillRect(part.x*CELL+CELL*.57,part.y*CELL+CELL*.2,eye,eye);
+        ctx.fillRect(part.x*CELL+CELL*.57,part.y*CELL+CELL*.68,eye,eye);
+      }else{
+        ctx.fillRect(part.x*CELL+CELL*.2,part.y*CELL+CELL*.57,eye,eye);
+        ctx.fillRect(part.x*CELL+CELL*.68,part.y*CELL+CELL*.57,eye,eye);
+      }
+
+      if(jawOpen){
+        ctx.fillStyle = '#42d66b';
+        const cx = part.x*CELL + CELL/2;
+        const cy = part.y*CELL + CELL/2;
+        const mouth = CELL*.38;
+        ctx.beginPath();
+        if(direction.x === 1){
+          ctx.moveTo(cx+CELL*.12,cy-mouth); ctx.lineTo(cx+CELL*.12,cy+mouth); ctx.lineTo(cx+CELL*.55,cy); 
+        }else if(direction.x === -1){
+          ctx.moveTo(cx-CELL*.12,cy-mouth); ctx.lineTo(cx-CELL*.12,cy+mouth); ctx.lineTo(cx-CELL*.55,cy);
+        }else if(direction.y === 1){
+          ctx.moveTo(cx-mouth,cy+CELL*.12); ctx.lineTo(cx+mouth,cy+CELL*.12); ctx.lineTo(cx,cy+CELL*.55);
+        }else{
+          ctx.moveTo(cx-mouth,cy-CELL*.12); ctx.lineTo(cx+mouth,cy-CELL*.12); ctx.lineTo(cx,cy-CELL*.55);
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
     }
   });
 
@@ -173,7 +198,7 @@ function draw(){
     const title = ended ? 'GAME OVER' : 'SNAKE';
     ctx.fillText(title,canvas.width/2,canvas.height/2-8);
     ctx.font = '700 12px Vazirmatn, sans-serif';
-    ctx.fillText(ended ? 'برای بازی دوباره شروع را بزن' : 'برای شروع دکمه را بزن',canvas.width/2,canvas.height/2+20);
+    ctx.fillText(ended ? 'برای بازی دوباره شروع را بزن' : 'برای شروع روی صفحه بکش',canvas.width/2,canvas.height/2+20);
   }
 }
 
@@ -183,7 +208,7 @@ function startGame(){
   running = true;
   startBtn.textContent = 'در حال بازی';
   messageEl.textContent = 'بازی شروع شد؛ موفق باشی!';
-  hintEl.textContent = 'برای تغییر جهت، روی صفحه بکش یا از دکمه‌ها استفاده کن.';
+  hintEl.textContent = 'برای تغییر جهت مار، فقط روی صفحه بازی انگشتت رو بکش.';
   clearInterval(timer);
   timer = setInterval(tick, modes[mode].speed);
   draw();
@@ -268,9 +293,6 @@ document.querySelectorAll('[data-mode]').forEach(button=>{
   });
 });
 
-document.querySelectorAll('[data-dir]').forEach(button=>{
-  button.addEventListener('click',()=>changeDirection(button.dataset.dir));
-});
 
 document.addEventListener('keydown',e=>{
   const map = {ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',s:'down',a:'left',d:'right'};
