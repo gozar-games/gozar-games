@@ -1,3 +1,4 @@
+
 async function hmac(key, message) {
   const cryptoKey = await crypto.subtle.importKey(
     "raw",
@@ -129,6 +130,116 @@ function dayDifference(first, second) {
 
 const rewards = [5, 10, 20, 30, 45, 60, 90];
 
+function getReward(streak) {
+  return streak <= 7 ? rewards[streak - 1] : 30;
+}
+
+function getNextStreak(player, today) {
+  if (!player?.last_reward_date) return 1;
+
+  const difference = dayDifference(
+    player.last_reward_date,
+    today
+  );
+
+  if (!Number.isInteger(difference) || difference <= 0) {
+    return null;
+  }
+
+  return difference <= 2
+    ? (player.daily_streak || 0) + 1
+    : 1;
+}
+
+// مشترک: بررسی احراز هویت تلگرام
+async function authenticate(request, env) {
+  if (!env.DB || !env.TELEGRAM_BOT_TOKEN) {
+    throw new Error("Server configuration missing");
+  }
+
+  const initData = request.headers.get(
+    "X-Telegram-Init-Data"
+  );
+
+  if (!initData) return null;
+
+  return await verifyTelegram(
+    initData,
+    env.TELEGRAM_BOT_TOKEN
+  );
+}
+
+// GET: نمایش وضعیت جایزه روزانه
+export async function onRequestGet({ request, env }) {
+  const headers = {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-store"
+  };
+
+  try {
+    const user = await authenticate(request, env);
+
+    if (!user) {
+      return Response.json(
+        {
+          success: false,
+          error: "Telegram authentication required"
+        },
+        { status: 401, headers }
+      );
+    }
+
+    const today = getTehranDate();
+    const telegramId = String(user.id);
+
+    const player = await env.DB.prepare(`
+      SELECT coins, daily_streak, last_reward_date
+      FROM players
+      WHERE telegram_id = ?
+    `)
+      .bind(telegramId)
+      .first();
+
+    const claimed = player?.last_reward_date === today;
+
+    const nextStreak = claimed
+      ? player.daily_streak
+      : getNextStreak(player, today);
+
+    if (nextStreak === null) {
+      return Response.json(
+        { success: false, error: "Invalid reward date" },
+        { status: 409, headers }
+      );
+    }
+
+    return Response.json(
+      {
+        success: true,
+        claimed,
+        daily_streak: player?.daily_streak || 0,
+        next_streak: nextStreak,
+        reward: getReward(nextStreak),
+        coins: player?.coins || 0,
+        date: today
+      },
+      { headers }
+    );
+
+  } catch (error) {
+    console.error("Daily reward GET error:", error);
+
+    return Response.json(
+      {
+        success: false,
+        error: "Daily reward service unavailable"
+      },
+      { status: 500, headers }
+    );
+  }
+}
+
+// POST: دریافت جایزه روزانه
 export async function onRequestPost({ request, env }) {
   const headers = {
     "Content-Type": "application/json",
@@ -136,29 +247,14 @@ export async function onRequestPost({ request, env }) {
   };
 
   try {
-    if (!env.DB || !env.TELEGRAM_BOT_TOKEN) {
-      throw new Error("Server configuration missing");
-    }
-
-    const initData = request.headers.get(
-      "X-Telegram-Init-Data"
-    );
-
-    if (!initData) {
-      return Response.json(
-        { success: false, error: "Telegram authentication required" },
-        { status: 401, headers }
-      );
-    }
-
-    const user = await verifyTelegram(
-      initData,
-      env.TELEGRAM_BOT_TOKEN
-    );
+    const user = await authenticate(request, env);
 
     if (!user) {
       return Response.json(
-        { success: false, error: "Invalid Telegram authentication" },
+        {
+          success: false,
+          error: "Telegram authentication required"
+        },
         { status: 401, headers }
       );
     }
@@ -187,31 +283,19 @@ export async function onRequestPost({ request, env }) {
       );
     }
 
-    let nextStreak = 1;
-    let missedDays = 0;
+    const nextStreak = getNextStreak(player, today);
 
-    if (previousDate) {
-      const difference = dayDifference(previousDate, today);
-
-      if (difference <= 0) {
-        return Response.json(
-          { success: false, error: "Invalid reward date" },
-          { status: 409, headers }
-        );
-      }
-
-      if (difference <= 2) {
-        nextStreak = (player.daily_streak || 0) + 1;
-        missedDays = difference - 1;
-      } else {
-        nextStreak = 1;
-        missedDays = 2;
-      }
+    if (nextStreak === null) {
+      return Response.json(
+        { success: false, error: "Invalid reward date" },
+        { status: 409, headers }
+      );
     }
 
-    const reward = nextStreak <= 7
-      ? rewards[nextStreak - 1]
-      : 30;
+    const reward = getReward(nextStreak);
+    const missedDays = previousDate
+      ? Math.min(dayDifference(previousDate, today) - 1, 2)
+      : 0;
 
     const username = user.username || null;
 
@@ -281,11 +365,15 @@ export async function onRequestPost({ request, env }) {
       .bind(telegramId)
       .first();
 
+    if (!updatedPlayer) {
+      throw new Error("Updated player not found");
+    }
+
     return Response.json(
       {
         success: true,
         reward,
-        daily_streak: nextStreak,
+        daily_streak: updatedPlayer.daily_streak,
         coins: updatedPlayer.coins,
         date: today,
         message: "Daily reward claimed successfully"
@@ -294,7 +382,7 @@ export async function onRequestPost({ request, env }) {
     );
 
   } catch (error) {
-    console.error("Daily reward error:", error);
+    console.error("Daily reward POST error:", error);
 
     return Response.json(
       {
