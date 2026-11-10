@@ -203,7 +203,7 @@ function makeFood(){
 }
 
 function draw(){
-  ctx.fillStyle = '#42d66b';
+  ctx.fillStyle = backgroundColor;
   ctx.fillRect(0,0,canvas.width,canvas.height);
 
   // subtle pixel grid
@@ -215,8 +215,10 @@ function draw(){
   }
 
   // Normal food
-  ctx.fillStyle = '#092b14';
+  ctx.fillStyle = '#f04444';
   ctx.fillRect(food.x*CELL+CELL*.25,food.y*CELL+CELL*.25,CELL*.5,CELL*.5);
+  ctx.fillStyle = '#ffd6d6';
+  ctx.fillRect(food.x*CELL+CELL*.34,food.y*CELL+CELL*.31,CELL*.09,CELL*.09);
 
   // Large bonus food with a visible five-second countdown
   if (bonusFood) {
@@ -263,7 +265,7 @@ function draw(){
       }
 
       if(jawOpen){
-        ctx.fillStyle = '#42d66b';
+        ctx.fillStyle = backgroundColor;
         const cx = part.x*CELL + CELL/2;
         const cy = part.y*CELL + CELL/2;
         const mouth = CELL*.38;
