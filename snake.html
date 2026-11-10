@@ -10,7 +10,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800;900&display=swap');
 :root{--bg:#080808;--green:#42d66b;--dark:#102b18;--ink:#08200f;--muted:#9a9a9a}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:#f5f5f5;font-family:Vazirmatn,sans-serif;min-height:100vh}
+body{margin:0;background:var(--bg);color:#f5f5f5;font-family:Vazirmatn,sans-serif;min-height:100vh;overscroll-behavior:none}
 button{font:inherit;cursor:pointer}
 .app{max-width:520px;margin:auto;padding:16px 15px 30px}
 .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
@@ -318,17 +318,41 @@ document.addEventListener('keydown',e=>{
   if(map[e.key]){e.preventDefault();changeDirection(map[e.key]);}
 });
 
-canvas.addEventListener('pointerdown',e=>{
-  touchStart = {x:e.clientX,y:e.clientY};
-});
-canvas.addEventListener('pointerup',e=>{
-  if(!touchStart) return;
-  const dx=e.clientX-touchStart.x, dy=e.clientY-touchStart.y;
-  touchStart=null;
-  if(Math.max(Math.abs(dx),Math.abs(dy))<18) return;
-  if(Math.abs(dx)>Math.abs(dy)) changeDirection(dx>0?'right':'left');
-  else changeDirection(dy>0?'down':'up');
-});
+// Responsive swipe controls: react as soon as the finger moves far enough.
+// CSS touch-action:none on the canvas prevents page scrolling without blocking pointer events.
+let activePointerId = null;
+let swipeHandled = false;
+const SWIPE_THRESHOLD = 10;
+
+canvas.addEventListener('pointerdown', e => {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  e.preventDefault();
+  activePointerId = e.pointerId;
+  swipeHandled = false;
+  touchStart = { x: e.clientX, y: e.clientY };
+  try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+}, { passive: false });
+
+canvas.addEventListener('pointermove', e => {
+  if (e.pointerId !== activePointerId || !touchStart || swipeHandled) return;
+  e.preventDefault();
+  const dx = e.clientX - touchStart.x;
+  const dy = e.clientY - touchStart.y;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE_THRESHOLD) return;
+  swipeHandled = true;
+  if (Math.abs(dx) > Math.abs(dy)) changeDirection(dx > 0 ? 'right' : 'left');
+  else changeDirection(dy > 0 ? 'down' : 'up');
+}, { passive: false });
+
+function finishSwipe(e) {
+  if (e.pointerId !== activePointerId) return;
+  touchStart = null;
+  activePointerId = null;
+  swipeHandled = false;
+}
+canvas.addEventListener('pointerup', finishSwipe);
+canvas.addEventListener('pointercancel', finishSwipe);
+canvas.addEventListener('lostpointercapture', finishSwipe);
 
 startBtn.addEventListener('click',()=>running?null:startGame());
 pauseBtn.addEventListener('click',pauseGame);
