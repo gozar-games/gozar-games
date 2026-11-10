@@ -10,7 +10,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800;900&display=swap');
 :root{--bg:#080808;--green:#42d66b;--dark:#102b18;--ink:#08200f;--muted:#9a9a9a}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:#f5f5f5;font-family:Vazirmatn,sans-serif;min-height:100vh;overscroll-behavior:none}
+body{margin:0;background:var(--bg);color:#f5f5f5;font-family:Vazirmatn,sans-serif;min-height:100vh}
 button{font:inherit;cursor:pointer}
 .app{max-width:520px;margin:auto;padding:16px 15px 30px}
 .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
@@ -29,9 +29,6 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:1/1.35;touch-action:non
 .action{flex:1;border:0;border-radius:12px;padding:12px;background:#292929;color:#fff;font-weight:800}
 .action.primary{background:var(--green);color:var(--ink)}
 .message{text-align:center;color:#aaa;font-size:12px;min-height:22px;margin:12px 0}
-.controls{display:grid;grid-template-columns:repeat(3,58px);grid-template-rows:repeat(2,48px);gap:6px;justify-content:center;margin:12px auto}
-.controls button{border:1px solid #444;border-radius:12px;background:#1a1a1a;color:white;font-size:21px}
-.controls .up{grid-column:2;grid-row:1}.controls .left{grid-column:1;grid-row:2}.controls .down{grid-column:2;grid-row:2}.controls .right{grid-column:3;grid-row:2}
 .foot{text-align:center;color:#777;font-size:10px;margin-top:14px}
 @media(min-width:430px){canvas{aspect-ratio:1/1.15}.mode{font-size:14px}}
 </style>
@@ -96,6 +93,8 @@ const modes = {
 let mode = 'nowalls';
 let snake, food, direction, nextDirection, score, timer;
 let running = false, ended = false, lastTick = 0, touchStart = null;
+let normalFoods = 0, bonusFood = null, bonusExpiryTimer = null;
+let biteUntil = 0, swallowed = null;
 
 function keyBest(){ return 'gozar_snake_best_' + mode; }
 function getBest(){ return Number(localStorage.getItem(keyBest()) || 0); }
@@ -116,6 +115,8 @@ function resetGame(){
   ];
   direction = {x:1,y:0};
   nextDirection = {x:1,y:0};
+  clearTimeout(bonusExpiryTimer);
+  normalFoods = 0; bonusFood = null; biteUntil = 0; swallowed = null;
   food = makeFood();
   updateScore();
   startBtn.textContent = 'شروع بازی';
@@ -128,7 +129,7 @@ function makeFood(){
   let p;
   do {
     p = {x:Math.floor(Math.random()*COLS),y:Math.floor(Math.random()*ROWS)};
-  } while (snake.some(s => s.x===p.x && s.y===p.y));
+  } while (snake.some(s => s.x===p.x && s.y===p.y) || (bonusFood && p.x===bonusFood.x && p.y===bonusFood.y));
   return p;
 }
 
@@ -202,6 +203,19 @@ function draw(){
   }
 }
 
+function startBiteAnimation(color='#fff2a8'){
+  biteUntil=Date.now()+260;swallowed={started:Date.now(),color};
+  setTimeout(()=>{if(swallowed&&Date.now()-swallowed.started>=500){swallowed=null;draw();}},540);
+}
+function createBonusFood(){
+  const free=[];
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++)
+    if(!snake.some(part=>part.x===x&&part.y===y)&&!(food.x===x&&food.y===y))free.push({x,y});
+  if(!free.length)return;
+  bonusFood={...free[Math.floor(Math.random()*free.length)],started:Date.now()};
+  clearTimeout(bonusExpiryTimer);
+  bonusExpiryTimer=setTimeout(()=>{bonusFood=null;draw();},5000);
+}
 function startGame(){
   if(ended) resetGame();
   if(running) return;
@@ -248,26 +262,31 @@ function tick(){
   }
 
   const eating = head.x===food.x && head.y===food.y;
-  const bodyToCheck = eating ? snake : snake.slice(0,-1);
+  const eatingBonus = !!bonusFood && head.x===bonusFood.x && head.y===bonusFood.y;
+  const bodyToCheck = (eating || eatingBonus) ? snake : snake.slice(0,-1);
   if(bodyToCheck.some(p=>p.x===head.x && p.y===head.y)){
     finishGame(); return;
   }
 
   snake.unshift(head);
-  if(eating){
-    score += 10;
-    food = makeFood();
-    if(score > getBest()) {
-      localStorage.setItem(keyBest(),String(score));
+  if(eating || eatingBonus){
+    startBiteAnimation(eatingBonus ? '#fff2a8' : '#092b14');
+    if(eatingBonus){
+      score+=50;bonusFood=null;clearTimeout(bonusExpiryTimer);
+      messageEl.textContent='غذای ویژه رو خوردی! +۵۰ امتیاز';
+    }else{
+      score+=10;normalFoods++;food=makeFood();
+      if(normalFoods%3===0){
+        createBonusFood();
+        messageEl.textContent='غذای ویژه ظاهر شد؛ فقط ۵ ثانیه فرصت داری!';
+      }
     }
+    if(score>getBest())localStorage.setItem(keyBest(),String(score));
     updateScore();
-    if(modes[mode].acceleration && score % 50 === 0){
-      clearInterval(timer);
-      timer = setInterval(tick,Math.max(55,modes[mode].speed-score/10));
+    if(modes[mode].acceleration && score%50===0){
+      clearInterval(timer);timer=setInterval(tick,Math.max(55,modes[mode].speed-score/10));
     }
-  }else{
-    snake.pop();
-  }
+  }else{snake.pop();}
   draw();
 }
 
@@ -298,11 +317,6 @@ document.addEventListener('keydown',e=>{
   const map = {ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',s:'down',a:'left',d:'right'};
   if(map[e.key]){e.preventDefault();changeDirection(map[e.key]);}
 });
-
-// Keep downward/upward swipes on the game board from scrolling the Telegram WebView.
-canvas.addEventListener('touchstart',e=>e.preventDefault(),{passive:false});
-canvas.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
-canvas.addEventListener('touchend',e=>e.preventDefault(),{passive:false});
 
 canvas.addEventListener('pointerdown',e=>{
   touchStart = {x:e.clientX,y:e.clientY};
