@@ -5,61 +5,447 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#080808">
 <title>GOZAR GAMES</title>
+
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800;900&display=swap');
-:root{--bg:#080808;--red:#ed1725;--white:#f5f5f5;--gray:#999}
+
+:root{
+  --bg:#080808;
+  --red:#ed1725;
+  --white:#f5f5f5;
+  --gray:#999;
+}
+
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--white);font-family:Vazirmatn,sans-serif;min-height:100vh;padding-bottom:90px}
+
+body{
+  background:var(--bg);
+  color:var(--white);
+  font-family:Vazirmatn,sans-serif;
+  min-height:100vh;
+  padding-bottom:90px;
+}
+
 button{font-family:inherit;color:inherit;cursor:pointer}
+
 .app{max-width:520px;margin:auto;padding:18px 17px}
-.header,.profile,.user,.coins{display:flex;align-items:center;justify-content:space-between}
-.header{margin-bottom:25px}.brand{font-size:19px;font-weight:900}.brand span,.nav-item.active{color:var(--red)}
-.settings{background:#171717;border:1px solid #333;border-radius:13px;width:43px;height:43px;font-size:20px;color:white}
-.profile{gap:10px;margin-bottom:43px}.user{justify-content:flex-start;gap:11px}
-.avatar{width:57px;height:57px;border-radius:50%;border:2px solid var(--red);background:#1a1a1a;display:grid;place-items:center;font-size:27px}
-.user-name{font-weight:800;font-size:15px}.level{font-size:12px;color:var(--gray);margin-top:3px}
-.progress{width:105px;height:5px;background:#333;border-radius:10px;margin-top:6px;overflow:hidden}.progress div{width:35%;height:100%;background:var(--red)}
-.coins{gap:8px;background:#151515;border:1px solid #303030;border-radius:30px;padding:9px 12px;font-weight:800;font-size:14px}
-.coin{font-size:19px}.plus{background:var(--red);border:0;border-radius:50%;width:27px;height:27px;font-size:20px}
-.hero{text-align:center;margin-bottom:30px}.game-icon{font-size:51px}.logo{font-size:clamp(37px,10vw,55px);font-weight:900;letter-spacing:-2px;line-height:1.1}.logo span{color:var(--red)}.slogan{color:#aaa;font-size:13px;margin-top:12px}
-.main-button{width:100%;border:1px solid var(--red);border-radius:19px;background:linear-gradient(120deg,#35090d,#111 75%);box-shadow:0 0 17px #ed172522;padding:19px 15px;display:flex;align-items:center;justify-content:space-between;margin-bottom:19px;text-align:right}
-.play-icon{font-size:34px}.main-title{font-size:21px;font-weight:900}.main-sub{color:#aaa;font-size:12px;margin-top:3px}
-.menu-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.menu-card{min-height:105px;background:linear-gradient(145deg,#202020,#101010);border:1px solid #333;border-radius:17px;padding:13px 10px;display:flex;align-items:center;gap:10px;text-align:right}
-.menu-card:active{border-color:var(--red);transform:scale(.97)}.card-icon{font-size:29px;min-width:35px;text-align:center}.card-title{font-size:14px;font-weight:800}.card-sub{font-size:10px;color:var(--gray);margin-top:5px}
-.info{background:#151515;border:1px solid #333;border-right:3px solid var(--red);border-radius:13px;margin-top:19px;padding:14px;color:#ccc;font-size:12px;text-align:center}
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:auto;display:flex;justify-content:space-around;background:#111;border-top:1px solid #303030;padding:11px 5px calc(11px + env(safe-area-inset-bottom));z-index:10}
-.nav-item{background:transparent;border:0;color:#999;font-size:11px;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:65px}.nav-icon{font-size:21px}
-.nav-item.active{font-weight:800}.toast{position:fixed;bottom:85px;left:50%;transform:translateX(-50%);background:#222;border:1px solid #444;border-radius:12px;padding:12px 18px;font-size:12px;white-space:nowrap;display:none;z-index:20}
-@media(max-width:360px){.menu-card{padding:10px 7px;gap:6px}.card-title{font-size:12px}.card-icon{font-size:24px;min-width:28px}}
+
+.header,.profile,.user,.coins{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+
+.header{margin-bottom:25px}
+.brand{font-size:19px;font-weight:900}
+.brand span,.nav-item.active{color:var(--red)}
+
+.settings{
+  background:#171717;
+  border:1px solid #333;
+  border-radius:13px;
+  width:43px;
+  height:43px;
+  font-size:20px;
+  color:white;
+}
+
+.profile{gap:10px;margin-bottom:43px}
+.user{justify-content:flex-start;gap:11px}
+
+.avatar{
+  width:57px;
+  height:57px;
+  border-radius:50%;
+  border:2px solid var(--red);
+  background:#1a1a1a;
+  display:grid;
+  place-items:center;
+  font-size:27px;
+  overflow:hidden;
+}
+
+.avatar img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+
+.user-name{font-weight:800;font-size:15px}
+.level{font-size:12px;color:var(--gray);margin-top:3px}
+
+.progress{
+  width:105px;
+  height:5px;
+  background:#333;
+  border-radius:10px;
+  margin-top:6px;
+  overflow:hidden;
+}
+
+.progress div{
+  width:35%;
+  height:100%;
+  background:var(--red);
+}
+
+.coins{
+  gap:8px;
+  background:#151515;
+  border:1px solid #303030;
+  border-radius:30px;
+  padding:9px 12px;
+  font-weight:800;
+  font-size:14px;
+}
+
+.coin{font-size:19px}
+
+.plus{
+  background:var(--red);
+  border:0;
+  border-radius:50%;
+  width:27px;
+  height:27px;
+  font-size:20px;
+}
+
+.hero{text-align:center;margin-bottom:30px}
+.game-icon{font-size:51px}
+
+.logo{
+  font-size:clamp(37px,10vw,55px);
+  font-weight:900;
+  letter-spacing:-2px;
+  line-height:1.1;
+}
+
+.logo span{color:var(--red)}
+.slogan{color:#aaa;font-size:13px;margin-top:12px}
+
+.main-button{
+  width:100%;
+  border:1px solid var(--red);
+  border-radius:19px;
+  background:linear-gradient(120deg,#35090d,#111 75%);
+  box-shadow:0 0 17px #ed172522;
+  padding:19px 15px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:19px;
+  text-align:right;
+}
+
+.play-icon{font-size:34px}
+.main-title{font-size:21px;font-weight:900}
+.main-sub{color:#aaa;font-size:12px;margin-top:3px}
+
+.menu-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+}
+
+.menu-card{
+  min-height:105px;
+  background:linear-gradient(145deg,#202020,#101010);
+  border:1px solid #333;
+  border-radius:17px;
+  padding:13px 10px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  text-align:right;
+}
+
+.menu-card:active{
+  border-color:var(--red);
+  transform:scale(.97);
+}
+
+.card-icon{font-size:29px;min-width:35px;text-align:center}
+.card-title{font-size:14px;font-weight:800}
+.card-sub{font-size:10px;color:var(--gray);margin-top:5px}
+
+.info{
+  background:#151515;
+  border:1px solid #333;
+  border-right:3px solid var(--red);
+  border-radius:13px;
+  margin-top:19px;
+  padding:14px;
+  color:#ccc;
+  font-size:12px;
+  text-align:center;
+}
+
+.bottom-nav{
+  position:fixed;
+  bottom:0;
+  left:0;
+  right:0;
+  max-width:520px;
+  margin:auto;
+  display:flex;
+  justify-content:space-around;
+  background:#111;
+  border-top:1px solid #303030;
+  padding:11px 5px calc(11px + env(safe-area-inset-bottom));
+  z-index:10;
+}
+
+.nav-item{
+  background:transparent;
+  border:0;
+  color:#999;
+  font-size:11px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+  min-width:65px;
+}
+
+.nav-icon{font-size:21px}
+.nav-item.active{font-weight:800}
+
+.toast{
+  position:fixed;
+  bottom:85px;
+  left:50%;
+  transform:translateX(-50%);
+  background:#222;
+  border:1px solid #444;
+  border-radius:12px;
+  padding:12px 18px;
+  font-size:12px;
+  white-space:nowrap;
+  display:none;
+  z-index:20;
+}
+
+@media(max-width:360px){
+  .menu-card{padding:10px 7px;gap:6px}
+  .card-title{font-size:12px}
+  .card-icon{font-size:24px;min-width:28px}
+}
 </style>
 </head>
+
 <body>
+
 <div class="app">
-<header class="header"><div class="brand">GOZAR <span>GAMES</span></div><button class="settings" onclick="showToast('تنظیمات به زودی اضافه می‌شود')">⚙</button></header>
+
+<header class="header">
+  <div class="brand">GOZAR <span>GAMES</span></div>
+  <button class="settings" onclick="showToast('تنظیمات به زودی اضافه می‌شود')">⚙</button>
+</header>
+
 <section class="profile">
-<div class="user"><div class="avatar">👤</div><div><div class="user-name">بازیکن مهمان 👑</div><div class="level">Level 1</div><div class="progress"><div></div></div></div></div>
-<div class="coins"><span class="coin">🪙</span><span id="coinCount">0</span><button class="plus" onclick="showToast('فروشگاه سکه به زودی فعال می‌شود')">+</button></div>
+
+  <div class="user">
+    <div class="avatar" id="userAvatar">👤</div>
+
+    <div>
+      <div class="user-name" id="userName">در حال دریافت اطلاعات...</div>
+      <div class="level">Level 1</div>
+      <div class="progress"><div></div></div>
+    </div>
+  </div>
+
+  <div class="coins">
+    <span class="coin">🪙</span>
+    <span id="coinCount">...</span>
+    <button class="plus" onclick="showToast('فروشگاه سکه به زودی فعال می‌شود')">+</button>
+  </div>
+
 </section>
-<section class="hero"><div class="game-icon">🎮</div><div class="logo">GOZAR</div><div class="logo"><span>GAMES</span></div><div class="slogan">بازی کن، سرگرم شو!</div></section>
-<button class="main-button" onclick="showToast('به زودی بازی‌ها اضافه می‌شوند')"><span class="play-icon">🎮</span><div><div class="main-title">شروع بازی</div><div class="main-sub">وارد دنیای بازی شو</div></div><span>❯</span></button>
+
+<section class="hero">
+  <div class="game-icon">🎮</div>
+  <div class="logo">GOZAR</div>
+  <div class="logo"><span>GAMES</span></div>
+  <div class="slogan">بازی کن، سرگرم شو!</div>
+</section>
+
+<button class="main-button" onclick="showToast('به زودی بازی‌ها اضافه می‌شوند')">
+  <span class="play-icon">🎮</span>
+  <div>
+    <div class="main-title">شروع بازی</div>
+    <div class="main-sub">وارد دنیای بازی شو</div>
+  </div>
+  <span>❯</span>
+</button>
+
 <section class="menu-grid">
-<button class="menu-card" onclick="showToast('رتبه‌بندی به زودی فعال می‌شود')"><span class="card-icon">🏆</span><div><div class="card-title">رتبه‌بندی</div><div class="card-sub">مشاهده برترین‌ها</div></div></button>
-<button class="menu-card" onclick="showToast('فروشگاه به زودی فعال می‌شود')"><span class="card-icon">🛒</span><div><div class="card-title">فروشگاه</div><div class="card-sub">خرید آیتم و امکانات</div></div></button>
-<button class="menu-card" onclick="showToast('مأموریت‌ها به زودی فعال می‌شوند')"><span class="card-icon">📋</span><div><div class="card-title">ماموریت‌ها</div><div class="card-sub">چالش‌ها و جایزه‌ها</div></div></button>
-<button class="menu-card" onclick="showToast('پشتیبانی به زودی فعال می‌شود')"><span class="card-icon">🎧</span><div><div class="card-title">پشتیبانی</div><div class="card-sub">ارتباط با ما</div></div></button>
+
+  <button class="menu-card" onclick="showToast('رتبه‌بندی به زودی فعال می‌شود')">
+    <span class="card-icon">🏆</span>
+    <div>
+      <div class="card-title">رتبه‌بندی</div>
+      <div class="card-sub">مشاهده برترین‌ها</div>
+    </div>
+  </button>
+
+  <button class="menu-card" onclick="showToast('فروشگاه به زودی فعال می‌شود')">
+    <span class="card-icon">🛒</span>
+    <div>
+      <div class="card-title">فروشگاه</div>
+      <div class="card-sub">خرید آیتم و امکانات</div>
+    </div>
+  </button>
+
+  <button class="menu-card" onclick="showToast('مأموریت‌ها به زودی فعال می‌شوند')">
+    <span class="card-icon">📋</span>
+    <div>
+      <div class="card-title">ماموریت‌ها</div>
+      <div class="card-sub">چالش‌ها و جایزه‌ها</div>
+    </div>
+  </button>
+
+  <button class="menu-card" onclick="showToast('پشتیبانی به زودی فعال می‌شود')">
+    <span class="card-icon">🎧</span>
+    <div>
+      <div class="card-title">پشتیبانی</div>
+      <div class="card-sub">ارتباط با ما</div>
+    </div>
+  </button>
+
 </section>
+
 <div class="info">✦ به خانواده بزرگ GOZAR GAMES خوش آمدی!</div>
+
 </div>
+
 <nav class="bottom-nav">
-<button class="nav-item active" onclick="changeTab(this,'خانه')"><span class="nav-icon">⌂</span>خانه</button>
-<button class="nav-item" onclick="changeTab(this,'آمار')"><span class="nav-icon">▥</span>آمار</button>
-<button class="nav-item" onclick="changeTab(this,'جوایز')"><span class="nav-icon">🎁</span>جوایز</button>
+  <button class="nav-item active" onclick="changeTab(this,'خانه')">
+    <span class="nav-icon">⌂</span>خانه
+  </button>
+
+  <button class="nav-item" onclick="changeTab(this,'آمار')">
+    <span class="nav-icon">▥</span>آمار
+  </button>
+
+  <button class="nav-item" onclick="changeTab(this,'جوایز')">
+    <span class="nav-icon">🎁</span>جوایز
+  </button>
 </nav>
+
 <div class="toast" id="toast"></div>
+
 <script>
-function showToast(message){const toast=document.getElementById('toast');toast.textContent=message;toast.style.display='block';clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>toast.style.display='none',2500)}
-function changeTab(button,name){document.querySelectorAll('.nav-item').forEach(item=>item.classList.remove('active'));button.classList.add('active');if(name!=='خانه')showToast(name+' به زودی فعال می‌شود')}
+const tg = window.Telegram?.WebApp;
+
+function showToast(message){
+  const toast = document.getElementById('toast');
+
+  toast.textContent = message;
+  toast.style.display = 'block';
+
+  clearTimeout(window.toastTimer);
+
+  window.toastTimer = setTimeout(() => {
+    toast.style.display = 'none';
+  }, 2500);
+}
+
+function changeTab(button,name){
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.classList.remove('active');
+  });
+
+  button.classList.add('active');
+
+  if(name !== 'خانه'){
+    showToast(name + ' به زودی فعال می‌شود');
+  }
+}
+
+function formatCoins(value){
+  const number = Number(value);
+
+  if(!Number.isSafeInteger(number) || number < 0){
+    return '0';
+  }
+
+  return number.toLocaleString('en-US');
+}
+
+function setUserInfo(user){
+  const nameElement = document.getElementById('userName');
+  const avatarElement = document.getElementById('userAvatar');
+
+  const fullName = [user.first_name, user.last_name]
+    .filter(Boolean)
+    .join(' ');
+
+  nameElement.textContent =
+    fullName || user.username || 'بازیکن GOZAR';
+
+  if(user.photo_url){
+    const image = document.createElement('img');
+    image.src = user.photo_url;
+    image.alt = 'Avatar';
+
+    avatarElement.replaceChildren(image);
+  }
+}
+
+async function loadWallet(){
+  const coinElement = document.getElementById('coinCount');
+  const userElement = document.getElementById('userName');
+
+  if(!tg || !tg.initData){
+    userElement.textContent = 'بازیکن مهمان';
+    coinElement.textContent = '—';
+
+    showToast('برای مشاهده کیف پول، از تلگرام وارد شو');
+    return;
+  }
+
+  tg.ready();
+  tg.expand();
+
+  if(tg.initDataUnsafe && tg.initDataUnsafe.user){
+    setUserInfo(tg.initDataUnsafe.user);
+  }
+
+  try{
+    const response = await fetch('/api/wallet', {
+      method: 'GET',
+      headers: {
+        'X-Telegram-Init-Data': tg.initData
+      },
+      cache: 'no-store'
+    });
+
+    const data = await response.json();
+
+    if(!response.ok || !data.success){
+      throw new Error(data.error || 'Wallet request failed');
+    }
+
+    const wallet = data.wallet;
+
+    if(!wallet){
+      throw new Error('Wallet data missing');
+    }
+
+    coinElement.textContent = formatCoins(wallet.coins);
+
+  }catch(error){
+    console.error('Wallet error:', error);
+
+    coinElement.textContent = '—';
+    showToast('دریافت موجودی ناموفق بود');
+  }
+}
+
+loadWallet();
 </script>
+
 </body>
 </html>
