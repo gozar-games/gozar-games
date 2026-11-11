@@ -397,8 +397,11 @@ function movePlayer(dx,dz) {
   // Trees are solid obstacles: stop the move instead of ending the run.
   const destinationRow = rows.get(nextRow);
   if(destinationRow?.type === 'grass') {
+    // Movement happens on five discrete columns. Only the tree in the
+    // exact destination column blocks the player; nearby trees must not
+    // make a visually open gap impossible to pass through.
     const blocked = destinationRow.obstacles.some(obstacle =>
-      Math.abs(obstacle.x - nextX * LANE_WIDTH) < obstacle.radius + 0.12
+      obstacle.lane === nextX
     );
     if(blocked) {
       showToast('🌳 درخت راه را بسته؛ یک خانه چپ یا راست برو');
