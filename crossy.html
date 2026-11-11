@@ -13,7 +13,7 @@
 html,body{margin:0;min-height:100%;background:var(--bg);color:#f5f5f5;font-family:Vazirmatn,sans-serif;overscroll-behavior:none}
 body{min-height:100vh;min-height:100dvh;overflow:hidden;touch-action:pan-x pan-y}
 button{font:inherit;color:inherit;cursor:pointer}
-.app{width:min(100%,560px);height:100vh;height:100dvh;margin:auto;padding:calc(10px + env(safe-area-inset-top)) 13px calc(10px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:9px}
+.app{width:100%;max-width:none;height:100vh;height:100dvh;margin:0;padding:calc(10px + env(safe-area-inset-top)) 12px calc(10px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:9px}
 .top{height:43px;flex:none;display:flex;align-items:center;justify-content:space-between}
 .back{border:1px solid #383838;background:#191919;border-radius:11px;padding:8px 12px;font-size:12px}
 .brand{font-weight:900;letter-spacing:.4px}.brand span{color:var(--accent)}
@@ -21,7 +21,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .stat{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:6px 12px;text-align:center}
 .stat strong{display:block;font-size:22px;line-height:1.3;color:#fff;direction:ltr}
 .stat small{font-size:10px;color:var(--muted)}
-.stage{position:relative;flex:1;min-height:220px;overflow:hidden;border:1px solid #333;border-radius:18px;background:linear-gradient(#8bd5ff,#d2efff 55%,#b6e1a1);box-shadow:0 12px 35px #0008;touch-action:none}
+.stage{position:relative;flex:1;min-height:220px;width:calc(100% + 24px);margin-inline:-12px;overflow:hidden;border:0;border-radius:0;background:linear-gradient(#8bd5ff,#d2efff 55%,#b6e1a1);box-shadow:0 8px 28px #0006;touch-action:none}
 #game{display:block;width:100%;height:100%;touch-action:none;outline:none}
 .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:22px;background:#05090dcc;backdrop-filter:blur(5px);text-align:center}
 .overlay.hidden{display:none}
@@ -121,7 +121,7 @@ try {
   document.getElementById('startButton').disabled = true;
   throw err;
 }
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.5));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -239,6 +239,7 @@ function buildGrass(row) {
       box(tree,0,1.05,0,.86,.72,.82,leaves);
       box(tree,0,1.48,0,.58,.48,.58,leaves);
       decorations.push(tree);
+      row.obstacles.push({x, radius:.62});
     }
   }
 }
@@ -249,18 +250,25 @@ function buildRoad(row) {
   }
   row.speed = (1.7 + Math.random()*1.1) * (Math.random()<.5?-1:1);
   const count = 2 + Math.floor(Math.random()*2);
+  const carSpacing = count === 2 ? 11.5 : 10.5;
   for(let i=0;i<count;i++){
     const car = new THREE.Group();
     const color = randomItem([0xe74c3c,0x3498db,0xf1c40f,0x9b59b6,0xecf0f1,0x27ae60]);
     const carMat = makeMaterial(color);
     box(car,0,.3,0,1.05,.42,.72,carMat);
     box(car,0,.57,-.02,.58,.28,.62,makeMaterial(0xbfe7f7,.25));
+    const headlightMat = makeMaterial(0xfff1b0,.35);
+    const tailLightMat = makeMaterial(0xb51f2b,.45);
+    for(const z of [-.23,.23]){
+      box(car,.525,.34,z,.035,.12,.13,headlightMat,false,false);
+      box(car,-.525,.34,z,.035,.12,.13,tailLightMat,false,false);
+    }
     for(const wx of [-.32,.32]) for(const wz of [-.29,.29]){
       const wheel = new THREE.Mesh(unitCylinder,materials.dark);
-      wheel.rotation.z=Math.PI/2; wheel.scale.set(.18,.12,.18);
+      wheel.rotation.x=Math.PI/2; wheel.scale.set(.18,.12,.18);
       wheel.position.set(wx,.14,wz); car.add(wheel);
     }
-    const startX = (i-(count-1)/2)*9.0;
+    const startX = (i-(count-1)/2)*carSpacing;
     car.position.set(startX,0,0);
     row.group.add(car);
     row.objects.push({mesh:car,x:startX,width:1.08,kind:'car'});
@@ -290,10 +298,11 @@ function buildRiver(row) {
 }
 function buildRail(row) {
   box(row.group,0,-.12,0,ROAD_WIDTH,.24,1.35,materials.grass);
-  for(const x of [-.42,.42]){
-    box(row.group,x,.04,0,.09,.09,1.35,materials.rail);
+  // Rails run parallel to the traffic lane; sleepers cross beneath both rails.
+  for(const z of [-.43,.43]){
+    box(row.group,0,.055,z,ROAD_WIDTH,.11,.105,materials.rail);
   }
-  for(let z=-.58;z<=.58;z+=.29) box(row.group,0,.015,z,1.15,.08,.12,materials.sleeper);
+  for(let x=-5.1;x<=5.1;x+=.48) box(row.group,x,.012,0,.13,.09,1.18,materials.sleeper);
   row.speed = 0;
   row.warning = null;
   row.train = null;
@@ -308,9 +317,9 @@ function makeTrain(row) {
   for(const x of [-.62,0,.62]) box(train,x,.59,-.49,.3,.28,.035,makeMaterial(0x9dd8ed,.25));
   for(const x of [-.7,.7]) for(const z of [-.38,.38]){
     const wheel = new THREE.Mesh(unitCylinder,materials.dark);
-    wheel.rotation.z=Math.PI/2;wheel.scale.set(.2,.12,.2);wheel.position.set(x,.13,z);train.add(wheel);
+    wheel.rotation.x=Math.PI/2;wheel.scale.set(.2,.12,.2);wheel.position.set(x,.13,z);train.add(wheel);
   }
-  train.position.set(-12,0,0);
+  train.position.set(-16,0,0);
   row.group.add(train);
   row.train=train;
   row.speed=11.5;
@@ -434,7 +443,7 @@ function animatePlayer(dt) {
     playerBody.rotation.z=0;
     checkLanding();
     const row=rows.get(playerRow);
-    if(row?.type==='rail' && row.train && Math.abs(row.train.position.x-playerX*LANE_WIDTH)<1.55) finishGame('قطار بهت برخورد کرد!');
+    if(row?.type==='rail' && row.train && Math.abs(row.train.position.x-playerX*LANE_WIDTH)<2.05) finishGame('قطار بهت برخورد کرد!');
   }
 }
 function updateTraffic(dt) {
@@ -443,8 +452,8 @@ function updateTraffic(dt) {
     if(row.type==='road') {
       for(const obj of row.objects) {
         obj.x+=row.speed*elapsedSpeed*dt;
-        if(row.speed>0 && obj.x>8) obj.x=-8;
-        if(row.speed<0 && obj.x<-8) obj.x=8;
+        if(row.speed>0 && obj.x>14) obj.x=-14;
+        if(row.speed<0 && obj.x<-14) obj.x=14;
         obj.mesh.position.x=obj.x;
       }
     } else if(row.type==='river') {
@@ -466,7 +475,7 @@ function updateTraffic(dt) {
       }
       if(row.train) {
         row.train.position.x+=row.speed*dt;
-        if(row.train.position.x>13) {row.group.remove(row.train);row.train=null;row.warning=null;}
+        if(row.train.position.x>17) {row.group.remove(row.train);row.train=null;row.warning=null;}
       }
     }
   }
@@ -485,7 +494,7 @@ function updateTraffic(dt) {
     if(Math.abs(playerX*LANE_WIDTH-riding.x)>riding.width/2+.15) finishGame('از کنده جا ماندی!');
   }
   const rail=rows.get(playerRow);
-  if(rail?.type==='rail' && rail.train && Math.abs(rail.train.position.x-playerX*LANE_WIDTH)<1.55) finishGame('قطار بهت برخورد کرد!');
+  if(rail?.type==='rail' && rail.train && Math.abs(rail.train.position.x-playerX*LANE_WIDTH)<2.05) finishGame('قطار بهت برخورد کرد!');
 }
 function cleanupRows() {
   const min=playerRow-VISIBLE_BACK;
