@@ -225,24 +225,27 @@ function laneGroup(z, type, index) {
 }
 function buildGrass(row) {
   box(row.group,0,-.12,0,ROAD_WIDTH,.24,1.35,materials.grass);
-  if (Math.random() < .72) {
-    const count = 1 + Math.floor(Math.random()*3);
-    for(let i=0;i<count;i++){
-      const x = (Math.random()-.5)*5.9;
-      if(Math.abs(x-playerX)<.8 && row.index===playerRow) continue;
-      const tree = new THREE.Group();
-      tree.position.set(x,0,(Math.random()-.5)*.48);
-      row.group.add(tree);
-      box(tree,0,.42,0,.22,.85,.22,materials.trunk);
-      const shade = randomItem([0x268b43,0x2d9b4c,0x3aa653]);
-      const leaves = makeMaterial(shade);
-      box(tree,0,1.05,0,.86,.72,.82,leaves);
-      box(tree,0,1.48,0,.58,.48,.58,leaves);
-      decorations.push(tree);
-      row.obstacles.push({x, radius:.62});
-    }
+  // A readable route is always left open: trees occupy at most two of five lanes.
+  const lanes = [-2,-1,0,1,2];
+  const candidates = row.index <= 1 ? [-2,-1,1,2] : lanes;
+  const shuffled = [...candidates].sort(() => Math.random() - .5);
+  const count = Math.random() < .28 ? 0 : (Math.random() < .62 ? 1 : 2);
+  const chosen = shuffled.slice(0, count);
+  for (const lane of chosen) {
+    const x = lane * LANE_WIDTH;
+    const tree = new THREE.Group();
+    tree.position.set(x,0,0);
+    row.group.add(tree);
+    box(tree,0,.42,0,.22,.85,.22,materials.trunk);
+    const shade = randomItem([0x268b43,0x2d9b4c,0x3aa653]);
+    const leaves = makeMaterial(shade);
+    box(tree,0,1.05,0,.86,.72,.82,leaves);
+    box(tree,0,1.48,0,.58,.48,.58,leaves);
+    decorations.push(tree);
+    row.obstacles.push({x, radius:.72, lane});
   }
 }
+
 function buildRoad(row) {
   box(row.group,0,-.12,0,ROAD_WIDTH,.24,1.35,materials.road);
   for(let x=-8;x<=8;x+=2){
@@ -277,11 +280,12 @@ function buildRoad(row) {
 }
 function buildRiver(row) {
   box(row.group,0,-.13,0,ROAD_WIDTH,.26,1.35,materials.water);
-  row.speed = (1.15 + Math.random()*.8) * (Math.random()<.5?-1:1);
-  const count = 2 + Math.floor(Math.random()*2);
+  row.speed = (2.0 + Math.random()*.55) * (Math.random()<.5?-1:1);
+  const count = 5;
+  const spacing = 5.2;
   for(let i=0;i<count;i++){
     const log = new THREE.Group();
-    const length = 1.8 + Math.random()*1.1;
+    const length = 3.25 + Math.random()*.55;
     const logMat = makeMaterial(randomItem([0x9b6634,0x80502b,0xb17a42]));
     box(log,0,.13,0,length,.28,.48,logMat);
     for(const side of [-1,1]){
@@ -289,13 +293,14 @@ function buildRiver(row) {
       end.rotation.z=Math.PI/2; end.scale.set(.48,.28,.28);
       end.position.x=side*length/2; log.add(end);
     }
-    const startX=(i-(count-1)/2)*4.8+(Math.random()-.5)*.25;
+    const startX=(i-(count-1)/2)*spacing;
     log.position.set(startX,0,0);
     row.group.add(log);
     row.objects.push({mesh:log,x:startX,width:length,kind:'log'});
     moving.push({row,object:row.objects[row.objects.length-1]});
   }
 }
+
 function buildRail(row) {
   box(row.group,0,-.12,0,ROAD_WIDTH,.24,1.35,materials.grass);
   // Rails run parallel to the traffic lane; sleepers cross beneath both rails.
@@ -396,7 +401,7 @@ function movePlayer(dx,dz) {
       Math.abs(obstacle.x - nextX * LANE_WIDTH) < obstacle.radius + 0.12
     );
     if(blocked) {
-      showToast('🌳 مسیر بسته است؛ از کنار درخت برو');
+      showToast('🌳 درخت راه را بسته؛ یک خانه چپ یا راست برو');
       return;
     }
   }
@@ -404,7 +409,7 @@ function movePlayer(dx,dz) {
   playerX = nextX;
   if(dz !== 0) {
     playerRow = nextRow;
-    maxForward = Math.max(maxForward, playerRow - 1);
+    maxForward = Math.max(maxForward, playerRow);
     updateScore();
     ensureRows();
   }
@@ -418,7 +423,7 @@ function checkLanding() {
   if(!row) return;
   if(row.type==='river') {
     const log=row.objects.find(o=>Math.abs(o.x-playerX*LANE_WIDTH)<(o.width/2+.22));
-    if(!log) { setTimeout(()=>finishGame('در آب افتادی!'),190); return; }
+    if(!log) { finishGame('الوار زیر پایت نیست؛ دوباره تلاش کن'); return; }
     player.userData.riding=log;
   } else player.userData.riding=null;
 }
@@ -467,8 +472,8 @@ function updateTraffic(dt) {
     } else if(row.type==='river') {
       for(const obj of row.objects) {
         obj.x+=row.speed*dt;
-        if(row.speed>0 && obj.x>12) obj.x=-12;
-        if(row.speed<0 && obj.x<-12) obj.x=12;
+        if(row.speed>0 && obj.x>14) obj.x=-14;
+        if(row.speed<0 && obj.x<-14) obj.x=14;
         obj.mesh.position.x=obj.x;
       }
     } else if(row.type==='rail') {
