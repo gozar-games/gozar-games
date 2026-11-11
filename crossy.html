@@ -225,24 +225,30 @@ function laneGroup(z, type, index) {
 }
 function buildGrass(row) {
   box(row.group,0,-.12,0,ROAD_WIDTH,.24,1.35,materials.grass);
-  // A readable route is always left open: trees occupy at most two of five lanes.
-  const lanes = [-2,-1,0,1,2];
-  const candidates = row.index <= 1 ? [-2,-1,1,2] : lanes;
+  // Grid-based trees: the center lane is ALWAYS open, so there is always
+  // a guaranteed route forward. Trees never occupy arbitrary half-lanes.
+  const candidates = [-2,-1,1,2];
   const shuffled = [...candidates].sort(() => Math.random() - .5);
-  const count = Math.random() < .28 ? 0 : (Math.random() < .62 ? 1 : 2);
-  const chosen = shuffled.slice(0, count);
+  const wanted = Math.random() < .25 ? 0 : (Math.random() < .68 ? 1 : 2);
+  const chosen = [];
+  for (const lane of shuffled) {
+    if (chosen.length >= wanted) break;
+    // Keep at least one clear neighboring lane; don't form a solid wall.
+    if (chosen.some(other => Math.abs(other - lane) === 1)) continue;
+    chosen.push(lane);
+  }
   for (const lane of chosen) {
     const x = lane * LANE_WIDTH;
     const tree = new THREE.Group();
     tree.position.set(x,0,0);
     row.group.add(tree);
-    box(tree,0,.42,0,.22,.85,.22,materials.trunk);
+    box(tree,0,.42,0,.18,.85,.18,materials.trunk);
     const shade = randomItem([0x268b43,0x2d9b4c,0x3aa653]);
     const leaves = makeMaterial(shade);
-    box(tree,0,1.05,0,.86,.72,.82,leaves);
-    box(tree,0,1.48,0,.58,.48,.58,leaves);
+    box(tree,0,1.05,0,.72,.68,.72,leaves);
+    box(tree,0,1.46,0,.5,.44,.5,leaves);
     decorations.push(tree);
-    row.obstacles.push({x, radius:.72, lane});
+    row.obstacles.push({x, lane});
   }
 }
 
@@ -400,8 +406,9 @@ function movePlayer(dx,dz) {
     // Movement happens on five discrete columns. Only the tree in the
     // exact destination column blocks the player; nearby trees must not
     // make a visually open gap impossible to pass through.
+    const targetLane = Math.round(nextX);
     const blocked = destinationRow.obstacles.some(obstacle =>
-      obstacle.lane === nextX
+      obstacle.lane === targetLane
     );
     if(blocked) {
       showToast('🌳 درخت راه را بسته؛ یک خانه چپ یا راست برو');
