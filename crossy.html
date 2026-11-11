@@ -108,9 +108,9 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9bdcff);
 scene.fog = new THREE.Fog(0x9bdcff, 17, 39);
 
-const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 120);
-camera.position.set(5.2, 10.8, 13.5);
-camera.lookAt(0, 0, -3.5);
+const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 160);
+camera.position.set(0, 8.8, 11.5);
+camera.lookAt(0, 0, -4.2);
 
 let renderer;
 try {
@@ -205,7 +205,7 @@ let animationId = 0;
 let toastTimer = 0;
 let trainWarning = null;
 const LANE_WIDTH = 1.35;
-const ROAD_WIDTH = 10.8;
+const ROAD_WIDTH = 18;
 const VISIBLE_BACK = 8;
 const VISIBLE_FRONT = 20;
 
@@ -214,7 +214,7 @@ function laneGroup(z, type, index) {
   group.position.z = z;
   world.add(group);
   // Continuous grassy shoulders keep the world from looking like a narrow floating strip.
-  box(group,0,-.23,0,16,.16,1.35,materials.grass,false,true);
+  box(group,0,-.23,0,38,.16,1.35,materials.grass,false,true);
   const data = {group, type, index, objects:[], obstacles:[], speed:0, direction:1, safe:false, train:null, warning:null};
   rows.set(index, data);
   if (type === 'grass') buildGrass(data);
@@ -245,7 +245,7 @@ function buildGrass(row) {
 }
 function buildRoad(row) {
   box(row.group,0,-.12,0,ROAD_WIDTH,.24,1.35,materials.road);
-  for(let x=-3;x<=3;x+=2){
+  for(let x=-8;x<=8;x+=2){
     box(row.group,x,.012,0,.72,.025,.045,materials.roadLine,false,false);
   }
   row.speed = (1.7 + Math.random()*1.1) * (Math.random()<.5?-1:1);
@@ -302,7 +302,7 @@ function buildRail(row) {
   for(const z of [-.43,.43]){
     box(row.group,0,.055,z,ROAD_WIDTH,.11,.105,materials.rail);
   }
-  for(let x=-5.1;x<=5.1;x+=.48) box(row.group,x,.012,0,.13,.09,1.18,materials.sleeper);
+  for(let x=-8.6;x<=8.6;x+=.48) box(row.group,x,.012,0,.13,.09,1.18,materials.sleeper);
   row.speed = 0;
   row.warning = null;
   row.train = null;
@@ -360,8 +360,8 @@ function resetGame() {
   laneGroup(0,'grass',0);
   laneGroup(-1.35,'grass',1);
   ensureRows();
-  camera.position.set(5.2,10.8,13.5);
-  camera.lookAt(0,0,-3.5);
+  camera.position.set(0,8.8,11.5);
+  camera.lookAt(0,0,-4.2);
   startOverlay.classList.remove('hidden');
   gameOverOverlay.classList.add('hidden');
   updateCamera(0);
@@ -369,9 +369,9 @@ function resetGame() {
 }
 function updateCamera(dt) {
   const targetZ = -Math.max(0,playerRow-2)*1.35 - 2.0;
-  const desired = new THREE.Vector3(5.2,10.8,targetZ+14.5);
+  const desired = new THREE.Vector3(0,8.8,targetZ+11.5);
   camera.position.lerp(desired,Math.min(1,dt*3.2));
-  camera.lookAt(0,0,targetZ-4.5);
+  camera.lookAt(0,0,targetZ-2.8);
 }
 function updateScore() {
   score=Math.max(score,maxForward);
@@ -459,8 +459,8 @@ function updateTraffic(dt) {
     } else if(row.type==='river') {
       for(const obj of row.objects) {
         obj.x+=row.speed*dt;
-        if(row.speed>0 && obj.x>8) obj.x=-8;
-        if(row.speed<0 && obj.x<-8) obj.x=8;
+        if(row.speed>0 && obj.x>12) obj.x=-12;
+        if(row.speed<0 && obj.x<-12) obj.x=12;
         obj.mesh.position.x=obj.x;
       }
     } else if(row.type==='rail') {
