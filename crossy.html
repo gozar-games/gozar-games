@@ -108,9 +108,9 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9bdcff);
 scene.fog = new THREE.Fog(0x9bdcff, 17, 39);
 
-const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 160);
-camera.position.set(0, 8.8, 11.5);
-camera.lookAt(0, 0, -4.2);
+const camera = new THREE.PerspectiveCamera(37, 1, 0.1, 180);
+camera.position.set(0, 8.2, 10.2);
+camera.lookAt(0, 0, -3.2);
 
 let renderer;
 try {
@@ -121,7 +121,7 @@ try {
   document.getElementById('startButton').disabled = true;
   throw err;
 }
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.5));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -132,7 +132,7 @@ scene.add(new THREE.HemisphereLight(0xffffff, 0x68805b, 2.0));
 const sun = new THREE.DirectionalLight(0xffffff, 2.4);
 sun.position.set(-5, 12, 7);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(3072, 3072);
 sun.shadow.camera.left = -12; sun.shadow.camera.right = 12;
 sun.shadow.camera.top = 15; sun.shadow.camera.bottom = -15;
 scene.add(sun);
@@ -360,8 +360,8 @@ function resetGame() {
   laneGroup(0,'grass',0);
   laneGroup(-1.35,'grass',1);
   ensureRows();
-  camera.position.set(0,8.8,11.5);
-  camera.lookAt(0,0,-4.2);
+  camera.position.set(0,8.2,10.2);
+  camera.lookAt(0,0,-3.2);
   startOverlay.classList.remove('hidden');
   gameOverOverlay.classList.add('hidden');
   updateCamera(0);
@@ -369,9 +369,9 @@ function resetGame() {
 }
 function updateCamera(dt) {
   const targetZ = -Math.max(0,playerRow-2)*1.35 - 2.0;
-  const desired = new THREE.Vector3(0,8.8,targetZ+11.5);
+  const desired = new THREE.Vector3(0,8.2,targetZ+10.2);
   camera.position.lerp(desired,Math.min(1,dt*3.2));
-  camera.lookAt(0,0,targetZ-2.8);
+  camera.lookAt(0,0,targetZ-2.35);
 }
 function updateScore() {
   score=Math.max(score,maxForward);
@@ -385,29 +385,37 @@ function showToast(message) {
 }
 function movePlayer(dx,dz) {
   if(!running || ended || jump) return;
-  if(dx!==0) {
-    const nx=THREE.MathUtils.clamp(playerX+dx,-2,2);
-    if(nx===playerX) return;
-    playerX=nx;
+  const nextX = dx !== 0 ? THREE.MathUtils.clamp(playerX + dx, -2, 2) : playerX;
+  const nextRow = dz !== 0 ? playerRow + 1 : playerRow;
+  if(nextX === playerX && dx !== 0) return;
+
+  // Trees are solid obstacles: stop the move instead of ending the run.
+  const destinationRow = rows.get(nextRow);
+  if(destinationRow?.type === 'grass') {
+    const blocked = destinationRow.obstacles.some(obstacle =>
+      Math.abs(obstacle.x - nextX * LANE_WIDTH) < obstacle.radius + 0.12
+    );
+    if(blocked) {
+      showToast('🌳 مسیر بسته است؛ از کنار درخت برو');
+      return;
+    }
   }
-  if(dz!==0) {
-    playerRow+=1;
-    maxForward=Math.max(maxForward,playerRow-1);
+
+  playerX = nextX;
+  if(dz !== 0) {
+    playerRow = nextRow;
+    maxForward = Math.max(maxForward, playerRow - 1);
     updateScore();
     ensureRows();
   }
-  const target=new THREE.Vector3(playerX*LANE_WIDTH,0,-playerRow*1.35);
-  jump={from:player.position.clone(),to:target,elapsed:0,duration:.17};
-  playerBody.rotation.z=dx*.22;
-  if(playerRow>maxForward+VISIBLE_FRONT-3) ensureRows();
+  const target = new THREE.Vector3(playerX * LANE_WIDTH, 0, -playerRow * 1.35);
+  jump = {from:player.position.clone(), to:target, elapsed:0, duration:.17};
+  playerBody.rotation.z = dx * .22;
+  if(playerRow > maxForward + VISIBLE_FRONT - 3) ensureRows();
 }
 function checkLanding() {
   const row=rows.get(playerRow);
   if(!row) return;
-  if(row.type==='grass') {
-    const hit = row.obstacles.some(obstacle => Math.abs(obstacle.x-playerX*LANE_WIDTH) < obstacle.radius);
-    if(hit) { finishGame('به درخت برخورد کردی!'); return; }
-  }
   if(row.type==='river') {
     const log=row.objects.find(o=>Math.abs(o.x-playerX*LANE_WIDTH)<(o.width/2+.22));
     if(!log) { setTimeout(()=>finishGame('در آب افتادی!'),190); return; }
@@ -567,6 +575,7 @@ document.addEventListener('keydown',e=>{
   if(keys[e.key]){e.preventDefault();handleMove(keys[e.key]);}
 });
 window.addEventListener('resize',render);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', render);
 document.addEventListener('visibilitychange',()=>{if(document.hidden && running){running=false;showToast('بازی متوقف شد');}});
 if(renderer) resetGame();
 </script>
