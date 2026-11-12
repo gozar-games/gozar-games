@@ -1,0 +1,12 @@
+
+name = "gozar-games-multiplayer"
+main = "src/worker.js"
+compatibility_date = "2026-11-12"
+
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "Room"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]
