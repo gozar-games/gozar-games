@@ -126,7 +126,9 @@ const skyGlow=new THREE.Mesh(new THREE.SphereGeometry(90,24,16),new THREE.MeshBa
 
 const camera = new THREE.PerspectiveCamera(43, 1, 0.1, 220);
 camera.position.set(0, 13, 11.5);
-camera.lookAt(0, 0, -3.5);
+// Shared look target used by resetGame() and the smooth camera follow.
+const cameraLookTarget = new THREE.Vector3(0, 0, -3.5);
+camera.lookAt(cameraLookTarget);
 
 let renderer;
 try {
