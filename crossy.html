@@ -164,6 +164,10 @@ const ROOM_API = '/api/rooms';
 let roomSocket = null;
 let spectatorMode = false;
 let spectatorTargetId = '';
+let roomHostId = '';
+let aiBots = [];
+let aiAccumulator = 0;
+let aiBroadcastAccumulator = 0;
 let roomCode = '';
 let myPlayerId = '';
 let roomSeed = 0;
@@ -240,14 +244,21 @@ function syncRemotePlayers(players) {
 function handleRoomMessage(msg) {
   if(msg.type==='error'){setRoomStatus(msg.message||'خطا در اتاق');showToast(msg.message||'خطا در اتاق');return;}
   if(msg.type!=='state')return;
-  myPlayerId=msg.playerId||myPlayerId; const previousRoomSeed=roomSeed; roomSeed=msg.seed||roomSeed; roomStarted=!!msg.started; roomStartedAt=msg.startAt||0;
+  myPlayerId=msg.playerId||myPlayerId; roomHostId=msg.hostId||roomHostId; const previousRoomSeed=roomSeed; roomSeed=msg.seed||roomSeed; roomStarted=!!msg.started; roomStartedAt=msg.startAt||0;
   if(roomSeed && roomSeed!==previousRoomSeed) resetGame();
-  const players=msg.players||[]; const me=players.find(p=>p.id===myPlayerId);
+  const players=msg.players||[]; const realPlayers=players.filter(p=>!p.isAI); const me=players.find(p=>p.id===myPlayerId);
+  if(roomStarted && myPlayerId===roomHostId){
+    const desiredBots=realPlayers.length<=2?realPlayers.length:0;
+    if(aiBots.length!==desiredBots){
+      aiBots=Array.from({length:desiredBots},(_,index)=>({id:`ai-${index+1}`,name:`هوش مصنوعی ${index+1}`,skin:index===0?'suit':'spider',x:index===0?-1:1,row:0,alive:true,finishedAt:null,ridingLog:null,cooldown:.35+index*.22}));
+      aiAccumulator=0;aiBroadcastAccumulator=0;
+    }
+  }
   const furthestPlayerRow=players.reduce((max,p)=>Math.max(max,Number(p.row)||0),playerRow);
   ensureRowsThrough(furthestPlayerRow);
   setRoomStatus(`اتاق آماده است · ${players.length}/4 بازیکن\n${players.map(p=>(p.id===myPlayerId?'● ':'○ ')+p.name+(p.alive===false?' (حذف شده)':'')).join('\n')}\n${roomStarted?'بازی در حال اجراست':'برای شروع، منتظر دوستانت بمان.'}`);
   syncRemotePlayers(players);
-  if(msg.resetVersion!==lastResetVersion && lastResetVersion!==-1){lastResetVersion=msg.resetVersion;resetGame();}
+  if(msg.resetVersion!==lastResetVersion && lastResetVersion!==-1){lastResetVersion=msg.resetVersion;aiBots=[];resetGame();}
   else lastResetVersion=msg.resetVersion;
   refreshSpectatorControls();
   if(msg.finished){
@@ -264,7 +275,7 @@ async function createRoom() {
   catch(error){setRoomStatus('ساخت اتاق انجام نشد: '+error.message);}
 }
 function joinRoom() {const code=document.getElementById('roomCodeInput').value.trim().toUpperCase();if(!/^[A-Z0-9]{6}$/.test(code)){setRoomStatus('کد اتاق باید ۶ حرف یا عدد باشد.');return;}resetGame();connectRoom(code);}
-function leaveRoom() {stopSpectating(false);if(roomSocket){roomSocket.close(1000,'left room');roomSocket=null;}document.getElementById('startButton').classList.remove('room-hidden');roomCode='';roomStarted=false;myPlayerId='';roomSeed=0;roomStartedAt=0;for(const entry of remotePlayers.values())world.remove(entry.group);remotePlayers.clear();roomActions.classList.add('room-hidden');roomCodeDisplay.classList.add('room-hidden');setRoomStatus('از اتاق خارج شدی.');resetGame();}
+function leaveRoom() {stopSpectating(false);aiBots=[];roomHostId='';if(roomSocket){roomSocket.close(1000,'left room');roomSocket=null;}document.getElementById('startButton').classList.remove('room-hidden');roomCode='';roomStarted=false;myPlayerId='';roomSeed=0;roomStartedAt=0;for(const entry of remotePlayers.values())world.remove(entry.group);remotePlayers.clear();roomActions.classList.add('room-hidden');roomCodeDisplay.classList.add('room-hidden');setRoomStatus('از اتاق خارج شدی.');resetGame();}
 
 const BEST_KEY = 'gozar_crossy_best_v1';
 let best = Number(localStorage.getItem(BEST_KEY) || 0);
@@ -854,6 +865,7 @@ function clearWorld() {
 }
 function resetGame() {
   stopSpectating(false);
+  aiAccumulator=0;aiBroadcastAccumulator=0;
   clearWorld();
   randomMapSegments.clear();
   for(const entry of remotePlayers.values()) world.add(entry.group);
@@ -915,6 +927,41 @@ function stopSpectating(showOverlay=true){
   document.querySelector('.controls').style.display='grid';document.querySelector('.hint').style.display='';
   if(showOverlay&&ended)gameOverOverlay.classList.remove('hidden');
   if(!running&&!animationId)render();
+}
+function updateAIBots(dt) {
+  if(!roomSocket || !roomStarted || myPlayerId!==roomHostId || !aiBots.length || Date.now()<roomStartedAt) return;
+  aiAccumulator+=dt;aiBroadcastAccumulator+=dt;
+  for(const bot of aiBots){
+    if(!bot.alive) continue;
+    const current=rows.get(bot.row);
+    if(current?.type==='road' && current.objects.some(o=>Math.abs(o.x-bot.x*LANE_WIDTH)<.82)){bot.alive=false;bot.finishedAt=Date.now();continue;}
+    if(current?.type==='river'){
+      if(!bot.ridingLog) bot.ridingLog=current.objects.find(o=>Math.abs(o.x-bot.x*LANE_WIDTH)<o.width/2-.12)||null;
+      if(!bot.ridingLog){bot.alive=false;bot.finishedAt=Date.now();continue;}
+      bot.x+=current.speed*dt/LANE_WIDTH;
+      if(Math.abs(bot.x*LANE_WIDTH-bot.ridingLog.x)>bot.ridingLog.width/2-.08){bot.alive=false;bot.finishedAt=Date.now();continue;}
+    } else bot.ridingLog=null;
+    if(current?.type==='rail' && current.train && Math.abs(current.train.position.x-bot.x*LANE_WIDTH)<2.05){bot.alive=false;bot.finishedAt=Date.now();continue;}
+  }
+  while(aiAccumulator>=.52){
+    aiAccumulator-=.52;
+    for(const bot of aiBots){
+      if(!bot.alive) continue;
+      bot.cooldown-=.52;if(bot.cooldown>0)continue;
+      bot.cooldown=.34+(bot.row%3)*.09;
+      const nextRow=bot.row+1;ensureRowsThrough(nextRow);
+      const lane=rows.get(nextRow);if(!lane)continue;
+      let choices=[];
+      if(lane.type==='grass') choices=[-2,-1,0,1,2].filter(x=>!lane.obstacles.some(o=>o.lane===x));
+      else if(lane.type==='road') choices=[-2,-1,0,1,2].filter(x=>!lane.objects.some(o=>Math.abs(o.x-x*LANE_WIDTH)<1.15));
+      else if(lane.type==='river') choices=lane.objects.filter(o=>o.kind==='log').map(o=>({x:o.x/LANE_WIDTH,log:o})).filter(v=>Math.abs(v.x)<=2.45 && Math.abs(v.x*LANE_WIDTH-v.log.x)<v.log.width/2-.12);
+      else {if(lane.train && Math.abs(lane.train.position.x-bot.x*LANE_WIDTH)<2.05)continue;choices=[bot.x];}
+      if(!choices.length)continue;
+      choices.sort((a,b)=>Math.abs((typeof a==='number'?a:a.x)-bot.x)-Math.abs((typeof b==='number'?b:b.x)-bot.x));
+      const pick=choices[0];bot.x=typeof pick==='number'?pick:pick.x;bot.row=nextRow;bot.ridingLog=lane.type==='river'?pick.log:null;
+    }
+  }
+  if(aiBroadcastAccumulator>=.45){aiBroadcastAccumulator=0;sendRoomMessage({type:'bots',players:aiBots.map(bot=>({skin:bot.skin,x:bot.x,row:bot.row,alive:bot.alive,finishedAt:bot.finishedAt}))});}
 }
 function updateCamera(dt) {
   // Keep the camera position and its look target in sync. Previously the
@@ -1084,7 +1131,7 @@ function loop(now) {
   lastTime=now;
   if(running || spectatorMode) {
     if(materials.water.map) materials.water.map.offset.x=(materials.water.map.offset.x+dt*.018)%1;
-    if(running){animatePlayer(dt);updateTraffic(dt);}
+    if(running){animatePlayer(dt);updateTraffic(dt);updateAIBots(dt);}
     else if(spectatorMode){updateTraffic(dt);const alive=getAliveSpectators();if(!alive.some(([id])=>id===spectatorTargetId)){if(alive.length)spectatorTargetId=alive[0][0];else stopSpectating(true);}}
     cleanupRows();
     if(spectatorMode)updateSpectatorCamera(dt);else updateCamera(dt);
