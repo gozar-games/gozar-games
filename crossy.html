@@ -244,13 +244,19 @@ function syncRemotePlayers(players) {
 function handleRoomMessage(msg) {
   if(msg.type==='error'){setRoomStatus(msg.message||'خطا در اتاق');showToast(msg.message||'خطا در اتاق');return;}
   if(msg.type!=='state')return;
-  myPlayerId=msg.playerId||myPlayerId; roomHostId=msg.hostId||roomHostId; const previousRoomSeed=roomSeed; roomSeed=msg.seed||roomSeed; roomStarted=!!msg.started; roomStartedAt=msg.startAt||0;
+  myPlayerId=msg.playerId||myPlayerId; roomHostId=msg.hostId||''; const previousRoomSeed=roomSeed; roomSeed=msg.seed||roomSeed; roomStarted=!!msg.started; roomStartedAt=msg.startAt||0;
   if(roomSeed && roomSeed!==previousRoomSeed) resetGame();
   const players=msg.players||[]; const realPlayers=players.filter(p=>!p.isAI); const me=players.find(p=>p.id===myPlayerId);
   if(roomStarted && myPlayerId===roomHostId){
     const desiredBots=realPlayers.length<=2?realPlayers.length:0;
     if(aiBots.length!==desiredBots){
-      aiBots=Array.from({length:desiredBots},(_,index)=>({id:`ai-${index+1}`,name:`هوش مصنوعی ${index+1}`,skin:index===0?'suit':'spider',x:index===0?-1:1,row:0,alive:true,finishedAt:null,ridingLog:null,cooldown:.35+index*.22}));
+      const existingBots=players.filter(p=>p.isAI).slice(0,desiredBots);
+      aiBots=Array.from({length:desiredBots},(_,index)=>{
+        const saved=existingBots[index];
+        return saved
+          ? {...saved,id:`ai-${index+1}`,ridingLog:null,cooldown:.25}
+          : {id:`ai-${index+1}`,name:`هوش مصنوعی ${index+1}`,skin:index===0?'suit':'spider',x:index===0?-1:1,row:0,alive:true,finishedAt:null,ridingLog:null,cooldown:.35+index*.22};
+      });
       aiAccumulator=0;aiBroadcastAccumulator=0;
     }
   }
@@ -604,6 +610,7 @@ applySkin(selectedSkin,false);
 player.position.set(0,0,0);
 
 const rows = new Map();
+let highestBuiltRow = -1;
 const moving = [];
 const decorations = [];
 let running = false;
@@ -630,6 +637,7 @@ function laneGroup(z, type, index) {
   box(group,0,-.23,0,38,.16,1.35,materials.grass,false,true);
   const data = {group, type, index, theme:mapThemeForScore(index), objects:[], obstacles:[], speed:0, direction:1, safe:false, train:null, warning:null};
   rows.set(index, data);
+  highestBuiltRow = Math.max(highestBuiltRow, index);
   if (type === 'grass') buildGrass(data);
   if (type === 'road') buildRoad(data);
   if (type === 'river') buildRiver(data);
@@ -855,12 +863,14 @@ function buildRow(index) {
 }
 function ensureRowsThrough(targetRow) {
   const lastNeeded = Math.max(0,targetRow) + VISIBLE_FRONT;
-  for(let i=0;i<=lastNeeded;i++) if(!rows.has(i)) buildRow(i);
+  // Rows behind the camera are deliberately removed. Never recreate them:
+  // doing so made every new row rebuild the entire history and caused O(n²) lag.
+  for(let i=highestBuiltRow+1;i<=lastNeeded;i++) buildRow(i);
 }
 function ensureRows() { ensureRowsThrough(playerRow); }
 function clearWorld() {
   for(const child of [...world.children]) world.remove(child);
-  rows.clear();moving.length=0;decorations.length=0;
+  rows.clear();highestBuiltRow=-1;moving.length=0;decorations.length=0;
   world.add(player);
 }
 function resetGame() {
@@ -938,11 +948,11 @@ function updateAIBots(dt) {
     if(current?.type==='road' && current.objects.some(o=>Math.abs(o.x-bot.x*LANE_WIDTH)<.82)){bot.alive=false;bot.finishedAt=Date.now();botStateDirty=true;continue;}
     if(current?.type==='river'){
       if(!bot.ridingLog) bot.ridingLog=current.objects.find(o=>Math.abs(o.x-bot.x*LANE_WIDTH)<o.width/2-.12)||null;
-      if(!bot.ridingLog){bot.alive=false;bot.finishedAt=Date.now();continue;}
+      if(!bot.ridingLog){bot.alive=false;bot.finishedAt=Date.now();botStateDirty=true;continue;}
       bot.x+=current.speed*dt/LANE_WIDTH;
-      if(Math.abs(bot.x*LANE_WIDTH-bot.ridingLog.x)>bot.ridingLog.width/2-.08){bot.alive=false;bot.finishedAt=Date.now();continue;}
+      if(Math.abs(bot.x*LANE_WIDTH-bot.ridingLog.x)>bot.ridingLog.width/2-.08){bot.alive=false;bot.finishedAt=Date.now();botStateDirty=true;continue;}
     } else bot.ridingLog=null;
-    if(current?.type==='rail' && current.train && Math.abs(current.train.position.x-bot.x*LANE_WIDTH)<2.05){bot.alive=false;bot.finishedAt=Date.now();continue;}
+    if(current?.type==='rail' && current.train && Math.abs(current.train.position.x-bot.x*LANE_WIDTH)<2.05){bot.alive=false;bot.finishedAt=Date.now();botStateDirty=true;continue;}
   }
   while(aiAccumulator>=.52){
     aiAccumulator-=.52;
