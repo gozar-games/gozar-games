@@ -931,10 +931,11 @@ function stopSpectating(showOverlay=true){
 function updateAIBots(dt) {
   if(!roomSocket || !roomStarted || myPlayerId!==roomHostId || !aiBots.length || Date.now()<roomStartedAt) return;
   aiAccumulator+=dt;aiBroadcastAccumulator+=dt;
+  let botStateDirty=false;
   for(const bot of aiBots){
     if(!bot.alive) continue;
     const current=rows.get(bot.row);
-    if(current?.type==='road' && current.objects.some(o=>Math.abs(o.x-bot.x*LANE_WIDTH)<.82)){bot.alive=false;bot.finishedAt=Date.now();continue;}
+    if(current?.type==='road' && current.objects.some(o=>Math.abs(o.x-bot.x*LANE_WIDTH)<.82)){bot.alive=false;bot.finishedAt=Date.now();botStateDirty=true;continue;}
     if(current?.type==='river'){
       if(!bot.ridingLog) bot.ridingLog=current.objects.find(o=>Math.abs(o.x-bot.x*LANE_WIDTH)<o.width/2-.12)||null;
       if(!bot.ridingLog){bot.alive=false;bot.finishedAt=Date.now();continue;}
@@ -958,10 +959,10 @@ function updateAIBots(dt) {
       else {if(lane.train && Math.abs(lane.train.position.x-bot.x*LANE_WIDTH)<2.05)continue;choices=[bot.x];}
       if(!choices.length)continue;
       choices.sort((a,b)=>Math.abs((typeof a==='number'?a:a.x)-bot.x)-Math.abs((typeof b==='number'?b:b.x)-bot.x));
-      const pick=choices[0];bot.x=typeof pick==='number'?pick:pick.x;bot.row=nextRow;bot.ridingLog=lane.type==='river'?pick.log:null;
+      const pick=choices[0];bot.x=typeof pick==='number'?pick:pick.x;bot.row=nextRow;bot.ridingLog=lane.type==='river'?pick.log:null;botStateDirty=true;
     }
   }
-  if(aiBroadcastAccumulator>=.45){aiBroadcastAccumulator=0;sendRoomMessage({type:'bots',players:aiBots.map(bot=>({skin:bot.skin,x:bot.x,row:bot.row,alive:bot.alive,finishedAt:bot.finishedAt}))});}
+  if(botStateDirty || aiBroadcastAccumulator>=.45){aiBroadcastAccumulator=0;sendRoomMessage({type:'bots',players:aiBots.map(bot=>({skin:bot.skin,x:bot.x,row:bot.row,alive:bot.alive,finishedAt:bot.finishedAt}))});}
 }
 function updateCamera(dt) {
   // Keep the camera position and its look target in sync. Previously the
