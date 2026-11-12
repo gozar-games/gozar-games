@@ -650,13 +650,12 @@ function resetGame() {
   render();
 }
 function updateCamera(dt) {
-  // Keep the camera position and its look target in sync. Previously the
-  // camera body eased slowly while lookAt jumped immediately, which could
-  // make the player leave the frame during fast progress (notably around 60-70).
-  const targetZ = -Math.max(0,playerRow-2)*1.35 - 2.0;
-  const desiredPosition = new THREE.Vector3(0,13,targetZ+11.5);
-  const desiredLookTarget = new THREE.Vector3(0,0,targetZ-1.5);
-  const follow = 1 - Math.exp(-dt*10);
+  // Follow the player's actual interpolated position, not the discrete row
+  // counter. This prevents the camera falling behind during rapid hops.
+  const playerZ = player.position.z;
+  const desiredPosition = new THREE.Vector3(0,13,playerZ+9.5);
+  const desiredLookTarget = new THREE.Vector3(0,0,playerZ-3.5);
+  const follow = 1 - Math.exp(-dt*16);
   camera.position.lerp(desiredPosition,follow);
   cameraLookTarget.lerp(desiredLookTarget,follow);
   camera.lookAt(cameraLookTarget);
