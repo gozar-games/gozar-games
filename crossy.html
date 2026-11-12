@@ -213,6 +213,7 @@ function addRemotePlayer(data) {
 }
 function syncRemotePlayers(players) {
   const keep=new Set();
+  const aiPlayers=(players||[]).filter(p=>p.isAI&&p.alive!==false);
   for(const data of players||[]){
     if(data.id===myPlayerId)continue;
     keep.add(data.id);
@@ -226,7 +227,16 @@ function syncRemotePlayers(players) {
     }
 
     entry.data=data;
-    entry.group.position.set(data.x*LANE_WIDTH,0,-data.row*1.35);
+    // If two AI snapshots arrive at the exact same tile, separate only
+    // their rendered positions so both models remain visible to every client.
+    const overlappingAI=!!data.isAI&&aiPlayers.some(other=>
+      other.id!==data.id &&
+      Math.abs((Number(other.row)||0)-(Number(data.row)||0))<0.35 &&
+      Math.abs((Number(other.x)||0)-(Number(data.x)||0))<0.72
+    );
+    const visualOffset=overlappingAI?(data.id==='ai-1'?-0.43:0.43):0;
+    entry.group.position.set((Number(data.x)||0+visualOffset)*LANE_WIDTH,0,-(Number(data.row)||0)*1.35);
+    if(overlappingAI) entry.group.position.x=((Number(data.x)||0)+visualOffset)*LANE_WIDTH;
     entry.group.visible=data.alive!==false;
     entry.group.traverse(n=>{if(n.isSprite)n.position.y=data.alive===false?2.1:2.35;});
   }
