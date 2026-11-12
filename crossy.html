@@ -121,8 +121,8 @@ bestEl.textContent = String(best);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9bdcff);
-scene.fog = new THREE.Fog(0x9bdcff, 45, 100);
-const skyGlow=new THREE.Mesh(new THREE.SphereGeometry(90,24,16),new THREE.MeshBasicMaterial({color:0xb8e4ff,side:THREE.BackSide}));scene.add(skyGlow);
+scene.fog = null; // TEMP TEST: disable fog completely to isolate the blue obstruction
+// Removed skyGlow sphere: its opaque inner surface blocked the map as the camera moved forward.
 
 const camera = new THREE.PerspectiveCamera(43, 1, 0.1, 220);
 camera.position.set(0, 13, 11.5);
