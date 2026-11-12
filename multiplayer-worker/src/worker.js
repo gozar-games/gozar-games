@@ -58,6 +58,7 @@ export class Room {
             id: player.id,
             name: player.name,
             skin: player.skin,
+            row: Math.max(0, Number(player.row) || 0),
             distance: Math.max(0, Number(player.row) || 0),
             finishedAt: player.finishedAt || Date.now()
           }))
