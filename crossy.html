@@ -444,6 +444,9 @@ function buildRoad(row) {
       box(car,wx,.25,wz,.43,.48,.16,tire,true,true);
       box(car,wx,.25,wz+(wz>0?.085:-.085),.23,.27,.025,hub,false,false);
     }
+    // Face the direction of travel: the model's front points toward +X by default.
+    // Cars moving toward -X are rotated 180 degrees so they do not appear to reverse.
+    car.rotation.y = row.speed < 0 ? Math.PI : 0;
     const startX = (i-(count-1)/2)*carSpacing;
     car.position.set(startX,0,0);
     row.group.add(car);
