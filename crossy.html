@@ -244,7 +244,7 @@ function syncRemotePlayers(players) {
 function handleRoomMessage(msg) {
   if(msg.type==='error'){setRoomStatus(msg.message||'خطا در اتاق');showToast(msg.message||'خطا در اتاق');return;}
   if(msg.type!=='state')return;
-  myPlayerId=msg.playerId||myPlayerId; roomHostId=msg.hostId||''; const previousRoomSeed=roomSeed; roomSeed=msg.seed||roomSeed; roomStarted=!!msg.started; roomStartedAt=msg.startAt||0;
+  myPlayerId=msg.playerId||myPlayerId; const incomingHostId=msg.hostId||''; if(incomingHostId!==roomHostId){roomHostId=incomingHostId;aiBots=[];} const previousRoomSeed=roomSeed; roomSeed=msg.seed||roomSeed; roomStarted=!!msg.started; roomStartedAt=msg.startAt||0;
   if(roomSeed && roomSeed!==previousRoomSeed) resetGame();
   const players=msg.players||[]; const realPlayers=players.filter(p=>!p.isAI); const me=players.find(p=>p.id===myPlayerId);
   if(roomStarted && myPlayerId===roomHostId){
