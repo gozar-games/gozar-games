@@ -191,16 +191,45 @@ function makeNameSprite(name) {
   const tex=new THREE.CanvasTexture(c); const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));sprite.scale.set(1.55,.39,1);sprite.position.y=2.35;return sprite;
 }
 function addRemotePlayer(data) {
-  const group=new THREE.Group(); const body=playerBody.clone(true);
-  // Give each remote avatar a distinct tint while retaining the selected voxel character shape.
-  const hue=(Array.from(data.id).reduce((a,ch)=>a+ch.charCodeAt(0),0)%360)/360;
-  body.traverse(node=>{if(node.isMesh && node.material){node.material=node.material.clone();if(node.material.color)node.material.color.offsetHSL((hue-.5)*.28,0,0);}});
-  group.add(body);group.add(makeNameSprite(data.name));world.add(group);remotePlayers.set(data.id,{group,data});return remotePlayers.get(data.id);
+  const group=new THREE.Group();
+  const body=new THREE.Group();
+  const skin=buildSkinModel(data.skin,body);
+  group.add(body);
+  group.add(makeNameSprite(data.name||'بازیکن'));
+  world.add(group);
+  const entry={group,body,data,skin};
+  remotePlayers.set(data.id,entry);
+  return entry;
 }
 function syncRemotePlayers(players) {
   const keep=new Set();
-  for(const data of players||[]){if(data.id===myPlayerId)continue;keep.add(data.id);let entry=remotePlayers.get(data.id);if(!entry)entry=addRemotePlayer(data);entry.data=data;entry.group.position.set(data.x*LANE_WIDTH,0,-data.row*1.35);entry.group.visible=data.alive!==false;entry.group.traverse(n=>{if(n.isSprite)n.position.y=data.alive===false?2.1:2.35;});}
-  for(const [id,entry] of remotePlayers){if(!keep.has(id)){world.remove(entry.group);entry.group.traverse(n=>{if(n.isSprite&&n.material.map)n.material.map.dispose();if(n.isSprite)n.material.dispose();});remotePlayers.delete(id);}}
+  for(const data of players||[]){
+    if(data.id===myPlayerId)continue;
+    keep.add(data.id);
+    let entry=remotePlayers.get(data.id);
+    if(!entry)entry=addRemotePlayer(data);
+
+    const incomingSkin=validSkins.includes(data.skin)?data.skin:'chicken';
+    if(entry.skin!==incomingSkin){
+      buildSkinModel(incomingSkin,entry.body);
+      entry.skin=incomingSkin;
+    }
+
+    entry.data=data;
+    entry.group.position.set(data.x*LANE_WIDTH,0,-data.row*1.35);
+    entry.group.visible=data.alive!==false;
+    entry.group.traverse(n=>{if(n.isSprite)n.position.y=data.alive===false?2.1:2.35;});
+  }
+  for(const [id,entry] of remotePlayers){
+    if(!keep.has(id)){
+      world.remove(entry.group);
+      entry.group.traverse(n=>{
+        if(n.isSprite&&n.material.map)n.material.map.dispose();
+        if(n.isSprite)n.material.dispose();
+      });
+      remotePlayers.delete(id);
+    }
+  }
 }
 function handleRoomMessage(msg) {
   if(msg.type==='error'){setRoomStatus(msg.message||'خطا در اتاق');showToast(msg.message||'خطا در اتاق');return;}
@@ -406,24 +435,24 @@ function addVoxel(parent,x,y,z,sx,sy,sz,color,materialOptions={}) {
   const mat = color?.isMaterial ? color : makeMaterial(color, materialOptions.roughness ?? .85);
   return box(parent,x,y,z,sx,sy,sz,mat,true,true);
 }
-function buildChickenSkin() {
+function buildChickenSkin(target=playerBody) {
   // Classic voxel chicken: white body, square head, red comb, orange beak and feet.
   const white = makeMaterial(0xf5f3e9,.92), cream = makeMaterial(0xfff8e8,.95);
   const red = makeMaterial(0xd9272e,.8), orange = makeMaterial(0xf28a19,.78);
   const black = makeMaterial(0x171717,.35);
-  addVoxel(playerBody,0,.55,0,.62,.68,.58,white);
-  addVoxel(playerBody,0,1.02,-.015,.57,.48,.55,cream);
-  addVoxel(playerBody,0,1.31,-.015,.16,.18,.18,red);
-  addVoxel(playerBody,-.12,1.27,-.015,.13,.13,.16,red);
-  addVoxel(playerBody,.12,1.27,-.015,.13,.13,.16,red);
-  addVoxel(playerBody,0,.99,-.34,.25,.15,.22,orange);
+  addVoxel(target,0,.55,0,.62,.68,.58,white);
+  addVoxel(target,0,1.02,-.015,.57,.48,.55,cream);
+  addVoxel(target,0,1.31,-.015,.16,.18,.18,red);
+  addVoxel(target,-.12,1.27,-.015,.13,.13,.16,red);
+  addVoxel(target,.12,1.27,-.015,.13,.13,.16,red);
+  addVoxel(target,0,.99,-.34,.25,.15,.22,orange);
   for(const x of [-.17,.17]) {
-    addVoxel(playerBody,x,1.09,-.292,.075,.085,.035,black);
-    addVoxel(playerBody,x,.16,.015,.15,.22,.17,orange);
-    addVoxel(playerBody,x,.055,-.105,.25,.10,.30,orange);
+    addVoxel(target,x,1.09,-.292,.075,.085,.035,black);
+    addVoxel(target,x,.16,.015,.15,.22,.17,orange);
+    addVoxel(target,x,.055,-.105,.25,.10,.30,orange);
   }
 }
-function buildSuitSkin() {
+function buildSuitSkin(target=playerBody) {
   // Block-built businessman inspired by the supplied reference image.
   const suit = makeMaterial(0x10151b,.82), suitSide = makeMaterial(0x202832,.86);
   const shirt = makeMaterial(0xf2eee4,.9), skin = makeMaterial(0xe8b987,.9);
@@ -432,106 +461,110 @@ function buildSuitSkin() {
   const tie = makeMaterial(0x8b2027,.75), shoe = makeMaterial(0x080a0d,.8);
   const cigarette = makeMaterial(0xf4eee2,.65), ember = makeMaterial(0xf05b24,.6);
   // Legs, shoes and tailored torso.
-  addVoxel(playerBody,-.18,.25,0,.25,.55,.30,suit);
-  addVoxel(playerBody,.18,.25,0,.25,.55,.30,suit);
-  addVoxel(playerBody,-.18,.055,-.045,.34,.16,.43,shoe);
-  addVoxel(playerBody,.18,.055,-.045,.34,.16,.43,shoe);
-  addVoxel(playerBody,0,.76,0,.72,.66,.43,suit);
+  addVoxel(target,-.18,.25,0,.25,.55,.30,suit);
+  addVoxel(target,.18,.25,0,.25,.55,.30,suit);
+  addVoxel(target,-.18,.055,-.045,.34,.16,.43,shoe);
+  addVoxel(target,.18,.055,-.045,.34,.16,.43,shoe);
+  addVoxel(target,0,.76,0,.72,.66,.43,suit);
   // White shirt panel and tie on the front (negative Z).
-  addVoxel(playerBody,0,.83,-.226,.29,.53,.035,shirt);
-  addVoxel(playerBody,0,.93,-.251,.105,.18,.045,tie);
-  addVoxel(playerBody,0,.69,-.253,.14,.25,.05,tie);
+  addVoxel(target,0,.83,-.226,.29,.53,.035,shirt);
+  addVoxel(target,0,.93,-.251,.105,.18,.045,tie);
+  addVoxel(target,0,.69,-.253,.14,.25,.05,tie);
   // Neck and oversized square head.
-  addVoxel(playerBody,0,1.16,-.005,.23,.20,.24,skin);
-  addVoxel(playerBody,0,1.53,-.005,.66,.65,.55,skin);
+  addVoxel(target,0,1.16,-.005,.23,.20,.24,skin);
+  addVoxel(target,0,1.53,-.005,.66,.65,.55,skin);
   // Dark swept hair cap and side blocks.
-  addVoxel(playerBody,0,1.87,-.005,.69,.19,.59,hair);
-  addVoxel(playerBody,-.30,1.70,-.005,.12,.28,.56,hair);
-  addVoxel(playerBody,.30,1.70,-.005,.12,.28,.56,hair);
+  addVoxel(target,0,1.87,-.005,.69,.19,.59,hair);
+  addVoxel(target,-.30,1.70,-.005,.12,.28,.56,hair);
+  addVoxel(target,.30,1.70,-.005,.12,.28,.56,hair);
   // Ears.
-  addVoxel(playerBody,-.385,1.52,-.005,.12,.19,.18,skin);
-  addVoxel(playerBody,.385,1.52,-.005,.12,.19,.18,skin);
+  addVoxel(target,-.385,1.52,-.005,.12,.19,.18,skin);
+  addVoxel(target,.385,1.52,-.005,.12,.19,.18,skin);
   // Sunglasses: broad black band, two dark lenses and bridge.
-  addVoxel(playerBody,0,1.60,-.291,.66,.19,.055,shades);
-  addVoxel(playerBody,-.16,1.60,-.326,.23,.145,.025,lens);
-  addVoxel(playerBody,.16,1.60,-.326,.23,.145,.025,lens);
-  addVoxel(playerBody,0,1.60,-.345,.09,.045,.025,shades);
+  addVoxel(target,0,1.60,-.291,.66,.19,.055,shades);
+  addVoxel(target,-.16,1.60,-.326,.23,.145,.025,lens);
+  addVoxel(target,.16,1.60,-.326,.23,.145,.025,lens);
+  addVoxel(target,0,1.60,-.345,.09,.045,.025,shades);
   // Beard and moustache framing the lower face.
-  addVoxel(playerBody,0,1.27,-.294,.48,.19,.09,beard);
-  addVoxel(playerBody,-.12,1.39,-.302,.22,.085,.07,beard);
-  addVoxel(playerBody,.12,1.39,-.302,.22,.085,.07,beard);
-  addVoxel(playerBody,0,1.34,-.355,.14,.07,.035,skin);
+  addVoxel(target,0,1.27,-.294,.48,.19,.09,beard);
+  addVoxel(target,-.12,1.39,-.302,.22,.085,.07,beard);
+  addVoxel(target,.12,1.39,-.302,.22,.085,.07,beard);
+  addVoxel(target,0,1.34,-.355,.14,.07,.035,skin);
   // Arms and hands. One arm extends forward to hold the cigarette.
-  addVoxel(playerBody,-.47,.78,-.015,.22,.58,.25,suit);
-  addVoxel(playerBody,-.47,.45,-.06,.20,.18,.22,skin);
-  addVoxel(playerBody,.47,.78,-.015,.22,.58,.25,suit);
-  addVoxel(playerBody,.47,.48,-.19,.20,.18,.20,skin);
-  addVoxel(playerBody,.47,.49,-.36,.13,.12,.12,skin);
+  addVoxel(target,-.47,.78,-.015,.22,.58,.25,suit);
+  addVoxel(target,-.47,.45,-.06,.20,.18,.22,skin);
+  addVoxel(target,.47,.78,-.015,.22,.58,.25,suit);
+  addVoxel(target,.47,.48,-.19,.20,.18,.20,skin);
+  addVoxel(target,.47,.49,-.36,.13,.12,.12,skin);
   // Small stylized cigarette with orange tip, held in front of the face.
-  addVoxel(playerBody,.47,.53,-.56,.10,.10,.43,cigarette);
-  addVoxel(playerBody,.47,.53,-.785,.105,.105,.09,ember);
+  addVoxel(target,.47,.53,-.56,.10,.10,.43,cigarette);
+  addVoxel(target,.47,.53,-.785,.105,.105,.09,ember);
 }
-function buildSpiderSkin() {
+function buildSpiderSkin(target=playerBody) {
   const red=makeMaterial(0xc91625,.72), blue=makeMaterial(0x123b83,.7);
   const dark=makeMaterial(0x10131c,.5), white=makeMaterial(0xf4f5f7,.3);
   // Classic red-and-blue blocky Spider-Man suit.
-  addVoxel(playerBody,0,.25,0,.28,.48,.30,blue);
-  addVoxel(playerBody,-.18,.25,0,.18,.48,.30,blue);
-  addVoxel(playerBody,.18,.25,0,.18,.48,.30,blue);
-  addVoxel(playerBody,0,.78,0,.70,.65,.42,red);
-  addVoxel(playerBody,-.43,.77,0,.18,.58,.23,red);
-  addVoxel(playerBody,.43,.77,0,.18,.58,.23,red);
-  addVoxel(playerBody,0,1.49,-.005,.62,.62,.55,red);
-  addVoxel(playerBody,0,1.13,-.005,.22,.18,.24,red);
+  addVoxel(target,0,.25,0,.28,.48,.30,blue);
+  addVoxel(target,-.18,.25,0,.18,.48,.30,blue);
+  addVoxel(target,.18,.25,0,.18,.48,.30,blue);
+  addVoxel(target,0,.78,0,.70,.65,.42,red);
+  addVoxel(target,-.43,.77,0,.18,.58,.23,red);
+  addVoxel(target,.43,.77,0,.18,.58,.23,red);
+  addVoxel(target,0,1.49,-.005,.62,.62,.55,red);
+  addVoxel(target,0,1.13,-.005,.22,.18,.24,red);
   // Blue panels on sides and legs.
-  addVoxel(playerBody,-.23,.70,-.218,.20,.48,.035,blue);
-  addVoxel(playerBody,.23,.70,-.218,.20,.48,.035,blue);
-  addVoxel(playerBody,-.18,.29,-.17,.22,.35,.08,blue);
-  addVoxel(playerBody,.18,.29,-.17,.22,.35,.08,blue);
+  addVoxel(target,-.23,.70,-.218,.20,.48,.035,blue);
+  addVoxel(target,.23,.70,-.218,.20,.48,.035,blue);
+  addVoxel(target,-.18,.29,-.17,.22,.35,.08,blue);
+  addVoxel(target,.18,.29,-.17,.22,.35,.08,blue);
   // Large expressive white eye lenses.
-  addVoxel(playerBody,-.16,1.53,-.292,.20,.25,.045,white);
-  addVoxel(playerBody,.16,1.53,-.292,.20,.25,.045,white);
-  addVoxel(playerBody,-.16,1.53,-.321,.12,.17,.018,dark);
-  addVoxel(playerBody,.16,1.53,-.321,.12,.17,.018,dark);
+  addVoxel(target,-.16,1.53,-.292,.20,.25,.045,white);
+  addVoxel(target,.16,1.53,-.292,.20,.25,.045,white);
+  addVoxel(target,-.16,1.53,-.321,.12,.17,.018,dark);
+  addVoxel(target,.16,1.53,-.321,.12,.17,.018,dark);
   // Small black spider emblem.
-  addVoxel(playerBody,0,.91,-.239,.07,.20,.035,dark);
-  addVoxel(playerBody,-.10,.91,-.239,.12,.06,.035,dark);
-  addVoxel(playerBody,.10,.91,-.239,.12,.06,.035,dark);
+  addVoxel(target,0,.91,-.239,.07,.20,.035,dark);
+  addVoxel(target,-.10,.91,-.239,.12,.06,.035,dark);
+  addVoxel(target,.10,.91,-.239,.12,.06,.035,dark);
 }
-function buildBatmanSkin() {
+function buildBatmanSkin(target=playerBody) {
   const black=makeMaterial(0x171b25,.72), charcoal=makeMaterial(0x303744,.78);
   const yellow=makeMaterial(0xf2c230,.65), skin=makeMaterial(0xd5b18d,.85);
   const white=makeMaterial(0xf2f3f5,.3);
   // Dark armored body, boots and gloves.
-  addVoxel(playerBody,-.17,.25,0,.25,.5,.32,black);
-  addVoxel(playerBody,.17,.25,0,.25,.5,.32,black);
-  addVoxel(playerBody,-.17,.06,-.04,.34,.14,.40,charcoal);
-  addVoxel(playerBody,.17,.06,-.04,.34,.14,.40,charcoal);
-  addVoxel(playerBody,0,.77,0,.72,.67,.44,charcoal);
-  addVoxel(playerBody,-.45,.75,0,.22,.58,.25,black);
-  addVoxel(playerBody,.45,.75,0,.22,.58,.25,black);
+  addVoxel(target,-.17,.25,0,.25,.5,.32,black);
+  addVoxel(target,.17,.25,0,.25,.5,.32,black);
+  addVoxel(target,-.17,.06,-.04,.34,.14,.40,charcoal);
+  addVoxel(target,.17,.06,-.04,.34,.14,.40,charcoal);
+  addVoxel(target,0,.77,0,.72,.67,.44,charcoal);
+  addVoxel(target,-.45,.75,0,.22,.58,.25,black);
+  addVoxel(target,.45,.75,0,.22,.58,.25,black);
   // Chest bat emblem and yellow utility belt.
-  addVoxel(playerBody,0,.89,-.237,.30,.12,.035,yellow);
-  addVoxel(playerBody,0,.89,-.261,.16,.055,.025,black);
-  addVoxel(playerBody,0,.48,-.232,.70,.13,.045,yellow);
-  addVoxel(playerBody,0,1.50,0,.64,.62,.56,black);
+  addVoxel(target,0,.89,-.237,.30,.12,.035,yellow);
+  addVoxel(target,0,.89,-.261,.16,.055,.025,black);
+  addVoxel(target,0,.48,-.232,.70,.13,.045,yellow);
+  addVoxel(target,0,1.50,0,.64,.62,.56,black);
   // Cowl with pointed bat ears.
-  addVoxel(playerBody,-.22,1.91,-.01,.16,.42,.18,black);
-  addVoxel(playerBody,.22,1.91,-.01,.16,.42,.18,black);
+  addVoxel(target,-.22,1.91,-.01,.16,.42,.18,black);
+  addVoxel(target,.22,1.91,-.01,.16,.42,.18,black);
   // Pale eye slits and lower face.
-  addVoxel(playerBody,-.15,1.55,-.292,.17,.075,.035,white);
-  addVoxel(playerBody,.15,1.55,-.292,.17,.075,.035,white);
-  addVoxel(playerBody,0,1.28,-.285,.27,.22,.035,skin);
+  addVoxel(target,-.15,1.55,-.292,.17,.075,.035,white);
+  addVoxel(target,.15,1.55,-.292,.17,.075,.035,white);
+  addVoxel(target,0,1.28,-.285,.27,.22,.035,skin);
   // Short cape behind the shoulders.
-  addVoxel(playerBody,0,.86,.27,.78,.92,.12,black);
+  addVoxel(target,0,.86,.27,.78,.92,.12,black);
+}
+function buildSkinModel(skinName, target) {
+  const safeSkin = validSkins.includes(skinName) ? skinName : 'chicken';
+  target.clear();
+  if(safeSkin === 'suit') buildSuitSkin(target);
+  else if(safeSkin === 'spider') buildSpiderSkin(target);
+  else if(safeSkin === 'batman') buildBatmanSkin(target);
+  else buildChickenSkin(target);
+  return safeSkin;
 }
 function applySkin(skinName, persist=true) {
-  selectedSkin = validSkins.includes(skinName) ? skinName : 'chicken';
-  playerBody.clear();
-  if(selectedSkin === 'suit') buildSuitSkin();
-  else if(selectedSkin === 'spider') buildSpiderSkin();
-  else if(selectedSkin === 'batman') buildBatmanSkin();
-  else buildChickenSkin();
+  selectedSkin = buildSkinModel(skinName, playerBody);
   const skinButtons = {chicken:'chickenSkin',suit:'suitSkin',spider:'spiderSkin',batman:'batmanSkin'};
   for(const [skin,id] of Object.entries(skinButtons)) {
     const button=document.getElementById(id);
