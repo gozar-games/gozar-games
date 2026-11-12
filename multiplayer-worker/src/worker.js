@@ -17,9 +17,12 @@ export class Room {
     this.resetVersion = 0;
     this.finished = false;
     this.finalResults = [];
+    this.bots = [];
+    this.botCount = 0;
+    this.hostId = null;
   }
 
-  getPlayers() {
+  getRealPlayers() {
     return this.state.getWebSockets().map(ws => {
       try {
         return ws.deserializeAttachment();
@@ -27,6 +30,10 @@ export class Room {
         return null;
       }
     }).filter(Boolean);
+  }
+
+  getPlayers() {
+    return [...this.getRealPlayers(), ...this.bots];
   }
 
   send(ws, data) {
@@ -94,6 +101,7 @@ export class Room {
         resetVersion: this.resetVersion,
         finished: this.finished,
         results: this.finalResults,
+        hostId: this.hostId,
         players
       });
     }
@@ -116,7 +124,7 @@ export class Room {
       });
     }
 
-    if (this.getPlayers().length >= MAX_PLAYERS) {
+    if (this.getRealPlayers().length >= MAX_PLAYERS) {
       return json({ error: "Room is full" }, 409);
     }
 
@@ -145,6 +153,7 @@ export class Room {
     });
 
     this.state.acceptWebSocket(server);
+    if (!this.hostId) this.hostId = id;
 
     this.send(server, {
       type: "connected",
@@ -211,6 +220,24 @@ export class Room {
         break;
       }
 
+      case "bots": {
+        if (player.id !== this.hostId || !this.started || this.finished) break;
+        const incoming = Array.isArray(data.players) ? data.players : [];
+        this.bots = incoming.slice(0, this.botCount).map((bot, index) => ({
+          id: `ai-${index + 1}`,
+          name: `هوش مصنوعی ${index + 1}`,
+          skin: String(bot.skin || "chicken").slice(0, 24),
+          x: Math.max(-2.5, Math.min(2.5, Number(bot.x) || 0)),
+          row: Math.max(0, Math.min(100000, Math.floor(Number(bot.row) || 0))),
+          distance: Math.max(0, Math.floor(Number(bot.row) || 0)),
+          alive: bot.alive !== false,
+          finishedAt: bot.alive === false ? (Number(bot.finishedAt) || Date.now()) : null,
+          isAI: true
+        }));
+        this.broadcast();
+        break;
+      }
+
       case "skin": {
         player.skin = String(data.skin || "chicken").slice(0, 24);
         ws.serializeAttachment(player);
@@ -234,6 +261,19 @@ export class Room {
         if (!this.started && !this.finished) {
           this.started = true;
           this.startAt = Date.now() + 1500;
+          const realPlayers = this.getRealPlayers();
+          this.botCount = realPlayers.length <= 2 ? realPlayers.length : 0;
+          this.bots = Array.from({ length: this.botCount }, (_, index) => ({
+            id: `ai-${index + 1}`,
+            name: `هوش مصنوعی ${index + 1}`,
+            skin: index === 0 ? "suit" : "spider",
+            x: index === 0 ? -1 : 1,
+            row: 0,
+            distance: 0,
+            alive: true,
+            finishedAt: null,
+            isAI: true
+          }));
         }
 
         this.broadcast();
@@ -245,6 +285,8 @@ export class Room {
         this.startAt = 0;
         this.finished = false;
         this.finalResults = [];
+        this.bots = [];
+        this.botCount = 0;
 
         this.resetVersion++;
         this.roomSeed = Math.floor(Math.random() * 2147483647);
@@ -275,6 +317,10 @@ export class Room {
       // Ignore already closed sockets.
     }
 
+    if (this.hostId) {
+      const remaining = this.getRealPlayers();
+      if (!remaining.some(player => player.id === this.hostId)) this.hostId = remaining[0]?.id || null;
+    }
     this.broadcast();
   }
 
@@ -285,6 +331,10 @@ export class Room {
       // Ignore socket errors.
     }
 
+    if (this.hostId) {
+      const remaining = this.getRealPlayers();
+      if (!remaining.some(player => player.id === this.hostId)) this.hostId = remaining[0]?.id || null;
+    }
     this.broadcast();
   }
 }
