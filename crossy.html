@@ -127,7 +127,7 @@ const skyGlow=new THREE.Mesh(new THREE.SphereGeometry(90,24,16),new THREE.MeshBa
 const camera = new THREE.PerspectiveCamera(43, 1, 0.1, 220);
 camera.position.set(0, 13, 11.5);
 // Shared look target used by resetGame() and the smooth camera follow.
-const cameraLookTarget = new THREE.Vector3(0, 0, -3.5);
+const cameraLookTarget = new THREE.Vector3(0, 0, -3.0);
 camera.lookAt(cameraLookTarget);
 
 let renderer;
@@ -641,8 +641,8 @@ function resetGame() {
   laneGroup(0,'grass',0);
   laneGroup(-1.35,'grass',1);
   ensureRows();
-  camera.position.set(0,13,11.5);
-  cameraLookTarget.set(0,0,-3.5);
+  camera.position.set(0,10.5,13.2);
+  cameraLookTarget.set(0,0,-3.0);
   camera.lookAt(cameraLookTarget);
   startOverlay.classList.remove('hidden');
   gameOverOverlay.classList.add('hidden');
@@ -650,14 +650,11 @@ function resetGame() {
   render();
 }
 function updateCamera(dt) {
-  // Follow the player's actual interpolated position, not the discrete row
-  // counter. This prevents the camera falling behind during rapid hops.
+  // The player position is already eased during each hop. Follow it directly
+  // so camera smoothing cannot accumulate a one-row delay during rapid moves.
   const playerZ = player.position.z;
-  const desiredPosition = new THREE.Vector3(0,13,playerZ+9.5);
-  const desiredLookTarget = new THREE.Vector3(0,0,playerZ-3.5);
-  const follow = 1 - Math.exp(-dt*16);
-  camera.position.lerp(desiredPosition,follow);
-  cameraLookTarget.lerp(desiredLookTarget,follow);
+  camera.position.set(0, 10.5, playerZ + 13.2);
+  cameraLookTarget.set(0, 0, playerZ - 3.0);
   camera.lookAt(cameraLookTarget);
 }
 function updateScore() {
