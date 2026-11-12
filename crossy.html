@@ -106,7 +106,8 @@ bestEl.textContent = String(best);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9bdcff);
-scene.fog = new THREE.Fog(0x9bdcff, 17, 39);
+scene.fog = new THREE.Fog(0x9bdcff, 22, 48);
+const skyGlow=new THREE.Mesh(new THREE.SphereGeometry(90,24,16),new THREE.MeshBasicMaterial({color:0xb8e4ff,side:THREE.BackSide}));scene.add(skyGlow);
 
 const camera = new THREE.PerspectiveCamera(37, 1, 0.1, 180);
 camera.position.set(0, 8.2, 10.2);
@@ -121,9 +122,10 @@ try {
   document.getElementById('startButton').disabled = true;
   throw err;
 }
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.85));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = true;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.15;
@@ -132,7 +134,10 @@ scene.add(new THREE.HemisphereLight(0xffffff, 0x68805b, 2.0));
 const sun = new THREE.DirectionalLight(0xffffff, 2.4);
 sun.position.set(-5, 12, 7);
 sun.castShadow = true;
-sun.shadow.mapSize.set(3072, 3072);
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.bias = -0.00018;
+sun.shadow.normalBias = 0.025;
+sun.shadow.radius = 4;
 sun.shadow.camera.left = -12; sun.shadow.camera.right = 12;
 sun.shadow.camera.top = 15; sun.shadow.camera.bottom = -15;
 scene.add(sun);
@@ -151,6 +156,48 @@ const materials = {
   white: new THREE.MeshStandardMaterial({color:0xffffff, roughness:.8}),
   dark: new THREE.MeshStandardMaterial({color:0x25282c, roughness:.8})
 };
+
+// Procedural, lightweight surface maps: detailed without downloading image assets.
+function makeSurfaceTexture(kind, base, count=900) {
+  const c=document.createElement('canvas'); c.width=256; c.height=256;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle=base; ctx.fillRect(0,0,256,256);
+  if(kind==='grass') {
+    for(let i=0;i<count;i++) {
+      const x=Math.random()*256,y=Math.random()*256;
+      ctx.strokeStyle=Math.random()>.5?'rgba(28,83,34,.22)':'rgba(225,244,177,.24)';
+      ctx.lineWidth=.7+Math.random()*1.1; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+1+Math.random()*4,y-2-Math.random()*5); ctx.stroke();
+    }
+    for(let i=0;i<55;i++){ctx.fillStyle='rgba(255,255,255,.10)';ctx.beginPath();ctx.arc(Math.random()*256,Math.random()*256,1+Math.random()*2,0,Math.PI*2);ctx.fill();}
+  } else if(kind==='road') {
+    for(let i=0;i<count*1.5;i++){const v=Math.random()>.5?255:0;ctx.fillStyle=`rgba(${v},${v},${v},${Math.random()*.12})`;ctx.fillRect(Math.random()*256,Math.random()*256,1+Math.random()*3,1+Math.random()*2);}
+    for(let i=0;i<22;i++){ctx.strokeStyle='rgba(20,20,20,.12)';ctx.lineWidth=1;ctx.beginPath();let x=Math.random()*256,y=Math.random()*256;ctx.moveTo(x,y);ctx.lineTo(x+8+Math.random()*18,y+Math.random()*3);ctx.stroke();}
+  } else if(kind==='water') {
+    for(let y=0;y<256;y+=8){ctx.strokeStyle=`rgba(220,245,255,${.06+Math.random()*.13})`;ctx.lineWidth=1+Math.random()*2;ctx.beginPath();for(let x=0;x<=256;x+=8){const yy=y+Math.sin((x+y)*.045)*2.5; if(x===0)ctx.moveTo(x,yy);else ctx.lineTo(x,yy);}ctx.stroke();}
+    for(let i=0;i<75;i++){ctx.fillStyle='rgba(225,250,255,.12)';ctx.beginPath();ctx.ellipse(Math.random()*256,Math.random()*256,2+Math.random()*7,.7+Math.random()*1.5,0,0,Math.PI*2);ctx.fill();}
+  } else if(kind==='bark') {
+    for(let i=0;i<150;i++){ctx.strokeStyle=Math.random()>.5?'rgba(48,25,10,.18)':'rgba(235,190,125,.16)';ctx.lineWidth=.5+Math.random()*2;ctx.beginPath();let x=Math.random()*256;ctx.moveTo(x,0);ctx.bezierCurveTo(x-5,70,x+5,170,x,256);ctx.stroke();}
+  }
+  const tex=new THREE.CanvasTexture(c); tex.colorSpace=THREE.SRGBColorSpace; tex.wrapS=tex.wrapT=THREE.RepeatWrapping; tex.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+  return tex;
+}
+materials.grass.map=makeSurfaceTexture('grass','#70ad50',1150); materials.grass.map.repeat.set(3,1);
+materials.grassAlt.map=materials.grass.map;
+materials.road.map=makeSurfaceTexture('road','#62666a',1450); materials.road.map.repeat.set(4,1);
+materials.water.map=makeSurfaceTexture('water','#3a9fc8',400); materials.water.map.repeat.set(3,1);
+materials.log.map=makeSurfaceTexture('bark','#98643a',150); materials.log.map.repeat.set(1.5,1);
+materials.grass.needsUpdate=true; materials.road.needsUpdate=true; materials.water.needsUpdate=true; materials.log.needsUpdate=true;
+
+function roundedBox(parent,x,y,z,sx,sy,sz,material,radius=.1,segments=3) {
+  const r=Math.min(radius,sx*.18,sy*.22,sz*.18), shape=new THREE.Shape();
+  shape.moveTo(-sx/2+r,-sy/2); shape.lineTo(sx/2-r,-sy/2); shape.quadraticCurveTo(sx/2,-sy/2,sx/2,-sy/2+r);
+  shape.lineTo(sx/2,sy/2-r); shape.quadraticCurveTo(sx/2,sy/2,sx/2-r,sy/2);
+  shape.lineTo(-sx/2+r,sy/2); shape.quadraticCurveTo(-sx/2,sy/2,-sx/2,sy/2-r);
+  shape.lineTo(-sx/2,-sy/2+r); shape.quadraticCurveTo(-sx/2,-sy/2,-sx/2+r,-sy/2);
+  const geometry=new THREE.ExtrudeGeometry(shape,{depth:sz,bevelEnabled:true,bevelSegments:2,steps:1,bevelSize:r*.35,bevelThickness:r*.35,curveSegments:segments});
+  geometry.translate(0,0,-sz/2);
+  const mesh=new THREE.Mesh(geometry,material); mesh.position.set(x,y,z); mesh.castShadow=true; mesh.receiveShadow=true; parent.add(mesh); return mesh;
+}
 
 const unitBox = new THREE.BoxGeometry(1,1,1);
 const unitCylinder = new THREE.CylinderGeometry(.5,.5,1,8);
@@ -175,19 +222,20 @@ const player = new THREE.Group();
 world.add(player);
 const playerBody = new THREE.Group();
 player.add(playerBody);
-const bodyMat = makeMaterial(0xffc447);
-const bellyMat = makeMaterial(0xfff0c5);
-const beakMat = makeMaterial(0xf18a27);
-const eyeMat = makeMaterial(0x171717, .3);
-box(playerBody,0,.52,0,.62,.72,.58,bodyMat);
-box(playerBody,0,.22,.02,.48,.24,.48,bellyMat);
-box(playerBody,0,.91,-.04,.58,.13,.54,bodyMat);
-box(playerBody,0,.48,-.31,.22,.13,.15,beakMat);
-for (const x of [-.17,.17]) {
-  box(playerBody,x,.69,-.296,.09,.11,.035,materials.white,false,false);
-  box(playerBody,x,.69,-.318,.045,.065,.025,eyeMat,false,false);
+const bodyMat = makeMaterial(0xffc94f,.88);
+const bellyMat = makeMaterial(0xfff0ce,.92);
+const beakMat = makeMaterial(0xf18a27,.72);
+const eyeMat = makeMaterial(0x171717, .22);
+function softEllipsoid(parent,material,x,y,z,sx,sy,sz){const m=new THREE.Mesh(new THREE.SphereGeometry(1,24,18),material);m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}
+softEllipsoid(playerBody,bodyMat,0,.53,0,.34,.43,.31);
+softEllipsoid(playerBody,bellyMat,0,.34,-.235,.245,.23,.105);
+softEllipsoid(playerBody,bodyMat,0,.91,-.025,.29,.19,.27);
+softEllipsoid(playerBody,beakMat,0,.57,-.325,.15,.075,.12);
+for (const x of [-.16,.16]) {
+  softEllipsoid(playerBody,materials.white,x,.72,-.265,.065,.078,.035);
+  softEllipsoid(playerBody,eyeMat,x,.72,-.295,.032,.048,.02);
 }
-for (const x of [-.2,.2]) box(playerBody,x,.1,.02,.15,.18,.18,beakMat);
+for (const x of [-.19,.19]) softEllipsoid(playerBody,beakMat,x,.13,.015,.075,.13,.085);
 player.position.set(0,0,0);
 
 const rows = new Map();
@@ -242,11 +290,13 @@ function buildGrass(row) {
     const tree = new THREE.Group();
     tree.position.set(x,0,0);
     row.group.add(tree);
-    box(tree,0,.42,0,.18,.85,.18,materials.trunk);
-    const shade = randomItem([0x268b43,0x2d9b4c,0x3aa653]);
-    const leaves = makeMaterial(shade);
-    box(tree,0,1.05,0,.72,.68,.72,leaves);
-    box(tree,0,1.46,0,.5,.44,.5,leaves);
+    const barkMat=new THREE.MeshStandardMaterial({color:0x80502b,roughness:1,map:materials.log.map});
+    const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.105,.17,.95,9),barkMat);trunk.position.y=.48;trunk.castShadow=true;tree.add(trunk);
+    const shade = randomItem([0x347e39,0x3d9143,0x4b9c4a,0x2d7136]);
+    const leaves = new THREE.MeshStandardMaterial({color:shade,roughness:.94});
+    const crown1=new THREE.Mesh(new THREE.IcosahedronGeometry(.48,1),leaves);crown1.position.set(0,1.12,0);crown1.scale.set(1,.92,1);crown1.castShadow=true;tree.add(crown1);
+    const crown2=new THREE.Mesh(new THREE.IcosahedronGeometry(.36,1),leaves);crown2.position.set(-.12,1.48,.035);crown2.scale.set(1,.95,1);crown2.castShadow=true;tree.add(crown2);
+    const crown3=new THREE.Mesh(new THREE.IcosahedronGeometry(.31,1),leaves);crown3.position.set(.19,1.35,-.08);crown3.scale.set(1,.92,1);crown3.castShadow=true;tree.add(crown3);
     decorations.push(tree);
     row.obstacles.push({x, lane});
   }
@@ -254,6 +304,8 @@ function buildGrass(row) {
 
 function buildRoad(row) {
   box(row.group,0,-.12,0,ROAD_WIDTH,.24,1.35,materials.road);
+  box(row.group,0,.015,-.64,ROAD_WIDTH,.035,.055,makeMaterial(0xd2c7a0),false,false);
+  box(row.group,0,.015,.64,ROAD_WIDTH,.035,.055,makeMaterial(0xd2c7a0),false,false);
   for(let x=-8;x<=8;x+=2){
     box(row.group,x,.012,0,.72,.025,.045,materials.roadLine,false,false);
   }
@@ -264,8 +316,8 @@ function buildRoad(row) {
     const car = new THREE.Group();
     const color = randomItem([0xe74c3c,0x3498db,0xf1c40f,0x9b59b6,0xecf0f1,0x27ae60]);
     const carMat = makeMaterial(color);
-    box(car,0,.3,0,1.05,.42,.72,carMat);
-    box(car,0,.57,-.02,.58,.28,.62,makeMaterial(0xbfe7f7,.25));
+    roundedBox(car,0,.31,0,1.12,.43,.76,carMat,.12,4);
+    roundedBox(car,0,.59,-.025,.62,.29,.65,makeMaterial(0xbfe7f7,.22),.09,4);
     const headlightMat = makeMaterial(0xfff1b0,.35);
     const tailLightMat = makeMaterial(0xb51f2b,.45);
     for(const z of [-.23,.23]){
@@ -286,6 +338,8 @@ function buildRoad(row) {
 }
 function buildRiver(row) {
   box(row.group,0,-.13,0,ROAD_WIDTH,.26,1.35,materials.water);
+  const foamMat=new THREE.MeshStandardMaterial({color:0xb5e8f1,transparent:true,opacity:.48,roughness:.35});
+  for(const z of [-.62,.62]) box(row.group,0,.012,z,ROAD_WIDTH,.018,.035,foamMat,false,false);
   row.speed = (2.0 + Math.random()*.55) * (Math.random()<.5?-1:1);
   const count = 5;
   const spacing = 5.2;
@@ -323,8 +377,8 @@ function makeTrain(row) {
   const train = new THREE.Group();
   const red = makeMaterial(0xc83232);
   const cream = makeMaterial(0xf3e5c6);
-  box(train,0,.42,0,2.25,.62,.94,red);
-  box(train,0,.79,-.05,1.45,.22,.9,cream);
+  roundedBox(train,0,.42,0,2.25,.62,.94,red,.14,4);
+  roundedBox(train,0,.79,-.05,1.45,.22,.9,cream,.08,4);
   for(const x of [-.62,0,.62]) box(train,x,.59,-.49,.3,.28,.035,makeMaterial(0x9dd8ed,.25));
   for(const x of [-.7,.7]) for(const z of [-.38,.38]){
     const wheel = new THREE.Mesh(unitCylinder,materials.dark);
@@ -371,8 +425,8 @@ function resetGame() {
   laneGroup(0,'grass',0);
   laneGroup(-1.35,'grass',1);
   ensureRows();
-  camera.position.set(0,8.2,10.2);
-  camera.lookAt(0,0,-3.2);
+  camera.position.set(0,7.8,9.4);
+  camera.lookAt(0,0,-3.0);
   startOverlay.classList.remove('hidden');
   gameOverOverlay.classList.add('hidden');
   updateCamera(0);
@@ -380,9 +434,9 @@ function resetGame() {
 }
 function updateCamera(dt) {
   const targetZ = -Math.max(0,playerRow-2)*1.35 - 2.0;
-  const desired = new THREE.Vector3(0,8.2,targetZ+10.2);
+  const desired = new THREE.Vector3(0,7.8,targetZ+9.4);
   camera.position.lerp(desired,Math.min(1,dt*3.2));
-  camera.lookAt(0,0,targetZ-2.35);
+  camera.lookAt(0,0,targetZ-2.1);
 }
 function updateScore() {
   score=Math.max(score,maxForward);
@@ -532,6 +586,7 @@ function loop(now) {
   const dt=Math.min((now-lastTime)/1000,.05);
   lastTime=now;
   if(running) {
+    if(materials.water.map) materials.water.map.offset.x=(materials.water.map.offset.x+dt*.018)%1;
     animatePlayer(dt);
     updateTraffic(dt);
     cleanupRows();
