@@ -76,6 +76,12 @@ button{font:inherit;color:inherit;cursor:pointer}
           <button class="skin-option" id="suitSkin" type="button" aria-pressed="false">
             <span class="skin-icon">🕴️</span><strong>مرد کت‌وشلواری</strong><small>استایل رسمی</small>
           </button>
+          <button class="skin-option" id="spiderSkin" type="button" aria-pressed="false">
+            <span class="skin-icon">🕷️</span><strong>اسپایدرمن</strong><small>قهرمان تارزن</small>
+          </button>
+          <button class="skin-option" id="batmanSkin" type="button" aria-pressed="false">
+            <span class="skin-icon">🦇</span><strong>بتمن</strong><small>شوالیه تاریکی</small>
+          </button>
         </div>
         <button class="primary" id="startButton">شروع بازی</button>
       </div>
@@ -288,7 +294,9 @@ const bellyMat = makeMaterial(0xfff0ce,.92);
 const beakMat = makeMaterial(0xf18a27,.72);
 const eyeMat = makeMaterial(0x171717, .22);
 const SKIN_KEY = 'gozar_crossy_skin_v1';
-let selectedSkin = localStorage.getItem(SKIN_KEY) === 'suit' ? 'suit' : 'chicken';
+const validSkins = ['chicken','suit','spider','batman'];
+let savedSkin = localStorage.getItem(SKIN_KEY);
+let selectedSkin = validSkins.includes(savedSkin) ? savedSkin : 'chicken';
 
 function addVoxel(parent,x,y,z,sx,sy,sz,color,materialOptions={}) {
   const mat = color?.isMaterial ? color : makeMaterial(color, materialOptions.roughness ?? .85);
@@ -359,18 +367,74 @@ function buildSuitSkin() {
   addVoxel(playerBody,.47,.53,-.56,.10,.10,.43,cigarette);
   addVoxel(playerBody,.47,.53,-.785,.105,.105,.09,ember);
 }
+function buildSpiderSkin() {
+  const red=makeMaterial(0xc91625,.72), blue=makeMaterial(0x123b83,.7);
+  const dark=makeMaterial(0x10131c,.5), white=makeMaterial(0xf4f5f7,.3);
+  // Classic red-and-blue blocky Spider-Man suit.
+  addVoxel(playerBody,0,.25,0,.28,.48,.30,blue);
+  addVoxel(playerBody,-.18,.25,0,.18,.48,.30,blue);
+  addVoxel(playerBody,.18,.25,0,.18,.48,.30,blue);
+  addVoxel(playerBody,0,.78,0,.70,.65,.42,red);
+  addVoxel(playerBody,-.43,.77,0,.18,.58,.23,red);
+  addVoxel(playerBody,.43,.77,0,.18,.58,.23,red);
+  addVoxel(playerBody,0,1.49,-.005,.62,.62,.55,red);
+  addVoxel(playerBody,0,1.13,-.005,.22,.18,.24,red);
+  // Blue panels on sides and legs.
+  addVoxel(playerBody,-.23,.70,-.218,.20,.48,.035,blue);
+  addVoxel(playerBody,.23,.70,-.218,.20,.48,.035,blue);
+  addVoxel(playerBody,-.18,.29,-.17,.22,.35,.08,blue);
+  addVoxel(playerBody,.18,.29,-.17,.22,.35,.08,blue);
+  // Large expressive white eye lenses.
+  addVoxel(playerBody,-.16,1.53,-.292,.20,.25,.045,white);
+  addVoxel(playerBody,.16,1.53,-.292,.20,.25,.045,white);
+  addVoxel(playerBody,-.16,1.53,-.321,.12,.17,.018,dark);
+  addVoxel(playerBody,.16,1.53,-.321,.12,.17,.018,dark);
+  // Small black spider emblem.
+  addVoxel(playerBody,0,.91,-.239,.07,.20,.035,dark);
+  addVoxel(playerBody,-.10,.91,-.239,.12,.06,.035,dark);
+  addVoxel(playerBody,.10,.91,-.239,.12,.06,.035,dark);
+}
+function buildBatmanSkin() {
+  const black=makeMaterial(0x171b25,.72), charcoal=makeMaterial(0x303744,.78);
+  const yellow=makeMaterial(0xf2c230,.65), skin=makeMaterial(0xd5b18d,.85);
+  const white=makeMaterial(0xf2f3f5,.3);
+  // Dark armored body, boots and gloves.
+  addVoxel(playerBody,-.17,.25,0,.25,.5,.32,black);
+  addVoxel(playerBody,.17,.25,0,.25,.5,.32,black);
+  addVoxel(playerBody,-.17,.06,-.04,.34,.14,.40,charcoal);
+  addVoxel(playerBody,.17,.06,-.04,.34,.14,.40,charcoal);
+  addVoxel(playerBody,0,.77,0,.72,.67,.44,charcoal);
+  addVoxel(playerBody,-.45,.75,0,.22,.58,.25,black);
+  addVoxel(playerBody,.45,.75,0,.22,.58,.25,black);
+  // Chest bat emblem and yellow utility belt.
+  addVoxel(playerBody,0,.89,-.237,.30,.12,.035,yellow);
+  addVoxel(playerBody,0,.89,-.261,.16,.055,.025,black);
+  addVoxel(playerBody,0,.48,-.232,.70,.13,.045,yellow);
+  addVoxel(playerBody,0,1.50,0,.64,.62,.56,black);
+  // Cowl with pointed bat ears.
+  addVoxel(playerBody,-.22,1.91,-.01,.16,.42,.18,black);
+  addVoxel(playerBody,.22,1.91,-.01,.16,.42,.18,black);
+  // Pale eye slits and lower face.
+  addVoxel(playerBody,-.15,1.55,-.292,.17,.075,.035,white);
+  addVoxel(playerBody,.15,1.55,-.292,.17,.075,.035,white);
+  addVoxel(playerBody,0,1.28,-.285,.27,.22,.035,skin);
+  // Short cape behind the shoulders.
+  addVoxel(playerBody,0,.86,.27,.78,.92,.12,black);
+}
 function applySkin(skinName, persist=true) {
-  selectedSkin = skinName === 'suit' ? 'suit' : 'chicken';
+  selectedSkin = validSkins.includes(skinName) ? skinName : 'chicken';
   playerBody.clear();
   if(selectedSkin === 'suit') buildSuitSkin();
+  else if(selectedSkin === 'spider') buildSpiderSkin();
+  else if(selectedSkin === 'batman') buildBatmanSkin();
   else buildChickenSkin();
-  const chickenButton=document.getElementById('chickenSkin');
-  const suitButton=document.getElementById('suitSkin');
-  if(chickenButton && suitButton) {
-    chickenButton.classList.toggle('active',selectedSkin==='chicken');
-    suitButton.classList.toggle('active',selectedSkin==='suit');
-    chickenButton.setAttribute('aria-pressed',String(selectedSkin==='chicken'));
-    suitButton.setAttribute('aria-pressed',String(selectedSkin==='suit'));
+  const skinButtons = {chicken:'chickenSkin',suit:'suitSkin',spider:'spiderSkin',batman:'batmanSkin'};
+  for(const [skin,id] of Object.entries(skinButtons)) {
+    const button=document.getElementById(id);
+    if(button) {
+      button.classList.toggle('active',selectedSkin===skin);
+      button.setAttribute('aria-pressed',String(selectedSkin===skin));
+    }
   }
   if(persist) localStorage.setItem(SKIN_KEY,selectedSkin);
 }
@@ -840,6 +904,8 @@ function handleMove(kind) {
 }
 document.getElementById('chickenSkin').addEventListener('click',()=>applySkin('chicken'));
 document.getElementById('suitSkin').addEventListener('click',()=>applySkin('suit'));
+document.getElementById('spiderSkin').addEventListener('click',()=>applySkin('spider'));
+document.getElementById('batmanSkin').addEventListener('click',()=>applySkin('batman'));
 document.getElementById('startButton').addEventListener('click',startGame);
 document.getElementById('retryButton').addEventListener('click',()=>{resetGame();startGame();});
 document.getElementById('homeButton').addEventListener('click',()=>{gameOverOverlay.classList.add('hidden');startOverlay.classList.remove('hidden');resetGame();});
