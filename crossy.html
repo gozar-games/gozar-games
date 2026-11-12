@@ -883,6 +883,7 @@ function updateSpectatorCamera(dt) {
   const target=remotePlayers.get(spectatorTargetId);
   if(!target || target.data.alive===false) return;
   const row=Math.max(0,Number(target.data.row)||0);
+  ensureRowsThrough(row);
   const targetZ=-Math.max(0,row-2)*1.35-2.0;
   const desiredPosition=new THREE.Vector3(0,13,targetZ+11.5);
   const desiredLookTarget=new THREE.Vector3(Number(target.data.x||0)*LANE_WIDTH,0,targetZ-1.5);
@@ -1068,7 +1069,9 @@ function updateTraffic(dt) {
   if(rail?.type==='rail' && rail.train && Math.abs(rail.train.position.x-playerX*LANE_WIDTH)<2.05) finishGame('قطار بهت برخورد کرد!');
 }
 function cleanupRows() {
-  const min=playerRow-VISIBLE_BACK;
+  const watched= spectatorMode ? remotePlayers.get(spectatorTargetId) : null;
+  const activeRow=watched ? Math.max(0,Number(watched.data.row)||0) : playerRow;
+  const min=activeRow-VISIBLE_BACK;
   for(const [index,row] of rows) {
     if(index<min) {
       world.remove(row.group);rows.delete(index);
