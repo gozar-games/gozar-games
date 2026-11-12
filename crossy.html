@@ -242,6 +242,10 @@ const chickenSkin = new THREE.Group();
 const businessmanSkin = new THREE.Group();
 playerBody.add(chickenSkin, businessmanSkin);
 
+// The camera views the player from +Z. The businessman model is authored
+// facing -Z, so turn only this visual model toward the camera.
+businessmanSkin.rotation.y = Math.PI;
+
 const bodyMat = makeMaterial(0xffc94f,.88);
 const bellyMat = makeMaterial(0xfff0ce,.92);
 const beakMat = makeMaterial(0xf18a27,.72);
