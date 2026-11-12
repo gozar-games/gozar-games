@@ -125,8 +125,8 @@ scene.fog = new THREE.Fog(0x9bdcff, 22, 48);
 const skyGlow=new THREE.Mesh(new THREE.SphereGeometry(90,24,16),new THREE.MeshBasicMaterial({color:0xb8e4ff,side:THREE.BackSide}));scene.add(skyGlow);
 
 const camera = new THREE.PerspectiveCamera(43, 1, 0.1, 220);
-camera.position.set(0, 10.5, 13.2);
-camera.lookAt(0, 0, -3.2);
+camera.position.set(0, 13, 11.5);
+camera.lookAt(0, 0, -3.5);
 
 let renderer;
 try {
@@ -639,18 +639,25 @@ function resetGame() {
   laneGroup(0,'grass',0);
   laneGroup(-1.35,'grass',1);
   ensureRows();
-  camera.position.set(0,10.5,13.2);
-  camera.lookAt(0,0,-3.0);
+  camera.position.set(0,13,11.5);
+  cameraLookTarget.set(0,0,-3.5);
+  camera.lookAt(cameraLookTarget);
   startOverlay.classList.remove('hidden');
   gameOverOverlay.classList.add('hidden');
   updateCamera(0);
   render();
 }
 function updateCamera(dt) {
+  // Keep the camera position and its look target in sync. Previously the
+  // camera body eased slowly while lookAt jumped immediately, which could
+  // make the player leave the frame during fast progress (notably around 60-70).
   const targetZ = -Math.max(0,playerRow-2)*1.35 - 2.0;
-  const desired = new THREE.Vector3(0,10.5,targetZ+13.2);
-  camera.position.lerp(desired,Math.min(1,dt*3.2));
-  camera.lookAt(0,0,targetZ-2.6);
+  const desiredPosition = new THREE.Vector3(0,13,targetZ+11.5);
+  const desiredLookTarget = new THREE.Vector3(0,0,targetZ-1.5);
+  const follow = 1 - Math.exp(-dt*10);
+  camera.position.lerp(desiredPosition,follow);
+  cameraLookTarget.lerp(desiredLookTarget,follow);
+  camera.lookAt(cameraLookTarget);
 }
 function updateScore() {
   score=Math.max(score,maxForward);
