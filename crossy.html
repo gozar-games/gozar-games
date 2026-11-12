@@ -968,7 +968,29 @@ function updateAIBots(dt) {
       else if(lane.type==='river') choices=lane.objects.filter(o=>o.kind==='log').map(o=>({x:o.x/LANE_WIDTH,log:o})).filter(v=>Math.abs(v.x)<=2.45 && Math.abs(v.x*LANE_WIDTH-v.log.x)<v.log.width/2-.12);
       else {if(lane.train && Math.abs(lane.train.position.x-bot.x*LANE_WIDTH)<2.05)continue;choices=[bot.x];}
       if(!choices.length)continue;
-      choices.sort((a,b)=>Math.abs((typeof a==='number'?a:a.x)-bot.x)-Math.abs((typeof b==='number'?b:b.x)-bot.x));
+
+      // Keep AI opponents in separate lanes. The first bot may claim a
+      // destination; later bots must choose another safe position instead
+      // of following into the exact same spot and visually merging.
+      const otherBots=aiBots.filter(other=>other!==bot&&other.alive&&other.row>=nextRow-1);
+      const separated=choices.filter(choice=>{
+        const candidateX=typeof choice==='number'?choice:choice.x;
+        return !otherBots.some(other=>
+          Math.abs(other.row-nextRow)<=1 &&
+          Math.abs(other.x-candidateX)<(lane.type==='river'?1.15:.78)
+        );
+      });
+      if(separated.length) choices=separated;
+      else if(otherBots.length) continue;
+
+      // Give each bot a slightly different preferred side when distances tie.
+      const botIndex=aiBots.indexOf(bot);
+      choices.sort((a,b)=>{
+        const ax=typeof a==='number'?a:a.x, bx=typeof b==='number'?b:b.x;
+        const aCost=Math.abs(ax-bot.x)+(botIndex===0?Math.max(0,ax)*.035:Math.max(0,-ax)*.035);
+        const bCost=Math.abs(bx-bot.x)+(botIndex===0?Math.max(0,bx)*.035:Math.max(0,-bx)*.035);
+        return aCost-bCost;
+      });
       const pick=choices[0];bot.x=typeof pick==='number'?pick:pick.x;bot.row=nextRow;bot.ridingLog=lane.type==='river'?pick.log:null;botStateDirty=true;
     }
   }
