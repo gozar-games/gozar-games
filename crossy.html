@@ -235,8 +235,7 @@ function syncRemotePlayers(players) {
       Math.abs((Number(other.x)||0)-(Number(data.x)||0))<0.72
     );
     const visualOffset=overlappingAI?(data.id==='ai-1'?-0.43:0.43):0;
-    entry.group.position.set((Number(data.x)||0+visualOffset)*LANE_WIDTH,0,-(Number(data.row)||0)*1.35);
-    if(overlappingAI) entry.group.position.x=((Number(data.x)||0)+visualOffset)*LANE_WIDTH;
+    entry.group.position.set(((Number(data.x)||0)+visualOffset)*LANE_WIDTH,0,-(Number(data.row)||0)*1.35);
     entry.group.visible=data.alive!==false;
     entry.group.traverse(n=>{if(n.isSprite)n.position.y=data.alive===false?2.1:2.35;});
   }
