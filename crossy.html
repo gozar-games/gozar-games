@@ -343,7 +343,13 @@ function selectSkin(skin) {
   render();
 }
 document.querySelectorAll('.skin-option').forEach(button=>{
-  button.addEventListener('click',()=>selectSkin(button.dataset.skin));
+  button.addEventListener('click',event=>{
+    event.preventDefault();
+    event.stopPropagation();
+    selectSkin(button.dataset.skin);
+    // Choosing a character now immediately starts a fresh run.
+    startGame();
+  });
 });
 player.position.set(0,0,0);
 buildSelectedSkin();
