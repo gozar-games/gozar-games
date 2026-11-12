@@ -254,8 +254,8 @@ function handleRoomMessage(msg) {
       aiBots=Array.from({length:desiredBots},(_,index)=>{
         const saved=existingBots[index];
         return saved
-          ? {...saved,id:`ai-${index+1}`,x:index===0?-2:2,ridingLog:null,cooldown:.25}
-          : {id:`ai-${index+1}`,name:`هوش مصنوعی ${index+1}`,skin:index===0?'suit':'spider',x:index===0?-2:2,row:0,alive:true,finishedAt:null,ridingLog:null,cooldown:.35+index*.22};
+          ? {...saved,id:`ai-${index+1}`,x:index===0?-2:2,ridingLog:null,cooldown:.18+index*.32}
+          : {id:`ai-${index+1}`,name:`هوش مصنوعی ${index+1}`,skin:index===0?'suit':'spider',x:index===0?-2:2,row:0,alive:true,finishedAt:null,ridingLog:null,cooldown:.18+index*.32};
       });
       aiAccumulator=0;aiBroadcastAccumulator=0;
     }
@@ -959,7 +959,9 @@ function updateAIBots(dt) {
     for(const bot of aiBots){
       if(!bot.alive) continue;
       bot.cooldown-=.52;if(bot.cooldown>0)continue;
-      bot.cooldown=.34+(bot.row%3)*.09;
+      const botIndex=aiBots.indexOf(bot);
+      // Stagger the opponents so they do not advance in synchronized lockstep.
+      bot.cooldown=.24+(botIndex===1?.42:0)+((bot.row+botIndex)%3)*.07;
       const nextRow=bot.row+1;ensureRowsThrough(nextRow);
       const lane=rows.get(nextRow);if(!lane)continue;
       let choices=[];
@@ -983,8 +985,8 @@ function updateAIBots(dt) {
       if(separated.length) choices=separated;
       else if(otherBots.length) continue;
 
-      // Keep bot 1 on the left half and bot 2 on the right half whenever possible.
-      const botIndex=aiBots.indexOf(bot);
+      // Give each opponent a different lane route, not just a different spawn point.
+      const route=botIndex===0?[-2,-1,0,-1][bot.row%4]:[2,1,0,1][bot.row%4];
       const preferred=choices.filter(choice=>{
         const x=typeof choice==='number'?choice:choice.x;
         return botIndex===0?x<=0:x>=0;
@@ -992,7 +994,7 @@ function updateAIBots(dt) {
       if(preferred.length) choices=preferred;
       choices.sort((a,b)=>{
         const ax=typeof a==='number'?a:a.x, bx=typeof b==='number'?b:b.x;
-        const aCost=Math.abs(ax-bot.x), bCost=Math.abs(bx-bot.x);
+        const aCost=Math.abs(ax-route), bCost=Math.abs(bx-route);
         return aCost-bCost;
       });
       const pick=choices[0];bot.x=typeof pick==='number'?pick:pick.x;bot.row=nextRow;bot.ridingLog=lane.type==='river'?pick.log:null;botStateDirty=true;
