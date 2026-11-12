@@ -271,7 +271,8 @@ function handleRoomMessage(msg) {
   }
   const furthestPlayerRow=players.reduce((max,p)=>Math.max(max,Number(p.row)||0),playerRow);
   ensureRowsThrough(furthestPlayerRow);
-  setRoomStatus(`اتاق آماده است · ${players.length}/4 بازیکن\n${players.map(p=>(p.id===myPlayerId?'● ':'○ ')+p.name+(p.alive===false?' (حذف شده)':'')).join('\n')}\n${roomStarted?'بازی در حال اجراست':'برای شروع، منتظر دوستانت بمان.'}`);
+  const aiDebug=players.filter(p=>p.isAI).map(p=>`${p.id}: x=${Number(p.x).toFixed(2)}, row=${Number(p.row)||0}`).join(' | ');
+  setRoomStatus(`اتاق آماده است · ${players.length}/4 بازیکن\n${players.map(p=>(p.id===myPlayerId?'● ':'○ ')+p.name+(p.alive===false?' (حذف شده)':'')).join('\n')}\n${roomStarted?'بازی در حال اجراست':'برای شروع، منتظر دوستانت بمان.'}${aiDebug?'\nموقعیت AI: '+aiDebug:''}`);
   syncRemotePlayers(players);
   if(msg.resetVersion!==lastResetVersion && lastResetVersion!==-1){lastResetVersion=msg.resetVersion;aiBots=[];resetGame();}
   else lastResetVersion=msg.resetVersion;
