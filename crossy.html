@@ -31,6 +31,11 @@ button{font:inherit;color:inherit;cursor:pointer}
 .dialog p{font-size:12px;color:#bbb;line-height:1.9;margin:5px 0 15px}
 .primary{border:0;border-radius:12px;background:var(--accent);padding:11px 22px;font-weight:900;min-width:145px}
 .secondary{border:1px solid #444;border-radius:12px;background:#242424;padding:10px 16px;font-weight:800;margin-right:6px}
+.skin-picker{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 14px;direction:rtl}
+.skin-option{border:1px solid #444;border-radius:12px;background:#202020;padding:10px 7px;font-size:12px;font-weight:800;line-height:1.6}
+.skin-option .skin-icon{display:block;font-size:25px;margin-bottom:3px}
+.skin-option.selected{border:2px solid var(--accent);background:#35191c;box-shadow:0 0 0 2px #ed172522}
+.skin-caption{font-size:10px;color:#aaa;margin:0 0 5px}
 .controls{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;flex:none;direction:ltr}
 .control{height:51px;border:1px solid #383838;border-radius:14px;background:#191919;font-size:21px;font-weight:900;touch-action:none;user-select:none;-webkit-user-select:none}
 .control.forward{background:#292020;border-color:#713038;color:#ff7078}
@@ -62,6 +67,15 @@ button{font:inherit;color:inherit;cursor:pointer}
         <div class="emoji">🐤</div>
         <h1>Crossy Road</h1>
         <p>از جاده‌ها، رودخانه‌ها و ریل قطار عبور کن.<br>تا می‌توانی جلو برو و مراقب موانع باش!</p>
+        <div class="skin-caption">شخصیتت رو انتخاب کن</div>
+        <div class="skin-picker" id="skinPicker">
+          <button class="skin-option" id="skinBusinessman" type="button" aria-pressed="false">
+            <span class="skin-icon">🕶️</span>مرد کت‌وشلواری
+          </button>
+          <button class="skin-option selected" id="skinChicken" type="button" aria-pressed="true">
+            <span class="skin-icon">🐤</span>مرغ سفید
+          </button>
+        </div>
         <button class="primary" id="startButton">شروع بازی</button>
       </div>
     </section>
@@ -222,20 +236,116 @@ const player = new THREE.Group();
 world.add(player);
 const playerBody = new THREE.Group();
 player.add(playerBody);
+// Character models are visual-only children of playerBody. Movement, collision,
+// lane logic and scoring continue to use the same player group as before.
+const chickenSkin = new THREE.Group();
+const businessmanSkin = new THREE.Group();
+playerBody.add(chickenSkin, businessmanSkin);
+
 const bodyMat = makeMaterial(0xffc94f,.88);
 const bellyMat = makeMaterial(0xfff0ce,.92);
 const beakMat = makeMaterial(0xf18a27,.72);
 const eyeMat = makeMaterial(0x171717, .22);
 function softEllipsoid(parent,material,x,y,z,sx,sy,sz){const m=new THREE.Mesh(new THREE.SphereGeometry(1,24,18),material);m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}
-softEllipsoid(playerBody,bodyMat,0,.53,0,.34,.43,.31);
-softEllipsoid(playerBody,bellyMat,0,.34,-.235,.245,.23,.105);
-softEllipsoid(playerBody,bodyMat,0,.91,-.025,.29,.19,.27);
-softEllipsoid(playerBody,beakMat,0,.57,-.325,.15,.075,.12);
+
+// Original chicken model retained as the second selectable skin.
+softEllipsoid(chickenSkin,bodyMat,0,.53,0,.34,.43,.31);
+softEllipsoid(chickenSkin,bellyMat,0,.34,-.235,.245,.23,.105);
+softEllipsoid(chickenSkin,bodyMat,0,.91,-.025,.29,.19,.27);
+softEllipsoid(chickenSkin,beakMat,0,.57,-.325,.15,.075,.12);
 for (const x of [-.16,.16]) {
-  softEllipsoid(playerBody,materials.white,x,.72,-.265,.065,.078,.035);
-  softEllipsoid(playerBody,eyeMat,x,.72,-.295,.032,.048,.02);
+  softEllipsoid(chickenSkin,materials.white,x,.72,-.265,.065,.078,.035);
+  softEllipsoid(chickenSkin,eyeMat,x,.72,-.295,.032,.048,.02);
 }
-for (const x of [-.19,.19]) softEllipsoid(playerBody,beakMat,x,.13,.015,.075,.13,.085);
+for (const x of [-.19,.19]) softEllipsoid(chickenSkin,beakMat,x,.13,.015,.075,.13,.085);
+
+// Voxel businessman: oversized block hair/head, sunglasses, beard, cigar and suit.
+const skinTone = makeMaterial(0xf0c18c,.92);
+const skinShade = makeMaterial(0xd6a477,.95);
+const hairBlack = makeMaterial(0x080d12,.88);
+const hairBrown = makeMaterial(0x754238,.9);
+const glassesMat = makeMaterial(0x050608,.3);
+const beardMat = makeMaterial(0x76504b,.95);
+const suitMat = makeMaterial(0x10151b,.9);
+const suitShade = makeMaterial(0x1a2028,.9);
+const shirtMat = makeMaterial(0xf0eee7,.9);
+const tieMat = makeMaterial(0x090b0e,.8);
+const cigarWhite = makeMaterial(0xe9e4d9,.85);
+const cigarBand = makeMaterial(0xe5a52c,.8);
+const cigarTip = makeMaterial(0xf04b16,.75);
+
+// Back and crown of the hair.
+box(businessmanSkin,0,1.28,.055,.88,.88,.66,hairBlack);
+box(businessmanSkin,0,1.67,-.005,.78,.20,.66,hairBrown);
+box(businessmanSkin,-.405,1.34,-.02,.10,.56,.66,hairBlack);
+box(businessmanSkin,.405,1.34,-.02,.10,.56,.66,hairBlack);
+
+// Face, ears and broad black sunglasses.
+box(businessmanSkin,0,1.30,-.315,.66,.48,.16,skinTone);
+box(businessmanSkin,-.39,1.25,-.20,.13,.25,.20,skinTone);
+box(businessmanSkin,.39,1.25,-.20,.13,.25,.20,skinTone);
+box(businessmanSkin,0,1.31,-.414,.73,.17,.075,glassesMat);
+box(businessmanSkin,-.19,1.31,-.458,.29,.16,.035,glassesMat);
+box(businessmanSkin,.19,1.31,-.458,.29,.16,.035,glassesMat);
+box(businessmanSkin,0,1.20,-.414,.10,.055,.055,skinShade);
+
+// Large squared beard and moustache area.
+box(businessmanSkin,0,.99,-.31,.68,.29,.20,beardMat);
+box(businessmanSkin,0,1.095,-.425,.24,.10,.055,beardMat);
+
+// Black suit torso, white shirt, tie and squared sleeves.
+box(businessmanSkin,0,.59,0,.88,.78,.53,suitMat);
+box(businessmanSkin,0,.70,-.278,.31,.58,.045,shirtMat);
+box(businessmanSkin,0,.72,-.309,.105,.40,.035,tieMat);
+box(businessmanSkin,0,.49,-.31,.16,.12,.045,tieMat);
+for (const x of [-.56,.56]) {
+  box(businessmanSkin,x,.62,0,.22,.68,.48,suitShade);
+  box(businessmanSkin,x,.20,-.005,.22,.22,.25,skinTone);
+}
+// Trouser legs and block shoes.
+for (const x of [-.235,.235]) {
+  box(businessmanSkin,x,.12,.015,.31,.48,.43,suitMat);
+  box(businessmanSkin,x,.015,-.075,.36,.16,.55,hairBlack);
+}
+
+// Cigarette projects from the lower face toward the front (-Z).
+box(businessmanSkin,-.43,1.00,-.53,.39,.085,.085,cigarWhite);
+box(businessmanSkin,-.65,1.00,-.53,.085,.085,.09,cigarTip);
+box(businessmanSkin,-.49,1.00,-.53,.045,.09,.092,cigarBand);
+
+// Small stylized smoke puffs; decorative only and do not affect gameplay.
+const smokeMat = new THREE.MeshBasicMaterial({color:0xd7e0e7,transparent:true,opacity:.22});
+for (const puff of [[-.72,1.16,-.55,.055],[-.82,1.31,-.55,.075],[-.94,1.48,-.55,.09]]) {
+  const smoke = new THREE.Mesh(new THREE.BoxGeometry(puff[3],puff[3],puff[3]),smokeMat);
+  smoke.position.set(puff[0],puff[1],puff[2]);
+  businessmanSkin.add(smoke);
+}
+
+let selectedSkin = localStorage.getItem('gozar_crossy_skin_v1') || 'chicken';
+function applySelectedSkin() {
+  const isBusinessman = selectedSkin === 'businessman';
+  businessmanSkin.visible = isBusinessman;
+  chickenSkin.visible = !isBusinessman;
+  const manButton = document.getElementById('skinBusinessman');
+  const chickenButton = document.getElementById('skinChicken');
+  if (manButton && chickenButton) {
+    manButton.classList.toggle('selected', isBusinessman);
+    chickenButton.classList.toggle('selected', !isBusinessman);
+    manButton.setAttribute('aria-pressed', String(isBusinessman));
+    chickenButton.setAttribute('aria-pressed', String(!isBusinessman));
+  }
+}
+document.getElementById('skinBusinessman').addEventListener('click',()=>{
+  selectedSkin='businessman';
+  localStorage.setItem('gozar_crossy_skin_v1',selectedSkin);
+  applySelectedSkin();
+});
+document.getElementById('skinChicken').addEventListener('click',()=>{
+  selectedSkin='chicken';
+  localStorage.setItem('gozar_crossy_skin_v1',selectedSkin);
+  applySelectedSkin();
+});
+applySelectedSkin();
 player.position.set(0,0,0);
 
 const rows = new Map();
