@@ -45,6 +45,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .hint{flex:none;text-align:center;color:#999;font-size:10px;line-height:1.7}
 .toast{position:absolute;top:12px;left:50%;transform:translateX(-50%);padding:7px 12px;background:#151515dd;border:1px solid #555;border-radius:20px;font-size:11px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .2s}
 .toast.show{opacity:1}
+.multiplayer-panel{border-top:1px solid #393939;margin-top:13px;padding-top:11px;display:grid;gap:7px;text-align:right}.mp-input{width:100%;border:1px solid #444;border-radius:10px;background:#0f0f0f;color:#fff;padding:9px 10px;font:inherit;font-size:12px;outline:none}.mp-row{display:grid;grid-template-columns:1fr 1fr;gap:7px}.mp-button{border:1px solid #484848;border-radius:10px;background:#242424;padding:9px 6px;font-size:11px;font-weight:800}.mp-button.primary-mp{background:#8e1720;border-color:#b62a35}.room-status{font-size:10px;color:#c9c9c9;line-height:1.8;white-space:pre-line}.room-code{direction:ltr;font-weight:900;font-size:18px;letter-spacing:3px;color:#ff7279}.room-hidden{display:none!important}
 @media(min-height:760px){.app{gap:11px}.control{height:56px}.hint{font-size:11px}}
 @media(max-height:620px){.app{gap:6px;padding-top:5px;padding-bottom:5px}.top{height:34px}.stat{padding:3px 9px}.stat strong{font-size:18px}.control{height:43px}.hint{font-size:9px}}
 </style>
@@ -83,7 +84,22 @@ button{font:inherit;color:inherit;cursor:pointer}
             <span class="skin-icon">🦇</span><strong>بتمن</strong><small>شوالیه تاریکی</small>
           </button>
         </div>
-        <button class="primary" id="startButton">شروع بازی</button>
+        <button class="primary" id="startButton">بازی تک‌نفره</button>
+        <div class="multiplayer-panel">
+          <strong style="font-size:13px">🌐 بازی آنلاین ۴ نفره</strong>
+          <input class="mp-input" id="playerName" maxlength="16" placeholder="اسم بازیکنت" value="بازیکن">
+          <div class="mp-row">
+            <button class="mp-button primary-mp" id="createRoomButton">ساخت اتاق</button>
+            <button class="mp-button" id="joinRoomButton">ورود با کد</button>
+          </div>
+          <input class="mp-input" id="roomCodeInput" maxlength="6" placeholder="کد اتاق دوستان" style="text-transform:uppercase;direction:ltr;text-align:center;letter-spacing:3px">
+          <div id="roomStatus" class="room-status">برای بازی با دوستان، اتاق بساز یا کد اتاق را وارد کن.</div>
+          <div id="roomCodeDisplay" class="room-code room-hidden"></div>
+          <div class="mp-row room-hidden" id="roomActions">
+            <button class="mp-button primary-mp" id="startRoomButton">شروع مسابقه</button>
+            <button class="mp-button" id="leaveRoomButton">خروج از اتاق</button>
+          </div>
+        </div>
       </div>
     </section>
     <section class="overlay hidden" id="gameOverOverlay">
@@ -119,6 +135,75 @@ const startOverlay = document.getElementById('startOverlay');
 const gameOverOverlay = document.getElementById('gameOverOverlay');
 const finalText = document.getElementById('finalText');
 const toastEl = document.getElementById('toast');
+
+// Multiplayer is served by a Cloudflare Pages Function backed by a Durable Object.
+const ROOM_API = '/api/rooms';
+let roomSocket = null;
+let roomCode = '';
+let myPlayerId = '';
+let roomSeed = 0;
+let roomStartedAt = 0;
+let roomStarted = false;
+let lastResetVersion = -1;
+let lastNetPositionAt = 0;
+let remotePlayers = new Map();
+const roomStatusEl = document.getElementById('roomStatus');
+const roomCodeDisplay = document.getElementById('roomCodeDisplay');
+const roomActions = document.getElementById('roomActions');
+function sendRoomMessage(payload) {
+  if(roomSocket && roomSocket.readyState === WebSocket.OPEN) roomSocket.send(JSON.stringify(payload));
+}
+function setRoomStatus(message) { roomStatusEl.textContent = message; }
+function roomName() { return (document.getElementById('playerName').value || 'بازیکن').trim().slice(0,16) || 'بازیکن'; }
+function roomWsUrl(code) { const scheme=location.protocol==='https:'?'wss:':'ws:'; return `${scheme}//${location.host}${ROOM_API}/${encodeURIComponent(code)}/ws?name=${encodeURIComponent(roomName())}&skin=${encodeURIComponent(selectedSkin)}`; }
+function connectRoom(code) {
+  if(roomSocket) { try{roomSocket.close(1000,'switch room');}catch(_){} }
+  roomCode=code.toUpperCase(); setRoomStatus('در حال اتصال به اتاق...');
+  const ws=new WebSocket(roomWsUrl(roomCode)); roomSocket=ws;
+  ws.addEventListener('open',()=>{setRoomStatus('اتصال برقرار شد؛ در انتظار اطلاعات اتاق...'); roomCodeDisplay.textContent=roomCode; roomCodeDisplay.classList.remove('room-hidden'); roomActions.classList.remove('room-hidden'); document.getElementById('startButton').classList.add('room-hidden');});
+  ws.addEventListener('message',event=>{let msg;try{msg=JSON.parse(event.data)}catch(_){return;} handleRoomMessage(msg);});
+  ws.addEventListener('close',event=>{if(roomSocket!==ws)return; roomSocket=null; roomStarted=false; roomActions.classList.add('room-hidden'); if(event.code!==1000)setRoomStatus('ارتباط با اتاق قطع شد. دوباره وارد شو.');});
+  ws.addEventListener('error',()=>setRoomStatus('اتصال برقرار نشد؛ آدرس API و اتصال Cloudflare را بررسی کن.'));
+}
+function makeNameSprite(name) {
+  const c=document.createElement('canvas'); c.width=320;c.height=80; const ctx=c.getContext('2d');
+  ctx.fillStyle='rgba(12,12,12,.82)';ctx.beginPath();ctx.roundRect(8,8,304,64,18);ctx.fill();
+  ctx.fillStyle='#fff';ctx.font='bold 32px Vazirmatn, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(name.slice(0,16),160,41);
+  const tex=new THREE.CanvasTexture(c); const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));sprite.scale.set(1.55,.39,1);sprite.position.y=2.35;return sprite;
+}
+function addRemotePlayer(data) {
+  const group=new THREE.Group(); const body=playerBody.clone(true);
+  // Give each remote avatar a distinct tint while retaining the selected voxel character shape.
+  const hue=(Array.from(data.id).reduce((a,ch)=>a+ch.charCodeAt(0),0)%360)/360;
+  body.traverse(node=>{if(node.isMesh && node.material){node.material=node.material.clone();if(node.material.color)node.material.color.offsetHSL((hue-.5)*.28,0,0);}});
+  group.add(body);group.add(makeNameSprite(data.name));world.add(group);remotePlayers.set(data.id,{group,data});return remotePlayers.get(data.id);
+}
+function syncRemotePlayers(players) {
+  const keep=new Set();
+  for(const data of players||[]){if(data.id===myPlayerId)continue;keep.add(data.id);let entry=remotePlayers.get(data.id);if(!entry)entry=addRemotePlayer(data);entry.data=data;entry.group.position.set(data.x*LANE_WIDTH,0,-data.row*1.35);entry.group.visible=data.alive!==false;entry.group.traverse(n=>{if(n.isSprite)n.position.y=data.alive===false?2.1:2.35;});}
+  for(const [id,entry] of remotePlayers){if(!keep.has(id)){world.remove(entry.group);entry.group.traverse(n=>{if(n.isSprite&&n.material.map)n.material.map.dispose();if(n.isSprite)n.material.dispose();});remotePlayers.delete(id);}}
+}
+function handleRoomMessage(msg) {
+  if(msg.type==='error'){setRoomStatus(msg.message||'خطا در اتاق');showToast(msg.message||'خطا در اتاق');return;}
+  if(msg.type!=='state')return;
+  myPlayerId=msg.playerId||myPlayerId; const previousRoomSeed=roomSeed; roomSeed=msg.seed||roomSeed; roomStarted=!!msg.started; roomStartedAt=msg.startAt||0;
+  if(roomSeed && roomSeed!==previousRoomSeed) resetGame();
+  const players=msg.players||[]; const me=players.find(p=>p.id===myPlayerId);
+  const furthestPlayerRow=players.reduce((max,p)=>Math.max(max,Number(p.row)||0),playerRow);
+  ensureRowsThrough(furthestPlayerRow);
+  setRoomStatus(`اتاق آماده است · ${players.length}/4 بازیکن\n${players.map(p=>(p.id===myPlayerId?'● ':'○ ')+p.name+(p.alive===false?' (حذف شده)':'')).join('\n')}\n${roomStarted?'بازی در حال اجراست':'برای شروع، منتظر دوستانت بمان.'}`);
+  syncRemotePlayers(players);
+  if(msg.resetVersion!==lastResetVersion && lastResetVersion!==-1){lastResetVersion=msg.resetVersion;resetGame();}
+  else lastResetVersion=msg.resetVersion;
+  if(roomStarted && !running){startGame(true);}
+  if(!roomStarted && running){running=false;ended=false;startOverlay.classList.remove('hidden');}
+}
+async function createRoom() {
+  try{const response=await fetch(`${ROOM_API}/create`,{method:'POST'});const data=await response.json();if(!response.ok||!data.code)throw new Error(data.error||'ساخت اتاق ناموفق بود');resetGame();connectRoom(data.code);}
+  catch(error){setRoomStatus('ساخت اتاق انجام نشد: '+error.message);}
+}
+function joinRoom() {const code=document.getElementById('roomCodeInput').value.trim().toUpperCase();if(!/^[A-Z0-9]{6}$/.test(code)){setRoomStatus('کد اتاق باید ۶ حرف یا عدد باشد.');return;}resetGame();connectRoom(code);}
+function leaveRoom() {if(roomSocket){roomSocket.close(1000,'left room');roomSocket=null;}document.getElementById('startButton').classList.remove('room-hidden');roomCode='';roomStarted=false;myPlayerId='';roomSeed=0;roomStartedAt=0;for(const entry of remotePlayers.values())world.remove(entry.group);remotePlayers.clear();roomActions.classList.add('room-hidden');roomCodeDisplay.classList.add('room-hidden');setRoomStatus('از اتاق خارج شدی.');resetGame();}
 
 const BEST_KEY = 'gozar_crossy_best_v1';
 let best = Number(localStorage.getItem(BEST_KEY) || 0);
@@ -437,6 +522,7 @@ function applySkin(skinName, persist=true) {
     }
   }
   if(persist) localStorage.setItem(SKIN_KEY,selectedSkin);
+  if(persist && roomSocket) sendRoomMessage({type:'skin',skin:selectedSkin});
 }
 applySkin(selectedSkin,false);
 player.position.set(0,0,0);
@@ -611,7 +697,7 @@ function buildRoad(row) {
     const startX = (i-(count-1)/2)*carSpacing;
     car.position.set(startX,0,0);
     row.group.add(car);
-    row.objects.push({mesh:car,x:startX,width:1.55,kind:'car'});
+    row.objects.push({mesh:car,x:startX,baseX:startX,width:1.55,kind:'car'});
     moving.push({row,object:row.objects[row.objects.length-1]});
   }
 }
@@ -635,7 +721,7 @@ function buildRiver(row) {
     const startX=(i-(count-1)/2)*spacing;
     log.position.set(startX,0,0);
     row.group.add(log);
-    row.objects.push({mesh:log,x:startX,width:length,kind:'log'});
+    row.objects.push({mesh:log,x:startX,baseX:startX,width:length,kind:'log'});
     moving.push({row,object:row.objects[row.objects.length-1]});
   }
 }
@@ -669,7 +755,7 @@ function makeTrain(row) {
   row.speed=11.5;
   row.direction=1;
 }
-function buildRow(index) {
+function buildRowUnseeded(index) {
   const z = -index*1.35;
   let type;
   if(index<=1) type='grass';
@@ -684,10 +770,18 @@ function buildRow(index) {
   }
   return laneGroup(z,type,index);
 }
-function ensureRows() {
-  const lastNeeded = playerRow + VISIBLE_FRONT;
+function buildRow(index) {
+  if(!roomSocket || !roomSeed) return buildRowUnseeded(index);
+  const originalRandom=Math.random;
+  let seed=(roomSeed ^ Math.imul(index+1,0x9E3779B1))>>>0;
+  Math.random=()=>{seed=(seed+0x6D2B79F5)>>>0;let t=seed;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;};
+  try{return buildRowUnseeded(index);}finally{Math.random=originalRandom;}
+}
+function ensureRowsThrough(targetRow) {
+  const lastNeeded = Math.max(0,targetRow) + VISIBLE_FRONT;
   for(let i=0;i<=lastNeeded;i++) if(!rows.has(i)) buildRow(i);
 }
+function ensureRows() { ensureRowsThrough(playerRow); }
 function clearWorld() {
   for(const child of [...world.children]) world.remove(child);
   rows.clear();moving.length=0;decorations.length=0;
@@ -695,6 +789,8 @@ function clearWorld() {
 }
 function resetGame() {
   clearWorld();
+  randomMapSegments.clear();
+  for(const entry of remotePlayers.values()) world.add(entry.group);
   score=0;maxForward=0;playerX=0;playerRow=0;jump=null;
   running=false;ended=false;
   applyMapTheme('main',false);
@@ -702,8 +798,8 @@ function resetGame() {
   player.position.set(0,0,0);
   playerBody.position.y=0;
   playerBody.rotation.set(0,0,0);
-  laneGroup(0,'grass',0);
-  laneGroup(-1.35,'grass',1);
+  buildRow(0);
+  buildRow(1);
   ensureRows();
   camera.position.set(0,13,11.5);
   cameraLookTarget.set(0,0,-3.5);
@@ -760,6 +856,7 @@ function movePlayer(dx,dz) {
   }
 
   playerX = nextX;
+  if(roomSocket) sendRoomMessage({type:'move',dx,dz,x:playerX});
   if(dz !== 0) {
     playerRow = nextRow;
     maxForward = Math.max(maxForward, playerRow);
@@ -783,13 +880,15 @@ function checkLanding() {
 function finishGame(reason) {
   if(ended) return;
   running=false;ended=true;jump=null;
+  if(roomSocket) sendRoomMessage({type:'dead'});
   best=Math.max(best,score);
   localStorage.setItem(BEST_KEY,String(best));
   bestEl.textContent=String(best);
   finalText.textContent=`${reason} امتیاز تو: ${score}`;
   gameOverOverlay.classList.remove('hidden');
 }
-function startGame() {
+function startGame(fromNetwork=false) {
+  if(roomSocket && !fromNetwork) { sendRoomMessage({type:'start'}); return; }
   if(ended) resetGame();
   running=true;ended=false;
   startOverlay.classList.add('hidden');
@@ -813,35 +912,33 @@ function animatePlayer(dt) {
   }
 }
 function updateTraffic(dt) {
-  const elapsedSpeed=1+Math.min(score*.018,.9);
+  const shared=!!(roomSocket && roomStartedAt);
+  const globalElapsed=shared?Math.max(0,(Date.now()-roomStartedAt)/1000):0;
+  const elapsedSpeed=shared?1:(1+Math.min(score*.018,.9));
   for(const row of rows.values()) {
     if(row.type==='road') {
       for(const obj of row.objects) {
-        obj.x+=row.speed*elapsedSpeed*dt;
-        if(row.speed>0 && obj.x>14) obj.x=-14;
-        if(row.speed<0 && obj.x<-14) obj.x=14;
+        if(shared){const raw=obj.baseX+row.speed*elapsedSpeed*globalElapsed;obj.x=((raw+14)%28+28)%28-14;}
+        else {obj.x+=row.speed*elapsedSpeed*dt;if(row.speed>0 && obj.x>14)obj.x=-14;if(row.speed<0 && obj.x<-14)obj.x=14;}
         obj.mesh.position.x=obj.x;
       }
     } else if(row.type==='river') {
       for(const obj of row.objects) {
-        obj.x+=row.speed*dt;
-        if(row.speed>0 && obj.x>14) obj.x=-14;
-        if(row.speed<0 && obj.x<-14) obj.x=14;
+        if(shared){const raw=obj.baseX+row.speed*globalElapsed;obj.x=((raw+14)%28+28)%28-14;}
+        else {obj.x+=row.speed*dt;if(row.speed>0 && obj.x>14)obj.x=-14;if(row.speed<0 && obj.x<-14)obj.x=14;}
         obj.mesh.position.x=obj.x;
       }
     } else if(row.type==='rail') {
-      const dist=playerRow-row.index;
-      if(!row.train && !row.warning && Math.abs(dist)<7 && Math.random()<dt*.18) {
-        row.warning=2.0;
-        if(row.index===playerRow || Math.abs(dist)<=2) showToast('⚠️ قطار نزدیک می‌شود!');
-      }
-      if(row.warning!==null) {
-        row.warning-=dt;
-        if(row.warning<=0) {row.warning=null;makeTrain(row);}
-      }
-      if(row.train) {
-        row.train.position.x+=row.speed*dt;
-        if(row.train.position.x>17) {row.group.remove(row.train);row.train=null;row.warning=null;}
+      if(shared){
+        const phase=(globalElapsed+row.index*.73)%4.2;
+        const shouldRun=(row.index%7===4) && phase<(33/11.5);
+        if(shouldRun){if(!row.train)makeTrain(row);row.train.position.x=-16+11.5*phase;row.speed=11.5;}
+        else if(row.train){row.group.remove(row.train);row.train=null;row.warning=null;}
+      } else {
+        const dist=playerRow-row.index;
+        if(!row.train && !row.warning && Math.abs(dist)<7 && Math.random()<dt*.18) {row.warning=2.0;if(row.index===playerRow || Math.abs(dist)<=2) showToast('⚠️ قطار نزدیک می‌شود!');}
+        if(row.warning!==null){row.warning-=dt;if(row.warning<=0){row.warning=null;makeTrain(row);}}
+        if(row.train){row.train.position.x+=row.speed*dt;if(row.train.position.x>17){row.group.remove(row.train);row.train=null;row.warning=null;}}
       }
     }
   }
@@ -857,6 +954,7 @@ function updateTraffic(dt) {
     playerX += (current.speed*dt)/LANE_WIDTH;
     playerX=THREE.MathUtils.clamp(playerX,-3.2,3.2);
     player.position.x=playerX*LANE_WIDTH;
+    if(roomSocket && Date.now()-lastNetPositionAt>1000){lastNetPositionAt=Date.now();sendRoomMessage({type:'position',x:playerX});}
     if(Math.abs(playerX*LANE_WIDTH-riding.x)>riding.width/2+.15) finishGame('از کنده جا ماندی!');
   }
   const rail=rows.get(playerRow);
@@ -906,9 +1004,13 @@ document.getElementById('chickenSkin').addEventListener('click',()=>applySkin('c
 document.getElementById('suitSkin').addEventListener('click',()=>applySkin('suit'));
 document.getElementById('spiderSkin').addEventListener('click',()=>applySkin('spider'));
 document.getElementById('batmanSkin').addEventListener('click',()=>applySkin('batman'));
-document.getElementById('startButton').addEventListener('click',startGame);
-document.getElementById('retryButton').addEventListener('click',()=>{resetGame();startGame();});
-document.getElementById('homeButton').addEventListener('click',()=>{gameOverOverlay.classList.add('hidden');startOverlay.classList.remove('hidden');resetGame();});
+document.getElementById('startButton').addEventListener('click',()=>startGame());
+document.getElementById('createRoomButton').addEventListener('click',createRoom);
+document.getElementById('joinRoomButton').addEventListener('click',joinRoom);
+document.getElementById('startRoomButton').addEventListener('click',()=>sendRoomMessage({type:'start'}));
+document.getElementById('leaveRoomButton').addEventListener('click',leaveRoom);
+document.getElementById('retryButton').addEventListener('click',()=>{if(roomSocket){sendRoomMessage({type:'reset'});return;}resetGame();startGame();});
+document.getElementById('homeButton').addEventListener('click',()=>{gameOverOverlay.classList.add('hidden');startOverlay.classList.remove('hidden');if(roomSocket){leaveRoom();}else resetGame();});
 document.getElementById('leftButton').addEventListener('pointerdown',e=>{e.preventDefault();handleMove('left');});
 document.getElementById('rightButton').addEventListener('pointerdown',e=>{e.preventDefault();handleMove('right');});
 document.getElementById('forwardButton').addEventListener('pointerdown',e=>{e.preventDefault();handleMove('forward');});
