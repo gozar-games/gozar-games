@@ -1,4 +1,3 @@
-
 const MAX_PLAYERS = 4;
 
 function json(data, status = 200) {
@@ -16,6 +15,8 @@ export class Room {
     this.started = false;
     this.startAt = 0;
     this.resetVersion = 0;
+    this.finished = false;
+    this.finalResults = [];
   }
 
   getPlayers() {
@@ -36,8 +37,42 @@ export class Room {
     }
   }
 
+  updateFinalResults(players) {
+    if (
+      this.started &&
+      players.length > 0 &&
+      players.every(player => player.alive === false)
+    ) {
+      if (!this.finished) {
+        this.finished = true;
+
+        this.finalResults = players
+          .map(player => ({
+            id: player.id,
+            name: player.name,
+            skin: player.skin,
+            distance: Math.max(0, Number(player.row) || 0),
+            finishedAt: player.finishedAt || Date.now()
+          }))
+          .sort((a, b) => {
+            if (b.distance !== a.distance) {
+              return b.distance - a.distance;
+            }
+
+            return a.finishedAt - b.finishedAt;
+          })
+          .map((player, index) => ({
+            ...player,
+            rank: index + 1
+          }));
+      }
+    }
+  }
+
   broadcast() {
     const players = this.getPlayers();
+
+    this.updateFinalResults(players);
 
     for (const ws of this.state.getWebSockets()) {
       let player;
@@ -57,6 +92,8 @@ export class Room {
         started: this.started,
         startAt: this.startAt,
         resetVersion: this.resetVersion,
+        finished: this.finished,
+        results: this.finalResults,
         players
       });
     }
@@ -102,6 +139,8 @@ export class Room {
       skin,
       x: 0,
       row: 0,
+      distance: 0,
+      finishedAt: null,
       alive: true
     });
 
@@ -138,7 +177,7 @@ export class Room {
 
     switch (data.type) {
       case "move": {
-        if (!this.started || !player.alive) break;
+        if (!this.started || this.finished || !player.alive) break;
 
         const dx = Number(data.dx) || 0;
         const dz = Number(data.dz) || 0;
@@ -152,6 +191,8 @@ export class Room {
           );
         }
 
+        player.distance = Math.max(0, Number(player.row) || 0);
+
         if (dx !== 0) {
           player.x = Math.max(-2, Math.min(2, player.x));
         }
@@ -162,7 +203,7 @@ export class Room {
       }
 
       case "position": {
-        if (!player.alive) break;
+        if (!player.alive || this.finished) break;
 
         player.x = Math.max(-2, Math.min(2, Number(data.x) || 0));
         ws.serializeAttachment(player);
@@ -178,14 +219,19 @@ export class Room {
       }
 
       case "dead": {
+        if (!player.alive) break;
+
         player.alive = false;
+        player.distance = Math.max(0, Number(player.row) || 0);
+        player.finishedAt = Date.now();
+
         ws.serializeAttachment(player);
         this.broadcast();
         break;
       }
 
       case "start": {
-        if (!this.started) {
+        if (!this.started && !this.finished) {
           this.started = true;
           this.startAt = Date.now() + 1500;
         }
@@ -197,6 +243,9 @@ export class Room {
       case "reset": {
         this.started = false;
         this.startAt = 0;
+        this.finished = false;
+        this.finalResults = [];
+
         this.resetVersion++;
         this.roomSeed = Math.floor(Math.random() * 2147483647);
 
@@ -206,6 +255,8 @@ export class Room {
 
           current.x = 0;
           current.row = 0;
+          current.distance = 0;
+          current.finishedAt = null;
           current.alive = true;
 
           socket.serializeAttachment(current);
