@@ -48,6 +48,25 @@ button{font:inherit;color:inherit;cursor:pointer}
 .multiplayer-panel{border-top:1px solid #393939;margin-top:13px;padding-top:11px;display:grid;gap:7px;text-align:right}.mp-input{width:100%;border:1px solid #444;border-radius:10px;background:#0f0f0f;color:#fff;padding:9px 10px;font:inherit;font-size:12px;outline:none}.mp-row{display:grid;grid-template-columns:1fr 1fr;gap:7px}.mp-button{border:1px solid #484848;border-radius:10px;background:#242424;padding:9px 6px;font-size:11px;font-weight:800}.mp-button.primary-mp{background:#8e1720;border-color:#b62a35}.room-status{font-size:10px;color:#c9c9c9;line-height:1.8;white-space:pre-line}.room-code{direction:ltr;font-weight:900;font-size:18px;letter-spacing:3px;color:#ff7279}.room-hidden{display:none!important}
 @media(min-height:760px){.app{gap:11px}.control{height:56px}.hint{font-size:11px}}
 @media(max-height:620px){.app{gap:6px;padding-top:5px;padding-bottom:5px}.top{height:34px}.stat{padding:3px 9px}.stat strong{font-size:18px}.control{height:43px}.hint{font-size:9px}}
+/* Mobile start menu: keep the complete multiplayer form reachable on short screens. */
+#startOverlay{overflow-y:auto;overflow-x:hidden;align-items:flex-start;padding:10px 9px;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
+#startOverlay .dialog{flex:none;width:min(100%,420px);max-height:none;margin:auto;padding:14px 12px;}
+#startOverlay .dialog .emoji{font-size:34px;line-height:1.1}
+#startOverlay .dialog h1{font-size:20px;margin:4px 0}
+#startOverlay .dialog p{font-size:11px;line-height:1.7;margin:4px 0 9px}
+#startOverlay .skin-picker{gap:6px;margin:8px 0 10px}
+#startOverlay .skin-option{padding:7px 5px 6px;gap:3px}
+#startOverlay .skin-option .skin-icon{font-size:24px}
+#startOverlay .skin-option strong{font-size:10px}
+#startOverlay .skin-option small{font-size:9px}
+#startOverlay .primary{padding:9px 18px;min-height:40px}
+#startOverlay .multiplayer-panel{margin-top:9px;padding-top:8px;gap:6px}
+#startOverlay .mp-input{padding:8px 9px;font-size:12px;min-height:38px}
+#startOverlay .mp-button{padding:8px 5px;min-height:38px;font-size:10px}
+#startOverlay .room-status{font-size:10px;line-height:1.6;overflow-wrap:anywhere}
+#startOverlay .room-code{display:block;padding:5px 0;font-size:20px;min-height:34px}
+#startOverlay .mp-row{gap:6px}
+@media(max-width:380px){#startOverlay{padding-inline:6px}#startOverlay .dialog{padding:11px 9px}#startOverlay .skin-option .skin-icon{font-size:22px}#startOverlay .skin-option strong{font-size:9px}}
 </style>
 </head>
 <body>
