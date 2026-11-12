@@ -1117,7 +1117,8 @@ function updateTraffic(dt) {
 }
 function cleanupRows() {
   const watched= spectatorMode ? remotePlayers.get(spectatorTargetId) : null;
-  const activeRow=watched ? Math.max(0,Number(watched.data.row)||0) : playerRow;
+  const botRow=(roomSocket && myPlayerId===roomHostId)?aiBots.reduce((max,bot)=>Math.max(max,bot.alive?bot.row:0),0):0;
+  const activeRow=watched ? Math.max(0,Number(watched.data.row)||0) : Math.max(playerRow,botRow);
   const min=activeRow-VISIBLE_BACK;
   for(const [index,row] of rows) {
     if(index<min) {
@@ -1129,15 +1130,18 @@ function loop(now) {
   animationId=0;
   const dt=Math.min((now-lastTime)/1000,.05);
   lastTime=now;
-  if(running || spectatorMode) {
+  const aiActive=!!(roomSocket&&roomStarted&&myPlayerId===roomHostId&&aiBots.some(bot=>bot.alive));
+  if(running || spectatorMode || aiActive) {
     if(materials.water.map) materials.water.map.offset.x=(materials.water.map.offset.x+dt*.018)%1;
-    if(running){animatePlayer(dt);updateTraffic(dt);updateAIBots(dt);}
-    else if(spectatorMode){updateTraffic(dt);const alive=getAliveSpectators();if(!alive.some(([id])=>id===spectatorTargetId)){if(alive.length)spectatorTargetId=alive[0][0];else stopSpectating(true);}}
+    if(running)animatePlayer(dt);
+    updateTraffic(dt);
+    if(aiActive)updateAIBots(dt);
+    if(spectatorMode){const alive=getAliveSpectators();if(!alive.some(([id])=>id===spectatorTargetId)){if(alive.length)spectatorTargetId=alive[0][0];else stopSpectating(true);}}
     cleanupRows();
-    if(spectatorMode)updateSpectatorCamera(dt);else updateCamera(dt);
+    if(spectatorMode)updateSpectatorCamera(dt);else if(running)updateCamera(dt);
   }
   render();
-  if(running || spectatorMode) animationId=requestAnimationFrame(loop);
+  if(running || spectatorMode || aiActive) animationId=requestAnimationFrame(loop);
 }
 let renderWidth=0, renderHeight=0;
 function render() {
