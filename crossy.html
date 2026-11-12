@@ -29,6 +29,13 @@ button{font:inherit;color:inherit;cursor:pointer}
 .dialog .emoji{font-size:42px}
 .dialog h1{font-size:23px;margin:5px 0 4px}
 .dialog p{font-size:12px;color:#bbb;line-height:1.9;margin:5px 0 15px}
+.skin-picker{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 15px}
+.skin-option{min-width:0;border:1px solid #454545;border-radius:13px;background:#202020;padding:9px 6px 8px;display:flex;flex-direction:column;align-items:center;gap:4px;transition:border-color .15s,background .15s,transform .15s}
+.skin-option .skin-icon{font-size:29px;line-height:1.25}
+.skin-option strong{font-size:11px}
+.skin-option small{font-size:9px;color:#aaa}
+.skin-option.active{border:2px solid #ed1725;background:#35191d;box-shadow:0 0 0 2px #ed172533}
+.skin-option:active{transform:scale(.97)}
 .primary{border:0;border-radius:12px;background:var(--accent);padding:11px 22px;font-weight:900;min-width:145px}
 .secondary{border:1px solid #444;border-radius:12px;background:#242424;padding:10px 16px;font-weight:800;margin-right:6px}
 .controls{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;flex:none;direction:ltr}
@@ -61,7 +68,15 @@ button{font:inherit;color:inherit;cursor:pointer}
       <div class="dialog">
         <div class="emoji">🐤</div>
         <h1>Crossy Road</h1>
-        <p>از جاده‌ها، رودخانه‌ها و ریل قطار عبور کن.<br>تا می‌توانی جلو برو و مراقب موانع باش!</p>
+        <p>شخصیت مورد علاقه‌ات را انتخاب کن و وارد بازی شو.<br>از جاده‌ها، رودخانه‌ها و ریل قطار عبور کن!</p>
+        <div class="skin-picker" role="group" aria-label="انتخاب شخصیت">
+          <button class="skin-option" id="chickenSkin" type="button" aria-pressed="false">
+            <span class="skin-icon">🐔</span><strong>مرغ سفید</strong><small>شخصیت کلاسیک</small>
+          </button>
+          <button class="skin-option" id="suitSkin" type="button" aria-pressed="false">
+            <span class="skin-icon">🕴️</span><strong>مرد کت‌وشلواری</strong><small>استایل رسمی</small>
+          </button>
+        </div>
         <button class="primary" id="startButton">شروع بازی</button>
       </div>
     </section>
@@ -226,16 +241,94 @@ const bodyMat = makeMaterial(0xffc94f,.88);
 const bellyMat = makeMaterial(0xfff0ce,.92);
 const beakMat = makeMaterial(0xf18a27,.72);
 const eyeMat = makeMaterial(0x171717, .22);
-function softEllipsoid(parent,material,x,y,z,sx,sy,sz){const m=new THREE.Mesh(new THREE.SphereGeometry(1,24,18),material);m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}
-softEllipsoid(playerBody,bodyMat,0,.53,0,.34,.43,.31);
-softEllipsoid(playerBody,bellyMat,0,.34,-.235,.245,.23,.105);
-softEllipsoid(playerBody,bodyMat,0,.91,-.025,.29,.19,.27);
-softEllipsoid(playerBody,beakMat,0,.57,-.325,.15,.075,.12);
-for (const x of [-.16,.16]) {
-  softEllipsoid(playerBody,materials.white,x,.72,-.265,.065,.078,.035);
-  softEllipsoid(playerBody,eyeMat,x,.72,-.295,.032,.048,.02);
+const SKIN_KEY = 'gozar_crossy_skin_v1';
+let selectedSkin = localStorage.getItem(SKIN_KEY) === 'suit' ? 'suit' : 'chicken';
+
+function addVoxel(parent,x,y,z,sx,sy,sz,color,materialOptions={}) {
+  const mat = color?.isMaterial ? color : makeMaterial(color, materialOptions.roughness ?? .85);
+  return box(parent,x,y,z,sx,sy,sz,mat,true,true);
 }
-for (const x of [-.19,.19]) softEllipsoid(playerBody,beakMat,x,.13,.015,.075,.13,.085);
+function buildChickenSkin() {
+  // Classic voxel chicken: white body, square head, red comb, orange beak and feet.
+  const white = makeMaterial(0xf5f3e9,.92), cream = makeMaterial(0xfff8e8,.95);
+  const red = makeMaterial(0xd9272e,.8), orange = makeMaterial(0xf28a19,.78);
+  const black = makeMaterial(0x171717,.35);
+  addVoxel(playerBody,0,.55,0,.62,.68,.58,white);
+  addVoxel(playerBody,0,1.02,-.015,.57,.48,.55,cream);
+  addVoxel(playerBody,0,1.31,-.015,.16,.18,.18,red);
+  addVoxel(playerBody,-.12,1.27,-.015,.13,.13,.16,red);
+  addVoxel(playerBody,.12,1.27,-.015,.13,.13,.16,red);
+  addVoxel(playerBody,0,.99,-.34,.25,.15,.22,orange);
+  for(const x of [-.17,.17]) {
+    addVoxel(playerBody,x,1.09,-.292,.075,.085,.035,black);
+    addVoxel(playerBody,x,.16,.015,.15,.22,.17,orange);
+    addVoxel(playerBody,x,.055,-.105,.25,.10,.30,orange);
+  }
+}
+function buildSuitSkin() {
+  // Block-built businessman inspired by the supplied reference image.
+  const suit = makeMaterial(0x10151b,.82), suitSide = makeMaterial(0x202832,.86);
+  const shirt = makeMaterial(0xf2eee4,.9), skin = makeMaterial(0xe8b987,.9);
+  const hair = makeMaterial(0x211b1a,.9), beard = makeMaterial(0x392722,.95);
+  const shades = makeMaterial(0x080b10,.22), lens = makeMaterial(0x151c25,.16);
+  const tie = makeMaterial(0x8b2027,.75), shoe = makeMaterial(0x080a0d,.8);
+  const cigarette = makeMaterial(0xf4eee2,.65), ember = makeMaterial(0xf05b24,.6);
+  // Legs, shoes and tailored torso.
+  addVoxel(playerBody,-.18,.25,0,.25,.55,.30,suit);
+  addVoxel(playerBody,.18,.25,0,.25,.55,.30,suit);
+  addVoxel(playerBody,-.18,.055,-.045,.34,.16,.43,shoe);
+  addVoxel(playerBody,.18,.055,-.045,.34,.16,.43,shoe);
+  addVoxel(playerBody,0,.76,0,.72,.66,.43,suit);
+  // White shirt panel and tie on the front (negative Z).
+  addVoxel(playerBody,0,.83,-.226,.29,.53,.035,shirt);
+  addVoxel(playerBody,0,.93,-.251,.105,.18,.045,tie);
+  addVoxel(playerBody,0,.69,-.253,.14,.25,.05,tie);
+  // Neck and oversized square head.
+  addVoxel(playerBody,0,1.16,-.005,.23,.20,.24,skin);
+  addVoxel(playerBody,0,1.53,-.005,.66,.65,.55,skin);
+  // Dark swept hair cap and side blocks.
+  addVoxel(playerBody,0,1.87,-.005,.69,.19,.59,hair);
+  addVoxel(playerBody,-.30,1.70,-.005,.12,.28,.56,hair);
+  addVoxel(playerBody,.30,1.70,-.005,.12,.28,.56,hair);
+  // Ears.
+  addVoxel(playerBody,-.385,1.52,-.005,.12,.19,.18,skin);
+  addVoxel(playerBody,.385,1.52,-.005,.12,.19,.18,skin);
+  // Sunglasses: broad black band, two dark lenses and bridge.
+  addVoxel(playerBody,0,1.60,-.291,.66,.19,.055,shades);
+  addVoxel(playerBody,-.16,1.60,-.326,.23,.145,.025,lens);
+  addVoxel(playerBody,.16,1.60,-.326,.23,.145,.025,lens);
+  addVoxel(playerBody,0,1.60,-.345,.09,.045,.025,shades);
+  // Beard and moustache framing the lower face.
+  addVoxel(playerBody,0,1.27,-.294,.48,.19,.09,beard);
+  addVoxel(playerBody,-.12,1.39,-.302,.22,.085,.07,beard);
+  addVoxel(playerBody,.12,1.39,-.302,.22,.085,.07,beard);
+  addVoxel(playerBody,0,1.34,-.355,.14,.07,.035,skin);
+  // Arms and hands. One arm extends forward to hold the cigarette.
+  addVoxel(playerBody,-.47,.78,-.015,.22,.58,.25,suit);
+  addVoxel(playerBody,-.47,.45,-.06,.20,.18,.22,skin);
+  addVoxel(playerBody,.47,.78,-.015,.22,.58,.25,suit);
+  addVoxel(playerBody,.47,.48,-.19,.20,.18,.20,skin);
+  addVoxel(playerBody,.47,.49,-.36,.13,.12,.12,skin);
+  // Small stylized cigarette with orange tip, held in front of the face.
+  addVoxel(playerBody,.47,.53,-.56,.10,.10,.43,cigarette);
+  addVoxel(playerBody,.47,.53,-.785,.105,.105,.09,ember);
+}
+function applySkin(skinName, persist=true) {
+  selectedSkin = skinName === 'suit' ? 'suit' : 'chicken';
+  playerBody.clear();
+  if(selectedSkin === 'suit') buildSuitSkin();
+  else buildChickenSkin();
+  const chickenButton=document.getElementById('chickenSkin');
+  const suitButton=document.getElementById('suitSkin');
+  if(chickenButton && suitButton) {
+    chickenButton.classList.toggle('active',selectedSkin==='chicken');
+    suitButton.classList.toggle('active',selectedSkin==='suit');
+    chickenButton.setAttribute('aria-pressed',String(selectedSkin==='chicken'));
+    suitButton.setAttribute('aria-pressed',String(selectedSkin==='suit'));
+  }
+  if(persist) localStorage.setItem(SKIN_KEY,selectedSkin);
+}
+applySkin(selectedSkin,false);
 player.position.set(0,0,0);
 
 const rows = new Map();
@@ -635,6 +728,8 @@ function handleMove(kind) {
   if(kind==='left') movePlayer(-1,0);
   if(kind==='right') movePlayer(1,0);
 }
+document.getElementById('chickenSkin').addEventListener('click',()=>applySkin('chicken'));
+document.getElementById('suitSkin').addEventListener('click',()=>applySkin('suit'));
 document.getElementById('startButton').addEventListener('click',startGame);
 document.getElementById('retryButton').addEventListener('click',()=>{resetGame();startGame();});
 document.getElementById('homeButton').addEventListener('click',()=>{gameOverOverlay.classList.add('hidden');startOverlay.classList.remove('hidden');resetGame();});
