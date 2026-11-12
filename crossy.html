@@ -45,6 +45,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .hint{flex:none;text-align:center;color:#999;font-size:10px;line-height:1.7}
 .toast{position:absolute;top:12px;left:50%;transform:translateX(-50%);padding:7px 12px;background:#151515dd;border:1px solid #555;border-radius:20px;font-size:11px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .2s}
 .toast.show{opacity:1}
+.spectator-bar{position:absolute;top:10px;left:10px;right:10px;z-index:4;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px;background:#111e;border:1px solid #ffffff35;border-radius:12px;backdrop-filter:blur(8px);font-size:11px}.spectator-bar.hidden{display:none}.spectator-bar strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.spectator-actions{display:flex;gap:5px;flex:none}.spectator-actions button{border:1px solid #555;border-radius:8px;background:#292929;padding:6px 8px;font-size:10px}
 .multiplayer-panel{border-top:1px solid #393939;margin-top:13px;padding-top:11px;display:grid;gap:7px;text-align:right}.mp-input{width:100%;border:1px solid #444;border-radius:10px;background:#0f0f0f;color:#fff;padding:9px 10px;font:inherit;font-size:12px;outline:none}.mp-row{display:grid;grid-template-columns:1fr 1fr;gap:7px}.mp-button{border:1px solid #484848;border-radius:10px;background:#242424;padding:9px 6px;font-size:11px;font-weight:800}.mp-button.primary-mp{background:#8e1720;border-color:#b62a35}.room-status{font-size:10px;color:#c9c9c9;line-height:1.8;white-space:pre-line}.room-code{direction:ltr;font-weight:900;font-size:18px;letter-spacing:3px;color:#ff7279}.room-hidden{display:none!important}
 @media(min-height:760px){.app{gap:11px}.control{height:56px}.hint{font-size:11px}}
 @media(max-height:620px){.app{gap:6px;padding-top:5px;padding-bottom:5px}.top{height:34px}.stat{padding:3px 9px}.stat strong{font-size:18px}.control{height:43px}.hint{font-size:9px}}
@@ -84,6 +85,7 @@ button{font:inherit;color:inherit;cursor:pointer}
   <main class="stage" id="stage">
     <canvas id="game" aria-label="بازی سه بعدی Crossy Road"></canvas>
     <div class="toast" id="toast"></div>
+    <div class="spectator-bar hidden" id="spectatorBar"><strong id="spectatorName">در حال تماشا</strong><div class="spectator-actions"><button id="spectatorPrev">قبلی</button><button id="spectatorNext">بعدی</button><button id="spectatorStop">پایان</button></div></div>
     <section class="overlay" id="startOverlay">
       <div class="dialog">
         <div class="emoji">🐤</div>
@@ -127,6 +129,8 @@ button{font:inherit;color:inherit;cursor:pointer}
         <h1>GAME OVER</h1>
         <p id="finalText">امتیاز: 0</p>
         <button class="primary" id="retryButton">بازی دوباره</button>
+        <button class="secondary room-hidden" id="spectateButton">تماشای بازیکنان</button>
+        <button class="secondary room-hidden" id="gameOverLeaveButton">خروج از اتاق</button>
         <button class="secondary" id="homeButton">بازگشت</button>
       </div>
     </section>
@@ -158,6 +162,8 @@ const toastEl = document.getElementById('toast');
 // Multiplayer is served by a Cloudflare Pages Function backed by a Durable Object.
 const ROOM_API = '/api/rooms';
 let roomSocket = null;
+let spectatorMode = false;
+let spectatorTargetId = '';
 let roomCode = '';
 let myPlayerId = '';
 let roomSeed = 0;
@@ -243,7 +249,14 @@ function handleRoomMessage(msg) {
   syncRemotePlayers(players);
   if(msg.resetVersion!==lastResetVersion && lastResetVersion!==-1){lastResetVersion=msg.resetVersion;resetGame();}
   else lastResetVersion=msg.resetVersion;
-  if(roomStarted && !running){startGame(true);}
+  refreshSpectatorControls();
+  if(msg.finished){
+    stopSpectating(false);
+    const results=Array.isArray(msg.results)?msg.results:[];
+    if(results.length) finalText.textContent='نتیجه نهایی مسابقه:\n'+results.map((p,i)=>(i+1)+'. '+(p.name||'بازیکن')+' — '+(Number(p.row)||0)+' خانه').join('\n');
+    gameOverOverlay.classList.remove('hidden');
+  }
+  if(roomStarted && !running && !ended && !spectatorMode){startGame(true);}
   if(!roomStarted && running){running=false;ended=false;startOverlay.classList.remove('hidden');}
 }
 async function createRoom() {
@@ -251,7 +264,7 @@ async function createRoom() {
   catch(error){setRoomStatus('ساخت اتاق انجام نشد: '+error.message);}
 }
 function joinRoom() {const code=document.getElementById('roomCodeInput').value.trim().toUpperCase();if(!/^[A-Z0-9]{6}$/.test(code)){setRoomStatus('کد اتاق باید ۶ حرف یا عدد باشد.');return;}resetGame();connectRoom(code);}
-function leaveRoom() {if(roomSocket){roomSocket.close(1000,'left room');roomSocket=null;}document.getElementById('startButton').classList.remove('room-hidden');roomCode='';roomStarted=false;myPlayerId='';roomSeed=0;roomStartedAt=0;for(const entry of remotePlayers.values())world.remove(entry.group);remotePlayers.clear();roomActions.classList.add('room-hidden');roomCodeDisplay.classList.add('room-hidden');setRoomStatus('از اتاق خارج شدی.');resetGame();}
+function leaveRoom() {stopSpectating(false);if(roomSocket){roomSocket.close(1000,'left room');roomSocket=null;}document.getElementById('startButton').classList.remove('room-hidden');roomCode='';roomStarted=false;myPlayerId='';roomSeed=0;roomStartedAt=0;for(const entry of remotePlayers.values())world.remove(entry.group);remotePlayers.clear();roomActions.classList.add('room-hidden');roomCodeDisplay.classList.add('room-hidden');setRoomStatus('از اتاق خارج شدی.');resetGame();}
 
 const BEST_KEY = 'gozar_crossy_best_v1';
 let best = Number(localStorage.getItem(BEST_KEY) || 0);
@@ -840,6 +853,7 @@ function clearWorld() {
   world.add(player);
 }
 function resetGame() {
+  stopSpectating(false);
   clearWorld();
   randomMapSegments.clear();
   for(const entry of remotePlayers.values()) world.add(entry.group);
@@ -858,8 +872,48 @@ function resetGame() {
   camera.lookAt(cameraLookTarget);
   startOverlay.classList.remove('hidden');
   gameOverOverlay.classList.add('hidden');
+  player.visible=true;
+  document.querySelector('.controls').style.display='grid';
+  document.querySelector('.hint').style.display='';
+  refreshSpectatorControls();
   updateCamera(0);
   render();
+}
+function updateSpectatorCamera(dt) {
+  const target=remotePlayers.get(spectatorTargetId);
+  if(!target || target.data.alive===false) return;
+  const row=Math.max(0,Number(target.data.row)||0);
+  const targetZ=-Math.max(0,row-2)*1.35-2.0;
+  const desiredPosition=new THREE.Vector3(0,13,targetZ+11.5);
+  const desiredLookTarget=new THREE.Vector3(Number(target.data.x||0)*LANE_WIDTH,0,targetZ-1.5);
+  const follow=1-Math.exp(-dt*10);
+  camera.position.lerp(desiredPosition,follow);
+  cameraLookTarget.lerp(desiredLookTarget,follow);
+  camera.lookAt(cameraLookTarget);
+  document.getElementById('spectatorName').textContent='تماشای '+(target.data.name||'بازیکن');
+}
+function getAliveSpectators(){return [...remotePlayers.entries()].filter(([,p])=>p.data.alive!==false).sort((a,b)=>(Number(b[1].data.row)||0)-(Number(a[1].data.row)||0));}
+function refreshSpectatorControls(){
+  document.getElementById('spectateButton').classList.toggle('room-hidden',!roomSocket||getAliveSpectators().length===0);
+  document.getElementById('gameOverLeaveButton').classList.toggle('room-hidden',!roomSocket);
+}
+function startSpectating(offset=0){
+  const alive=getAliveSpectators();
+  if(!alive.length){showToast('بازیکن زنده‌ای برای تماشا نیست');return;}
+  let index=alive.findIndex(([id])=>id===spectatorTargetId);
+  index=index<0?0:(index+offset+alive.length)%alive.length;
+  spectatorTargetId=alive[index][0];spectatorMode=true;running=false;ended=true;
+  player.visible=false;gameOverOverlay.classList.add('hidden');startOverlay.classList.add('hidden');
+  document.querySelector('.controls').style.display='none';document.querySelector('.hint').style.display='none';
+  document.getElementById('spectatorBar').classList.remove('hidden');
+  lastTime=performance.now();if(!animationId)animationId=requestAnimationFrame(loop);
+}
+function stopSpectating(showOverlay=true){
+  spectatorMode=false;spectatorTargetId='';player.visible=true;
+  document.getElementById('spectatorBar').classList.add('hidden');
+  document.querySelector('.controls').style.display='grid';document.querySelector('.hint').style.display='';
+  if(showOverlay&&ended)gameOverOverlay.classList.remove('hidden');
+  if(!running&&!animationId)render();
 }
 function updateCamera(dt) {
   // Keep the camera position and its look target in sync. Previously the
@@ -937,6 +991,7 @@ function finishGame(reason) {
   localStorage.setItem(BEST_KEY,String(best));
   bestEl.textContent=String(best);
   finalText.textContent=`${reason} امتیاز تو: ${score}`;
+  refreshSpectatorControls();
   gameOverOverlay.classList.remove('hidden');
 }
 function startGame(fromNetwork=false) {
@@ -1024,15 +1079,15 @@ function loop(now) {
   animationId=0;
   const dt=Math.min((now-lastTime)/1000,.05);
   lastTime=now;
-  if(running) {
+  if(running || spectatorMode) {
     if(materials.water.map) materials.water.map.offset.x=(materials.water.map.offset.x+dt*.018)%1;
-    animatePlayer(dt);
-    updateTraffic(dt);
+    if(running){animatePlayer(dt);updateTraffic(dt);}
+    else if(spectatorMode){updateTraffic(dt);const alive=getAliveSpectators();if(!alive.some(([id])=>id===spectatorTargetId)){if(alive.length)spectatorTargetId=alive[0][0];else stopSpectating(true);}}
     cleanupRows();
-    updateCamera(dt);
+    if(spectatorMode)updateSpectatorCamera(dt);else updateCamera(dt);
   }
   render();
-  if(running) animationId=requestAnimationFrame(loop);
+  if(running || spectatorMode) animationId=requestAnimationFrame(loop);
 }
 let renderWidth=0, renderHeight=0;
 function render() {
@@ -1061,7 +1116,12 @@ document.getElementById('createRoomButton').addEventListener('click',createRoom)
 document.getElementById('joinRoomButton').addEventListener('click',joinRoom);
 document.getElementById('startRoomButton').addEventListener('click',()=>sendRoomMessage({type:'start'}));
 document.getElementById('leaveRoomButton').addEventListener('click',leaveRoom);
-document.getElementById('retryButton').addEventListener('click',()=>{if(roomSocket){sendRoomMessage({type:'reset'});return;}resetGame();startGame();});
+document.getElementById('retryButton').addEventListener('click',()=>{stopSpectating(false);if(roomSocket){sendRoomMessage({type:'reset'});return;}resetGame();startGame();});
+document.getElementById('spectateButton').addEventListener('click',()=>startSpectating());
+document.getElementById('spectatorPrev').addEventListener('click',()=>startSpectating(-1));
+document.getElementById('spectatorNext').addEventListener('click',()=>startSpectating(1));
+document.getElementById('spectatorStop').addEventListener('click',()=>stopSpectating(true));
+document.getElementById('gameOverLeaveButton').addEventListener('click',leaveRoom);
 document.getElementById('homeButton').addEventListener('click',()=>{gameOverOverlay.classList.add('hidden');startOverlay.classList.remove('hidden');if(roomSocket){leaveRoom();}else resetGame();});
 document.getElementById('leftButton').addEventListener('pointerdown',e=>{e.preventDefault();handleMove('left');});
 document.getElementById('rightButton').addEventListener('pointerdown',e=>{e.preventDefault();handleMove('right');});
