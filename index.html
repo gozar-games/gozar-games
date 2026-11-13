@@ -944,11 +944,15 @@ function prepareGozarClip(index,slot){
   video.pause();
   video.classList.remove('active');
   video.onended=null;
-  video.onerror=()=>handleGozarClipError(index);
+  video.onerror=()=>{
+    video.dataset.failed='true';
+    if(index===gozarClipIndex) handleGozarClipError(index);
+  };
   video.oncanplay=()=>{
     if(index===0 && gozarIntroStarted && gozarClipIndex<0) showGozarClip(index,slot);
     if(index===gozarClipIndex+1) gozarPreparedIndex=index;
   };
+  video.dataset.failed='';
   video.src=gozarIntroClips[index].src;
   video.load();
 }
@@ -995,6 +999,11 @@ function playGozarIntroClip(index){
   if(index>=gozarIntroClips.length){finishGozarIntro();return;}
   const slot=1-gozarActiveSlot;
   const next=gozarVideoSlots[slot];
+  if(next.dataset.failed==='true'){
+    next.dataset.failed='';
+    playGozarIntroClip(index+1);
+    return;
+  }
   if(next.readyState>=3 && next.src===gozarIntroClips[index].src){
     showGozarClip(index,slot);
   }else{
