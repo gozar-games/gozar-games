@@ -498,6 +498,11 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 #enableIntroSound{border:0;border-radius:12px;background:#ed1725;color:white;padding:13px 22px;font:inherit;font-weight:900}
 #uploadedIntroVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#050505;display:none}
 #uploadedIntroVideo.active{display:block}
+#introVideoLoading{position:absolute;z-index:5;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;background:radial-gradient(circle,#171014 0%,#050505 72%);color:#fff;text-align:center}
+#introVideoLoading.show{display:flex}
+.intro-loader-ring{width:44px;height:44px;border:3px solid #ffffff24;border-top-color:#ed1725;border-radius:50%;animation:introSpin .8s linear infinite}
+#introVideoLoading span{font-size:12px;color:#bbb;letter-spacing:1px}
+@keyframes introSpin{to{transform:rotate(360deg)}}
 
 </style>
 </head>
@@ -515,7 +520,8 @@ button{font-family:inherit;color:inherit;cursor:pointer}
   </div>
   <div class="intro-video-stage" id="introVideoStage">
     <canvas id="gozarArcadeCanvas" aria-hidden="true"></canvas>
-    <video id="uploadedIntroVideo" playsinline webkit-playsinline preload="metadata"></video>
+    <video id="uploadedIntroVideo" playsinline webkit-playsinline preload="auto"></video>
+    <div id="introVideoLoading"><div class="intro-loader-ring"></div><span>در حال آماده‌سازی ویدیو...</span></div>
     <div id="introSoundGate" hidden>
       <div class="sound-gate-card">
         <strong>🔊 آماده‌ای؟</strong>
@@ -1093,6 +1099,7 @@ let uploadedIntroSoundEnabled=false;
 let uploadedIntroTimer=null;
 const uploadedIntroVideo=document.getElementById('uploadedIntroVideo');
 const introSoundGate=document.getElementById('introSoundGate');
+const introVideoLoading=document.getElementById('introVideoLoading');
 
 async function loadUploadedIntroVideos(){
   try{
@@ -1118,20 +1125,27 @@ function playUploadedIntroAt(index){
   gozarCanvas.style.display='none';
   gozarFinalLogo.classList.remove('show');
   uploadedIntroVideo.classList.add('active');
-  uploadedIntroVideo.src='/api/intro-video/'+encodeURIComponent(item.id);
+  introVideoLoading.classList.add('show');
+  uploadedIntroVideo.pause();
+  uploadedIntroVideo.removeAttribute('src');
+  uploadedIntroVideo.load();
   uploadedIntroVideo.muted=!uploadedIntroSoundEnabled;
   gozarCaption.textContent=item.title||'GOZAR GAMES';
   gozarCaption.style.display='block';
   gozarProgress.style.width=((index/uploadedIntroItems.length)*100)+'%';
   uploadedIntroVideo.onended=()=>playUploadedIntroAt(uploadedIntroIndex+1);
   uploadedIntroVideo.onerror=()=>{
+    introVideoLoading.classList.remove('show');
     console.error('Intro video playback failed:',item.id);
     playUploadedIntroAt(uploadedIntroIndex+1);
   };
-  uploadedIntroVideo.play().catch(error=>{
-    console.warn('Video autoplay blocked:',error);
-    introSoundGate.hidden=false;
-  });
+  uploadedIntroVideo.oncanplay=async()=>{
+    introVideoLoading.classList.remove('show');
+    try{await uploadedIntroVideo.play();}
+    catch(error){console.warn('Video playback blocked:',error);introSoundGate.hidden=false;}
+  };
+  uploadedIntroVideo.src='/api/intro-video/'+encodeURIComponent(item.id);
+  uploadedIntroVideo.load();
 }
 async function beginUploadedIntro(){
   uploadedIntroItems=await loadUploadedIntroVideos();
