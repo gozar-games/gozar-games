@@ -203,16 +203,36 @@ function draw(){
  let sx=((ox%grid)+grid)%grid,sy=((oy%grid)+grid)%grid;
  for(let x=sx;x<W;x+=grid){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
  for(let y=sy;y<H;y+=grid){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
- // Richer ruined-city ground: distinct asphalt lanes, concrete lots, wreckage and rubble.
+ // Procedural map variants: each selection changes terrain, roads, foliage and building style.
  const artTile=MAP_TILE,ax0=Math.floor(camX/artTile)-1,ax1=Math.ceil((camX+W)/artTile)+1,ay0=Math.floor(camY/artTile)-1,ay1=Math.ceil((camY+H)/artTile)+1;
  for(let ax=ax0;ax<=ax1;ax++)for(let ay=ay0;ay<=ay1;ay++){
   const seed=Math.abs((Math.imul(ax+29,73856093)^Math.imul(ay+41,19349663))|0),px=ax*artTile+ox,py=ay*artTile+oy;
-  ctx.fillStyle=((ax+ay)&1)?'#22292b':'#292e2e';ctx.fillRect(px,py,artTile,artTile);
-  ctx.fillStyle='#171e20';if(ax%2===0)ctx.fillRect(px+135,py,50,artTile);if(ay%2===0)ctx.fillRect(px,py+135,artTile,50);
-  ctx.fillStyle='#b7a57966';ctx.fillRect(px+159,py+18,3,34);ctx.fillRect(px+159,py+85,3,34);ctx.fillRect(px+159,py+218,3,34);
-  const building=buildingRect(ax,ay);if(building){const bx=building.x+ox,by=building.y+oy,bw=building.w,bh=building.h;ctx.fillStyle='#111719';ctx.fillRect(bx+5,by+7,bw,bh);ctx.fillStyle='#55564f';ctx.fillRect(bx,by,bw,bh);ctx.fillStyle='#343b39';ctx.fillRect(bx+7,by+8,bw-14,bh-16);ctx.strokeStyle='#858174';ctx.lineWidth=2;ctx.strokeRect(bx,by,bw,bh);ctx.fillStyle='#b19a70';for(let wx=0;wx<3;wx++)ctx.fillRect(bx+13+wx*22,by+14,10,8);ctx.fillStyle='#171d1e';ctx.fillRect(bx+bw-18,by+bh-22,12,15)}
-  for(let k=0;k<14;k++){const rx=px+(seed+k*47)%306,ry=py+((seed>>>2)+k*61)%306;ctx.fillStyle=k%4===0?'#827761':k%3===0?'#111819':'#454b48';ctx.fillRect(rx,ry,4+(k%4)*3,3+(k%3)*3)}
-  ctx.strokeStyle='#111819';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(px+205+seed%35,py+205);ctx.lineTo(px+225+seed%35,py+225);ctx.lineTo(px+214+seed%35,py+247);ctx.stroke();
+  if(selectedMap==='desert-highway'){
+   ctx.fillStyle=((ax+ay)&1)?'#8a7048':'#9a8055';ctx.fillRect(px,py,artTile,artTile);
+   ctx.fillStyle='#4b4030';if(ax%2===0)ctx.fillRect(px+132,py,56,artTile);if(ay%2===0)ctx.fillRect(px,py+132,artTile,56);
+   ctx.fillStyle='#e8d29a';for(let d=0;d<4;d++)ctx.fillRect(px+157,py+18+d*78,4,35);
+   for(let k=0;k<18;k++){const rx=px+(seed+k*43)%306,ry=py+((seed>>>2)+k*59)%306;ctx.fillStyle=k%3===0?'#c3a16b':'#6d5a3d';ctx.beginPath();ctx.ellipse(rx,ry,3+(k%4)*2,2+(k%3),seed%6,0,Math.PI*2);ctx.fill()}
+  }else if(selectedMap==='green-town'){
+   ctx.fillStyle=((ax+ay)&1)?'#315b3d':'#386847';ctx.fillRect(px,py,artTile,artTile);
+   ctx.fillStyle='#343b3b';if(ax%2===0)ctx.fillRect(px+132,py,56,artTile);if(ay%2===0)ctx.fillRect(px,py+132,artTile,56);
+   ctx.fillStyle='#b8b18a';if(ax%2===0)ctx.fillRect(px+130,py,2,artTile);if(ay%2===0)ctx.fillRect(px,py+130,artTile,2);
+   for(let k=0;k<12;k++){const rx=px+(seed+k*47)%306,ry=py+((seed>>>2)+k*61)%306;ctx.fillStyle=k%2?'#214b30':'#4f8652';ctx.beginPath();ctx.arc(rx,ry,7+(k%3)*3,0,Math.PI*2);ctx.fill();ctx.fillStyle='#183b28';ctx.beginPath();ctx.arc(rx+2,ry+2,4,0,Math.PI*2);ctx.fill()}
+  }else{
+   ctx.fillStyle=((ax+ay)&1)?'#22292b':'#292e2e';ctx.fillRect(px,py,artTile,artTile);
+   ctx.fillStyle='#171e20';if(ax%2===0)ctx.fillRect(px+135,py,50,artTile);if(ay%2===0)ctx.fillRect(px,py+135,artTile,50);
+   ctx.fillStyle='#b7a57966';ctx.fillRect(px+159,py+18,3,34);ctx.fillRect(px+159,py+85,3,34);ctx.fillRect(px+159,py+218,3,34);
+   for(let k=0;k<14;k++){const rx=px+(seed+k*47)%306,ry=py+((seed>>>2)+k*61)%306;ctx.fillStyle=k%4===0?'#827761':k%3===0?'#111819':'#454b48';ctx.fillRect(rx,ry,4+(k%4)*3,3+(k%3)*3)}
+   ctx.strokeStyle='#111819';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(px+205+seed%35,py+205);ctx.lineTo(px+225+seed%35,py+225);ctx.lineTo(px+214+seed%35,py+247);ctx.stroke();
+  }
+  const building=buildingRect(ax,ay);
+  if(building){
+   const bx=building.x+ox,by=building.y+oy,bw=building.w,bh=building.h;
+   if(selectedMap==='desert-highway'){ctx.fillStyle='#59452f';ctx.fillRect(bx+5,by+7,bw,bh);ctx.fillStyle='#b99a68';ctx.fillRect(bx,by,bw,bh);ctx.fillStyle='#d3b783';ctx.fillRect(bx+7,by+8,bw-14,bh-16);ctx.strokeStyle='#ead09b';ctx.fillStyle='#655039'}
+   else if(selectedMap==='green-town'){ctx.fillStyle='#172b1d';ctx.fillRect(bx+5,by+7,bw,bh);ctx.fillStyle='#a7b58a';ctx.fillRect(bx,by,bw,bh);ctx.fillStyle='#d2d5a7';ctx.fillRect(bx+7,by+8,bw-14,bh-16);ctx.strokeStyle='#e0e8b7';ctx.fillStyle='#6c9b63'}
+   else{ctx.fillStyle='#111719';ctx.fillRect(bx+5,by+7,bw,bh);ctx.fillStyle='#55564f';ctx.fillRect(bx,by,bw,bh);ctx.fillStyle='#343b39';ctx.fillRect(bx+7,by+8,bw-14,bh-16);ctx.strokeStyle='#858174';ctx.fillStyle='#b19a70'}
+   for(let wx=0;wx<3;wx++)ctx.fillRect(bx+13+wx*22,by+14,10,8);
+   ctx.lineWidth=2;ctx.strokeRect(bx,by,bw,bh);ctx.fillStyle='#171d1e';ctx.fillRect(bx+bw-18,by+bh-22,12,15);
+  }
  }
  // ruined-city cover blocks
  const gx0=Math.floor(camX/CELL)-2,gx1=Math.ceil((camX+W)/CELL)+2,gy0=Math.floor(camY/CELL)-2,gy1=Math.ceil((camY+H)/CELL)+2;for(let gx=gx0;gx<=gx1;gx++)for(let gy=gy0;gy<=gy1;gy++){let q=wallRect(gx,gy);if(q){let wx=q.x+ox,wy=q.y+oy;ctx.fillStyle='#30363a';ctx.fillRect(wx,wy,q.w,q.h);ctx.fillStyle='#45403a';ctx.fillRect(wx+3,wy+3,q.w-6,7);ctx.strokeStyle='#171c20';ctx.strokeRect(wx,wy,q.w,q.h)}}
