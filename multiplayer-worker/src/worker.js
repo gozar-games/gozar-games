@@ -112,11 +112,22 @@ export class Room {
     const url = new URL(request.url);
 
     if (url.pathname === "/init" && request.method === "POST") {
+      await this.state.storage.put("roomInitialized", true);
       return json({ success: true });
+    }
+
+    if (url.pathname === "/exists" && request.method === "GET") {
+      const initialized = await this.state.storage.get("roomInitialized");
+      return json({ exists: initialized === true });
     }
 
     if (url.pathname !== "/ws") {
       return new Response("Not found", { status: 404 });
+    }
+
+    const initialized = await this.state.storage.get("roomInitialized");
+    if (initialized !== true) {
+      return json({ error: "Room not found" }, 404);
     }
 
     if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
@@ -259,6 +270,11 @@ export class Room {
       }
 
       case "start": {
+        if (player.id !== this.hostId) {
+          this.send(ws, { type: "error", message: "فقط میزبان می‌تواند مسابقه را شروع کند." });
+          break;
+        }
+
         if (!this.started && !this.finished) {
           this.started = true;
           this.startAt = Date.now() + 1500;
@@ -282,6 +298,11 @@ export class Room {
       }
 
       case "reset": {
+        if (player.id !== this.hostId) {
+          this.send(ws, { type: "error", message: "فقط میزبان می‌تواند مسابقه را ریست کند." });
+          break;
+        }
+
         this.started = false;
         this.startAt = 0;
         this.finished = false;
