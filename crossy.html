@@ -104,6 +104,9 @@ button{font:inherit;color:inherit;cursor:pointer}
           <button class="skin-option" id="batmanSkin" type="button" aria-pressed="false">
             <span class="skin-icon">🦇</span><strong>بتمن</strong><small>شوالیه تاریکی</small>
           </button>
+          <button class="skin-option" id="groguSkin" type="button" aria-pressed="false">
+            <span class="skin-icon">👽</span><strong>گروگو</strong><small>بیبی یودا</small>
+          </button>
         </div>
         <button class="primary" id="startButton">بازی تک‌نفره</button>
         <div class="multiplayer-panel">
@@ -467,7 +470,7 @@ const bellyMat = makeMaterial(0xfff0ce,.92);
 const beakMat = makeMaterial(0xf18a27,.72);
 const eyeMat = makeMaterial(0x171717, .22);
 const SKIN_KEY = 'gozar_crossy_skin_v1';
-const validSkins = ['chicken','suit','spider','batman'];
+const validSkins = ['chicken','suit','spider','batman','grogu'];
 let savedSkin = localStorage.getItem(SKIN_KEY);
 let selectedSkin = validSkins.includes(savedSkin) ? savedSkin : 'chicken';
 
@@ -594,18 +597,50 @@ function buildBatmanSkin(target=playerBody) {
   // Short cape behind the shoulders.
   addVoxel(target,0,.86,.27,.78,.92,.12,black);
 }
+function buildGroguSkin(target=playerBody) {
+  // Small green alien with wide ears, glossy dark eyes and a warm beige robe.
+  const green=makeMaterial(0x9bbd9b,.88), lightGreen=makeMaterial(0xb7d2ad,.82);
+  const innerEar=makeMaterial(0xc97868,.92), robe=makeMaterial(0x8b765f,.98);
+  const robeLight=makeMaterial(0xb09a7e,.96), robeDark=makeMaterial(0x665543,.98);
+  const eye=makeMaterial(0x080d12,.12), eyeShine=makeMaterial(0xe8f3ee,.12);
+  const nose=makeMaterial(0x789b82,.9);
+  // Robe and thick folded collar.
+  addVoxel(target,0,.48,0,.82,.88,.62,robe);
+  addVoxel(target,0,.91,-.20,.94,.28,.42,robeLight);
+  addVoxel(target,-.34,.91,-.12,.34,.30,.58,robeLight);
+  addVoxel(target,.34,.91,-.12,.34,.30,.58,robeLight);
+  addVoxel(target,0,.50,-.326,.12,.76,.035,robeDark);
+  // Neck and oversized rounded-square head.
+  addVoxel(target,0,1.12,-.015,.42,.28,.40,green);
+  addVoxel(target,0,1.57,-.015,.92,.76,.66,lightGreen);
+  // Long, flat ears with pink inner surfaces.
+  addVoxel(target,-.73,1.62,-.005,.72,.20,.30,green);
+  addVoxel(target,.73,1.62,-.005,.72,.20,.30,green);
+  addVoxel(target,-.73,1.62,-.17,.60,.105,.035,innerEar);
+  addVoxel(target,.73,1.62,-.17,.60,.105,.035,innerEar);
+  // Large glossy eyes and tiny nose.
+  addVoxel(target,-.235,1.64,-.354,.25,.30,.075,eye);
+  addVoxel(target,.235,1.64,-.354,.25,.30,.075,eye);
+  addVoxel(target,-.285,1.73,-.398,.055,.065,.018,eyeShine);
+  addVoxel(target,.185,1.73,-.398,.055,.065,.018,eyeShine);
+  addVoxel(target,0,1.48,-.37,.13,.09,.08,nose);
+  // Small hands peeking out from the robe sleeves.
+  addVoxel(target,-.57,.47,-.02,.20,.18,.22,green);
+  addVoxel(target,.57,.47,-.02,.20,.18,.22,green);
+}
 function buildSkinModel(skinName, target) {
   const safeSkin = validSkins.includes(skinName) ? skinName : 'chicken';
   target.clear();
   if(safeSkin === 'suit') buildSuitSkin(target);
   else if(safeSkin === 'spider') buildSpiderSkin(target);
   else if(safeSkin === 'batman') buildBatmanSkin(target);
+  else if(safeSkin === 'grogu') buildGroguSkin(target);
   else buildChickenSkin(target);
   return safeSkin;
 }
 function applySkin(skinName, persist=true) {
   selectedSkin = buildSkinModel(skinName, playerBody);
-  const skinButtons = {chicken:'chickenSkin',suit:'suitSkin',spider:'spiderSkin',batman:'batmanSkin'};
+  const skinButtons = {chicken:'chickenSkin',suit:'suitSkin',spider:'spiderSkin',batman:'batmanSkin',grogu:'groguSkin'};
   for(const [skin,id] of Object.entries(skinButtons)) {
     const button=document.getElementById(id);
     if(button) {
@@ -1214,6 +1249,7 @@ document.getElementById('chickenSkin').addEventListener('click',()=>applySkin('c
 document.getElementById('suitSkin').addEventListener('click',()=>applySkin('suit'));
 document.getElementById('spiderSkin').addEventListener('click',()=>applySkin('spider'));
 document.getElementById('batmanSkin').addEventListener('click',()=>applySkin('batman'));
+document.getElementById('groguSkin').addEventListener('click',()=>applySkin('grogu'));
 document.getElementById('startButton').addEventListener('click',()=>startGame());
 document.getElementById('createRoomButton').addEventListener('click',createRoom);
 document.getElementById('joinRoomButton').addEventListener('click',joinRoom);
