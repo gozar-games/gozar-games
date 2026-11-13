@@ -43,6 +43,13 @@ async function ensureTable(env) {
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
   `).run();
+  await env.DB.prepare(`
+    CREATE TABLE IF NOT EXISTS intro_video_drafts (
+      user_id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
 }
 
 async function adminPanel(env, chatId) {
@@ -79,7 +86,9 @@ export async function onRequestPost({ request, env }) {
         await send(env, chatId, "🎮 به GOZAR GAMES خوش اومدی!\n\nاز منوی زیر استفاده کن.", menu(isAdmin));
       } else if (isAdmin && message.video) {
         const video = message.video;
-        const title = (message.caption || `ویدیوی جدید ${video.file_unique_id}`).slice(0, 100);
+        const draft = await env.DB.prepare("SELECT title FROM intro_video_drafts WHERE user_id = ?").bind(userId).first();
+        const title = (message.caption || draft?.title || "GOZAR GAMES").trim().slice(0, 100);
+        await env.DB.prepare("DELETE FROM intro_video_drafts WHERE user_id = ?").bind(userId).run();
         const max = await env.DB.prepare("SELECT COALESCE(MAX(sort_order), 0) AS n FROM intro_videos").first();
         await env.DB.prepare("INSERT INTO intro_videos (file_id, file_unique_id, title, duration, sort_order) VALUES (?, ?, ?, ?, ?)")
           .bind(video.file_id, video.file_unique_id || null, title, video.duration || 0, (max?.n || 0) + 1).run();
@@ -87,10 +96,14 @@ export async function onRequestPost({ request, env }) {
           inline_keyboard: [[{ text: "📂 مدیریت ویدیوها", callback_data: "admin_list" }]]
         });
       } else if (isAdmin && message.text) {
-        await send(env, chatId, "برای افزودن ویدیو، فایل ویدیویی را همین‌جا ارسال کن.", {
-          inline_keyboard: [[{ text: "👑 پنل مدیریت", callback_data: "admin" }]]
-        });
-      }
+        const title = message.text.trim().replace(/^\\/title\\s*/i, "").slice(0, 100);
+        if (!title || title.startsWith("/")) {
+          await send(env, chatId, "عنوان ویدیو را به‌صورت یک پیام متنی معمولی بفرست.");
+        } else {
+          await env.DB.prepare("INSERT INTO intro_video_drafts (user_id, title) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET title = excluded.title, updated_at = CURRENT_TIMESTAMP").bind(userId, title).run();
+          await send(env, chatId, `✅ عنوان ذخیره شد: «${title}»\\nحالا ویدیوی مربوط به همین عنوان را ارسال کن.`);
+        }
+
     }
 
     if (callback) {
