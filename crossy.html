@@ -301,7 +301,7 @@ function handleRoomMessage(msg) {
       aiBots=Array.from({length:desiredBots},(_,index)=>{
         const saved=existingBots[index];
         return saved
-          ? {...saved,id:`ai-${index+1}`,x:index===0?-2:2,ridingLog:null,cooldown:.18+index*.32}
+          ? {...saved,id:`ai-${index+1}`,x:index===0?-2:2,ridingLog:null,cooldown:.42+index*.05}
           : {id:`ai-${index+1}`,name:`هوش مصنوعی ${index+1}`,skin:index===0?'suit':'spider',x:index===0?-2:2,row:0,alive:true,finishedAt:null,ridingLog:null,cooldown:.18+index*.32};
       });
       aiAccumulator=0;aiBroadcastAccumulator=0;
@@ -1275,7 +1275,7 @@ function updateAIBots(dt) {
   function evaluateLane(rowIndex, fromX, targetX, depth) {
     const lane=rows.get(rowIndex);
     if(!lane) return null;
-    const travelTime=depth*.62;
+    const travelTime=depth*.45;
     let x=targetX;
     let reward=0;
     let danger=0;
@@ -1341,7 +1341,7 @@ function updateAIBots(dt) {
       let candidates=[];
       if(lane.type==='river') {
         for(const log of lane.objects.filter(o=>o.kind==='log')) {
-          const drift=lane.speed*(depth*.34)/LANE_WIDTH;
+          const drift=lane.speed*(depth*.45)/LANE_WIDTH;
           const x=THREE.MathUtils.clamp(log.x/LANE_WIDTH+drift,-2.45,2.45);
           if(Math.abs(x-fromX)<=1.35)candidates.push(x);
         }
@@ -1373,12 +1373,8 @@ function updateAIBots(dt) {
     }
     const scored=fallback.map(x=>evaluateLane(bot.row+1,bot.x,x,1)).filter(Boolean);
     scored.sort((a,b)=>b.reward-a.reward);
-    // Small, occasional human-like imperfections: the AI may take the
-    // second-best safe route instead of always choosing the mathematically
-    // perfect path.
-    const imperfectChance=.055+Math.min(bot.row/220,.055);
-    const pickIndex=scored.length>1 && Math.random()<imperfectChance?1:0;
-    return scored.length?scored[pickIndex].x:bot.x;
+    // Always choose the safest evaluated route; no deliberate mistakes.
+    return scored.length?scored[0].x:bot.x;
   }
 
   // Existing hazards on the tile occupied by the AI are checked every frame.
@@ -1426,10 +1422,10 @@ function updateAIBots(dt) {
         bot.coins=(bot.coins||0)+1;
       }
       const progress=Math.min(1,bot.row/180);
-      // Around 0.62s per forward move at the start, gradually improving
-      // only slightly to about 0.52s on very long runs.
-      const baseDelay=.62-progress*.10;
-      bot.cooldown=baseDelay+(Math.random()*.12);
+      // Human-like pace: roughly 0.45s per tile, improving only slightly
+      // with distance. Hazard checks still run every 0.05s for quick reactions.
+      const baseDelay=.45-progress*.04;
+      bot.cooldown=baseDelay+(Math.random()*.035);
       if(Math.abs(previousX-bot.x)>.01 || bot.row===nextRow) botStateDirty=true;
     }
   }
