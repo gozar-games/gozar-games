@@ -1311,6 +1311,22 @@ function updateCamera(dt) {
   const follow = 1 - Math.exp(-dt*10);
   camera.position.lerp(desiredPosition,follow);
   cameraLookTarget.lerp(desiredLookTarget,follow);
+  if(activeBoss && activeBoss.intro<1){
+    const t=activeBoss.intro;
+    const focus=1-Math.pow(1-t,2);
+    const bossFocus=new THREE.Vector3(activeBoss.group.position.x,.7,activeBoss.group.position.z-1.1);
+    cameraLookTarget.lerp(bossFocus,focus*.62);
+    camera.position.z-=focus*.72;
+    camera.position.y+=focus*.35;
+    const shake=(1-t)*.16;
+    camera.position.x+=(Math.random()-.5)*shake;
+    camera.position.y+=(Math.random()-.5)*shake;
+    camera.position.z+=(Math.random()-.5)*shake;
+    camera.fov=THREE.MathUtils.lerp(43,36,focus);
+  }else{
+    camera.fov=THREE.MathUtils.lerp(camera.fov,43,Math.min(1,dt*7));
+  }
+  camera.updateProjectionMatrix();
   camera.lookAt(cameraLookTarget);
 }
 let nextBossDistance=55;
@@ -1428,8 +1444,33 @@ function updateMeteorShower(dt){
     showToast('✅ بارش تموم شد! ۱۰ مسافت تا باس بعدی');
   }
 }
+let bossAudioContext=null;
+function playBossImpact(){
+  try{
+    const AudioCtx=window.AudioContext||window.webkitAudioContext;
+    if(!AudioCtx)return;
+    bossAudioContext=bossAudioContext||new AudioCtx();
+    if(bossAudioContext.state==='suspended')bossAudioContext.resume();
+    const ctx=bossAudioContext,now=ctx.currentTime;
+    const osc=ctx.createOscillator(),gain=ctx.createGain();
+    osc.type='sawtooth';
+    osc.frequency.setValueAtTime(105,now);
+    osc.frequency.exponentialRampToValueAtTime(38,now+.42);
+    gain.gain.setValueAtTime(.0001,now);
+    gain.gain.exponentialRampToValueAtTime(.22,now+.025);
+    gain.gain.exponentialRampToValueAtTime(.0001,now+.48);
+    osc.connect(gain);gain.connect(ctx.destination);
+    osc.start(now);osc.stop(now+.5);
+  }catch(_){}
+}
 function clearBoss(){
-  if(activeBoss){world.remove(activeBoss.group);activeBoss.group.traverse(n=>{if(n.geometry)n.geometry.dispose();if(n.material&&!Array.isArray(n.material))n.material.dispose();});activeBoss=null;}
+  if(activeBoss){
+    world.remove(activeBoss.group);
+    activeBoss.group.traverse(n=>{if(n.geometry)n.geometry.dispose();if(n.material&&!Array.isArray(n.material))n.material.dispose();});
+    if(activeBoss.shockwave){world.remove(activeBoss.shockwave);activeBoss.shockwave.geometry.dispose();activeBoss.shockwave.material.dispose();}
+    activeBoss=null;
+  }
+  camera.fov=43;camera.updateProjectionMatrix();
   bossHud.classList.add('hidden');
 }
 function spawnBoss(){
@@ -1457,22 +1498,46 @@ function spawnBoss(){
   group.position.set(playerX*LANE_WIDTH,0,player.position.z+5.0);
   world.add(group);
   group.scale.setScalar(.015);
-  activeBoss={group,time:20,start:20,intro:0,aura,entranceLight};
+  activeBoss={group,time:20,start:20,intro:0,aura,entranceLight,impactDone:false};
+  // Cinematic arrival: expanding ground shockwave, red sparks and a short smoke burst.
+  const shockwave=new THREE.Mesh(
+    new THREE.RingGeometry(.45,.72,48),
+    new THREE.MeshBasicMaterial({color:0xff263d,transparent:true,opacity:.95,side:THREE.DoubleSide})
+  );
+  shockwave.rotation.x=-Math.PI/2;
+  shockwave.position.set(group.position.x,.075,group.position.z);
+  world.add(shockwave);
+  activeBoss.shockwave=shockwave;
+  spawnBurst(group.position.x,.35,group.position.z,0xff263d,34);
+  spawnBurst(group.position.x,.2,group.position.z,0x321018,20);
   bossHud.classList.remove('hidden');bossTimerEl.textContent='۲۰ ثانیه برای فرار';bossProgressEl.style.width='100%';
-  showToast('🚨 باس فایت شروع شد! فرار کن!');
+  playBossImpact();
+  showToast('🚨 باس فایت وارد شد!');
 }
 function updateBoss(dt){
   if(!activeBoss)return;
-  activeBoss.time-=dt;
-  activeBoss.intro=Math.min(1,activeBoss.intro+dt*.9);
+  activeBoss.intro=Math.min(1,activeBoss.intro+dt*.58);
   const t=activeBoss.intro;
-  // Overshoot slightly, then settle to full size over about 1.1 seconds.
-  const bounce=1+Math.sin(t*Math.PI*2.5)*Math.pow(1-t,2)*.16;
+  // Cinematic overshoot, shockwave expansion and a brief impact pause.
+  const bounce=1+Math.sin(t*Math.PI*2.4)*Math.pow(1-t,2)*.19;
   const introEase=1-Math.pow(1-t,3);
   activeBoss.group.scale.setScalar(.015+introEase*.985*bounce);
-  activeBoss.aura.material.opacity=.78*(1-t);
-  activeBoss.aura.scale.setScalar(.65+t*.8);
-  activeBoss.entranceLight.intensity=3.5*(1-t);
+  activeBoss.aura.material.opacity=.82*(1-t);
+  activeBoss.aura.scale.setScalar(.65+t*1.35);
+  activeBoss.entranceLight.intensity=4.2*(1-t);
+  if(activeBoss.shockwave){
+    const waveScale=.7+t*3.8;
+    activeBoss.shockwave.scale.set(waveScale,waveScale,1);
+    activeBoss.shockwave.material.opacity=Math.max(0,1-t);
+  }
+  if(t<1)return;
+  if(!activeBoss.impactDone){
+    activeBoss.impactDone=true;
+    spawnBurst(activeBoss.group.position.x,.28,activeBoss.group.position.z,0xff4a35,26);
+    spawnBurst(activeBoss.group.position.x,.12,activeBoss.group.position.z,0x251014,16);
+    playBossImpact();
+  }
+  activeBoss.time-=dt;
   const gap=activeBoss.group.position.z-player.position.z;
   activeBoss.group.position.z-=3.6*dt;
   const follow=1-Math.exp(-dt*5);
