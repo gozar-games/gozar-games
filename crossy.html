@@ -1264,67 +1264,175 @@ function stopSpectating(showOverlay=true){
 }
 function updateAIBots(dt) {
   if(!roomSocket || !roomStarted || myPlayerId!==roomHostId || !aiBots.length || Date.now()<roomStartedAt) return;
-  aiAccumulator+=dt;aiBroadcastAccumulator+=dt;
+  aiAccumulator+=dt;
+  aiBroadcastAccumulator+=dt;
   let botStateDirty=false;
-  for(const bot of aiBots){
+
+  const wrapX=(x)=>((x+14)%28+28)%28-14;
+  const elapsedRoom=Math.max(0,(Date.now()-roomStartedAt)/1000);
+  const trafficSpeed=1+Math.min(score*.018,.9);
+
+  function evaluateLane(rowIndex, fromX, targetX, depth) {
+    const lane=rows.get(rowIndex);
+    if(!lane) return null;
+    const travelTime=depth*.34;
+    let x=targetX;
+    let reward=0;
+    let danger=0;
+
+    if(lane.type==='grass') {
+      const blocked=lane.obstacles.some(o=>o.lane===Math.round(x));
+      if(blocked) return null;
+      if(lane.coin && !lane.coin.collected && lane.coin.lane===Math.round(x)) reward+=1.65;
+    } else if(lane.type==='road') {
+      for(const obj of lane.objects) {
+        const predicted=wrapX(obj.x+lane.speed*trafficSpeed*travelTime);
+        const clearance=Math.abs(predicted-x*LANE_WIDTH)-(obj.width||1.7)/2;
+        if(clearance<1.02) danger+=Math.max(0,2.3-clearance)*2.4;
+      }
+      if(danger>3.2) return null;
+    } else if(lane.type==='river') {
+      const logs=lane.objects.filter(o=>o.kind==='log');
+      const safeLog=logs.find(o=>{
+        const drift=lane.speed*travelTime/LANE_WIDTH;
+        const predictedX=o.x/LANE_WIDTH+drift;
+        return Math.abs(predictedX-x)<(o.width/2/LANE_WIDTH)-.22;
+      });
+      if(!safeLog) return null;
+      x=THREE.MathUtils.clamp(safeLog.x/LANE_WIDTH+lane.speed*travelTime/LANE_WIDTH,-2.45,2.45);
+    } else if(lane.type==='rail') {
+      const phase=(elapsedRoom+travelTime+lane.index*.73)%4.2;
+      const trainWillRun=(lane.index%7===4)&&phase<(33/11.5);
+      let trainX=null;
+      if(lane.train) trainX=lane.train.position.x+11.5*travelTime;
+      else if(trainWillRun) trainX=-16+11.5*phase;
+      if(trainX!==null && Math.abs(trainX-x*LANE_WIDTH)<2.35) return null;
+    }
+
+    // During shared boss/meteor events, the AI treats nearby impact zones as
+    // temporary danger and changes lanes instead of blindly following its route.
+    const botWorldZ=-rowIndex*1.35;
+    if(activeBoss && Math.abs(activeBoss.group.position.z-botWorldZ)<2.1 &&
+       Math.abs(activeBoss.group.position.x-x*LANE_WIDTH)<1.5) danger+=3.8;
+    if(meteorShower) {
+      for(const meteor of meteorShower.meteors) {
+        if(meteor.group.position.y<3.2 &&
+           Math.abs(meteor.group.position.z-botWorldZ)<1.15 &&
+           Math.abs(meteor.group.position.x-x*LANE_WIDTH)<1.25) danger+=4.5;
+      }
+    }
+    if(danger>4.2) return null;
+    const laneChange=Math.abs(x-fromX);
+    const routeBias=Math.abs(x-([0,-1,1,0,0][(rowIndex+1)%5]))*.055;
+    return {x,reward:reward-danger-laneChange*.16-routeBias,danger};
+  }
+
+  function planNext(bot) {
+    const depthLimit=bot.row>=150?4:3;
+    let best=null;
+    function search(rowIndex, fromX, depth, accumulated, firstMove) {
+      if(depth>depthLimit) {
+        if(!best || accumulated>best.value) best={value:accumulated,move:firstMove};
+        return;
+      }
+      ensureRowsThrough(rowIndex);
+      const lane=rows.get(rowIndex);
+      if(!lane) return;
+      let candidates=[];
+      if(lane.type==='river') {
+        for(const log of lane.objects.filter(o=>o.kind==='log')) {
+          const drift=lane.speed*(depth*.34)/LANE_WIDTH;
+          const x=THREE.MathUtils.clamp(log.x/LANE_WIDTH+drift,-2.45,2.45);
+          if(Math.abs(x-fromX)<=1.35)candidates.push(x);
+        }
+      } else {
+        for(let x=-2;x<=2;x++) if(Math.abs(x-fromX)<=1.05)candidates.push(x);
+      }
+      let found=false;
+      for(const candidate of candidates) {
+        const evaluated=evaluateLane(rowIndex,fromX,candidate,depth);
+        if(!evaluated) continue;
+        found=true;
+        const nextFirst=firstMove===null?evaluated.x:firstMove;
+        const forwardBonus=.18;
+        search(rowIndex+1,evaluated.x,depth+1,accumulated+evaluated.reward+forwardBonus,nextFirst);
+      }
+      if(!found && firstMove!==null && (!best || accumulated-2>best.value)) best={value:accumulated-2,move:firstMove};
+    }
+    search(bot.row+1,bot.x,1,0,null);
+    if(best && best.move!==null) return best.move;
+    // If every look-ahead path is blocked, choose the least dangerous
+    // immediately reachable tile rather than freezing in place.
+    const next=rows.get(bot.row+1);
+    if(!next) return bot.x;
+    let fallback=[];
+    if(next.type==='river') {
+      fallback=next.objects.filter(o=>o.kind==='log').map(o=>THREE.MathUtils.clamp(o.x/LANE_WIDTH,-2.45,2.45));
+    } else {
+      fallback=[-2,-1,0,1,2].filter(x=>Math.abs(x-bot.x)<=1.05);
+    }
+    const scored=fallback.map(x=>evaluateLane(bot.row+1,bot.x,x,1)).filter(Boolean);
+    scored.sort((a,b)=>b.reward-a.reward);
+    return scored.length?scored[0].x:bot.x;
+  }
+
+  // Existing hazards on the tile occupied by the AI are checked every frame.
+  for(const bot of aiBots) {
     if(!bot.alive) continue;
     const current=rows.get(bot.row);
-    if(current?.type==='road' && current.objects.some(o=>Math.abs(o.x-bot.x*LANE_WIDTH)<.82)){bot.alive=false;bot.finishedAt=Date.now();botStateDirty=true;continue;}
-    if(current?.type==='river'){
+    if(current?.type==='road' && current.objects.some(o=>Math.abs(o.x-bot.x*LANE_WIDTH)<.82)) {
+      bot.alive=false;bot.finishedAt=Date.now();botStateDirty=true;continue;
+    }
+    if(current?.type==='river') {
       if(!bot.ridingLog) bot.ridingLog=current.objects.find(o=>Math.abs(o.x-bot.x*LANE_WIDTH)<o.width/2-.12)||null;
-      if(!bot.ridingLog){bot.alive=false;bot.finishedAt=Date.now();botStateDirty=true;continue;}
+      if(!bot.ridingLog) {
+        bot.alive=false;bot.finishedAt=Date.now();botStateDirty=true;continue;
+      }
       bot.x+=current.speed*dt/LANE_WIDTH;
-      if(Math.abs(bot.x*LANE_WIDTH-bot.ridingLog.x)>bot.ridingLog.width/2-.08){bot.alive=false;bot.finishedAt=Date.now();botStateDirty=true;continue;}
+      if(Math.abs(bot.x*LANE_WIDTH-bot.ridingLog.x)>bot.ridingLog.width/2-.08) {
+        bot.alive=false;bot.finishedAt=Date.now();botStateDirty=true;continue;
+      }
     } else bot.ridingLog=null;
-    if(current?.type==='rail' && current.train && Math.abs(current.train.position.x-bot.x*LANE_WIDTH)<2.05){bot.alive=false;bot.finishedAt=Date.now();botStateDirty=true;continue;}
-  }
-  while(aiAccumulator>=.38){
-    aiAccumulator-=.38;
-    for(const bot of aiBots){
-      if(!bot.alive) continue;
-      bot.cooldown-=.38;if(bot.cooldown>0)continue;
-      const botIndex=aiBots.indexOf(bot);
-      // A single high-skill rival reacts quickly while still obeying the same hazards.
-      bot.cooldown=.10+((bot.row+botIndex)%2)*.025;
-      const nextRow=bot.row+1;ensureRowsThrough(nextRow);
-      const lane=rows.get(nextRow);if(!lane)continue;
-      let choices=[];
-      if(lane.type==='grass') choices=[-2,-1,0,1,2].filter(x=>!lane.obstacles.some(o=>o.lane===x));
-      else if(lane.type==='road') choices=[-2,-1,0,1,2].filter(x=>!lane.objects.some(o=>Math.abs(o.x-x*LANE_WIDTH)<1.15));
-      else if(lane.type==='river') choices=lane.objects.filter(o=>o.kind==='log').map(o=>({x:o.x/LANE_WIDTH,log:o})).filter(v=>Math.abs(v.x)<=2.45 && Math.abs(v.x*LANE_WIDTH-v.log.x)<v.log.width/2-.12);
-      else {if(lane.train && Math.abs(lane.train.position.x-bot.x*LANE_WIDTH)<2.05)continue;choices=[bot.x];}
-      if(!choices.length)continue;
-
-      // Keep AI opponents in separate lanes. The first bot may claim a
-      // destination; later bots must choose another safe position instead
-      // of following into the exact same spot and visually merging.
-      const otherBots=aiBots.filter(other=>other!==bot&&other.alive&&other.row>=nextRow-1);
-      const separated=choices.filter(choice=>{
-        const candidateX=typeof choice==='number'?choice:choice.x;
-        return !otherBots.some(other=>
-          Math.abs(other.row-nextRow)<=1 &&
-          Math.abs(other.x-candidateX)<(lane.type==='river'?1.15:.78)
-        );
-      });
-      if(separated.length) choices=separated;
-      else if(otherBots.length) continue;
-
-      // Give each opponent a different lane route, not just a different spawn point.
-      const route=[-1,0,1,0][bot.row%4];
-      const preferred=choices.filter(choice=>{
-        const x=typeof choice==='number'?choice:choice.x;
-        return Math.abs(x-route)<=1;
-      });
-      if(preferred.length) choices=preferred;
-      choices.sort((a,b)=>{
-        const ax=typeof a==='number'?a:a.x, bx=typeof b==='number'?b:b.x;
-        const aCost=Math.abs(ax-route), bCost=Math.abs(bx-route);
-        return aCost-bCost;
-      });
-      const pick=choices[0];bot.x=typeof pick==='number'?pick:pick.x;bot.row=nextRow;bot.ridingLog=lane.type==='river'?pick.log:null;botStateDirty=true;
+    if(current?.type==='rail' && current.train && Math.abs(current.train.position.x-bot.x*LANE_WIDTH)<2.05) {
+      bot.alive=false;bot.finishedAt=Date.now();botStateDirty=true;
     }
   }
-  if(botStateDirty || aiBroadcastAccumulator>=.45){aiBroadcastAccumulator=0;sendRoomMessage({type:'bots',players:aiBots.map(bot=>({skin:bot.skin,x:bot.x,row:bot.row,alive:bot.alive,finishedAt:bot.finishedAt}))});}
+
+  // Faster decision checks let the AI react smoothly; its actual reaction
+  // interval shrinks as the race gets farther and more difficult.
+  while(aiAccumulator>=.08) {
+    aiAccumulator-=.08;
+    for(const bot of aiBots) {
+      if(!bot.alive) continue;
+      bot.cooldown=Math.max(0,(bot.cooldown||0)-.08);
+      if(bot.cooldown>0) continue;
+      const nextRow=bot.row+1;
+      ensureRowsThrough(nextRow);
+      const chosenX=planNext(bot);
+      const next=rows.get(nextRow);
+      if(!next) continue;
+      const previousX=bot.x;
+      bot.x=THREE.MathUtils.clamp(chosenX,-2.5,2.5);
+      bot.row=nextRow;
+      bot.ridingLog=next.type==='river'
+        ? next.objects.filter(o=>o.kind==='log').sort((a,b)=>Math.abs(a.x-bot.x*LANE_WIDTH)-Math.abs(b.x-bot.x*LANE_WIDTH))[0]||null
+        : null;
+      if(next.coin && !next.coin.collected && next.coin.lane===Math.round(bot.x)) {
+        bot.coins=(bot.coins||0)+1;
+      }
+      const skill=Math.min(1,bot.row/180);
+      bot.cooldown=Math.max(.085,.24-skill*.15);
+      if(Math.abs(previousX-bot.x)>.01 || bot.row===nextRow) botStateDirty=true;
+    }
+  }
+
+  if(botStateDirty || aiBroadcastAccumulator>=.35) {
+    aiBroadcastAccumulator=0;
+    sendRoomMessage({type:'bots',players:aiBots.map(bot=>({
+      skin:bot.skin,x:bot.x,row:bot.row,alive:bot.alive,
+      finishedAt:bot.finishedAt,coins:bot.coins||0
+    }))});
+  }
 }
 function updateCamera(dt) {
   // Keep the camera position and its look target in sync. Previously the
