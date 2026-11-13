@@ -454,8 +454,21 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 }
 .intro-video-stage{position:absolute;inset:0;z-index:2;display:none;background:#050505}
 .intro-video-stage.active{display:block}
-.intro-video-stage video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .28s ease}
-.intro-video-stage video.active{opacity:1}
+#gozarArcadeCanvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.intro-final-logo{position:absolute;z-index:3;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:radial-gradient(circle at 50% 48%,#4b0710 0%,#160609 43%,#050505 78%);overflow:hidden}
+.intro-final-logo:before{content:"";position:absolute;width:70vw;max-width:380px;aspect-ratio:1;border:1px solid #ff364355;border-radius:50%;box-shadow:0 0 28px #ed172555,inset 0 0 35px #ed172522;animation:finalRing 2.1s ease-out both}
+.intro-final-logo:after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 3px,#ffffff08 4px);pointer-events:none}
+.intro-final-logo.show{display:flex;animation:finalReveal .45s ease both}
+.final-logo-mark{position:relative;z-index:1;width:76px;height:76px;display:grid;place-items:center;border:2px solid #ff3441;border-radius:22px;color:#fff;font-size:48px;font-weight:900;box-shadow:0 0 28px #ed1725aa,inset 0 0 20px #ed172566;animation:finalMark .75s cubic-bezier(.2,.9,.25,1.3) both}
+.final-logo-word{position:relative;z-index:1;direction:ltr;margin-top:22px;font-size:clamp(39px,11vw,61px);font-weight:900;letter-spacing:-2px;text-shadow:0 0 22px #ed1725aa;animation:finalWord .8s .2s both}
+.final-logo-word span{color:#ff3441}
+.final-logo-line{position:relative;z-index:1;width:150px;height:2px;margin-top:17px;background:linear-gradient(90deg,transparent,#ff3441,transparent);box-shadow:0 0 15px #ed1725;animation:finalLine .8s .45s both}
+.final-logo-caption{position:relative;z-index:1;margin-top:14px;color:#d5a5a8;font-size:9px;letter-spacing:2px;direction:ltr;animation:finalWord .8s .6s both}
+@keyframes finalReveal{from{opacity:0}to{opacity:1}}
+@keyframes finalRing{from{transform:scale(.45);opacity:0}55%{opacity:.8}to{transform:scale(1.2);opacity:.18}}
+@keyframes finalMark{from{opacity:0;transform:scale(.2) rotate(-35deg)}to{opacity:1;transform:scale(1) rotate(0)}}
+@keyframes finalWord{from{opacity:0;filter:blur(8px);transform:translateY(12px)}to{opacity:1;filter:blur(0);transform:translateY(0)}}
+@keyframes finalLine{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 .intro-video-stage:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(0deg,#050505dc 0%,#05050525 45%,#05050545 100%)}
 .intro-video-caption{position:absolute;z-index:3;left:20px;right:20px;bottom:calc(62px + env(safe-area-inset-bottom));text-align:center;color:#fff;font-size:clamp(20px,5vw,29px);font-weight:900;text-shadow:0 3px 18px #000,0 0 20px #ed1725aa;animation:introCaption .65s ease both}
 .intro-video-brand{position:absolute;z-index:3;top:calc(28px + env(safe-area-inset-top));left:0;right:0;text-align:center;direction:ltr;font-weight:900;letter-spacing:2px;font-size:15px;color:#fff;text-shadow:0 2px 12px #000}
@@ -490,8 +503,13 @@ button{font-family:inherit;color:inherit;cursor:pointer}
     <div class="intro-line"></div>
   </div>
   <div class="intro-video-stage" id="introVideoStage">
-    <video id="introVideoA" muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
-    <video id="introVideoB" muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
+    <canvas id="gozarArcadeCanvas" aria-hidden="true"></canvas>
+    <div class="intro-final-logo" id="introFinalLogo">
+      <div class="final-logo-mark">G</div>
+      <div class="final-logo-word">GOZAR <span>GAMES</span></div>
+      <div class="final-logo-line"></div>
+      <div class="final-logo-caption">BUILT FOR PLAYERS. POWERED BY GOZAR.</div>
+    </div>
     <div class="intro-video-brand">GOZAR <span>GAMES</span></div>
     <div class="intro-video-caption" id="introVideoCaption"></div>
     <div class="intro-video-progress"><i id="introVideoProgress"></i></div>
@@ -920,107 +938,147 @@ async function claimDailyReward(){
 }
 
 
-const gozarIntroClips = [
-  {src:'https://videos.pexels.com/video-files/32822471/13990568_3840_2160_24fps.mp4',seconds:8,caption:'به دنیای نئون خوش آمدی'},
-  {src:'https://videos.pexels.com/video-files/32336444/13794793_3840_2160_30fps.mp4',seconds:7,caption:'فراتر از واقعیت؛ وارد بازی شو'},
-  {src:'https://videos.pexels.com/video-files/33074495/14098247_3840_2160_25fps.mp4',seconds:8,caption:'قدرت، سرعت، هیجان'},
-  {src:'https://videos.pexels.com/video-files/34160292/14482688_3840_2160_25fps.mp4',seconds:8,caption:'تکنولوژی در اوج خودش'},
-  {src:'https://videos.pexels.com/video-files/33656654/14300931_3840_2160_30fps.mp4',seconds:12,caption:'قدرت پشت پرده؛ تیم سازنده GOZAR'}
+const gozarIntroScenes = [
+  {type:'runner',seconds:1900,caption:'هر لحظه، یک چالش تازه'},
+  {type:'space',seconds:1900,caption:'بازی کن؛ رکوردها رو جابه‌جا کن'},
+  {type:'brand',seconds:2200,caption:''}
 ];
-let gozarClipTimer=null;
-let gozarClipIndex=-1;
+let gozarSceneIndex=0;
+let gozarSceneStarted=0;
+let gozarAnimationFrame=0;
 let gozarIntroFinished=false;
-let gozarIntroStarted=false;
-let gozarActiveSlot=0;
-let gozarPreparedIndex=-1;
-const gozarVideoSlots=[
-  document.getElementById('introVideoA'),
-  document.getElementById('introVideoB')
-];
+const gozarCanvas=document.getElementById('gozarArcadeCanvas');
+const gozarCtx=gozarCanvas.getContext('2d',{alpha:false});
+const gozarCaption=document.getElementById('introVideoCaption');
+const gozarProgress=document.getElementById('introVideoProgress');
+const gozarFinalLogo=document.getElementById('introFinalLogo');
+let gozarCanvasWidth=0,gozarCanvasHeight=0,gozarDpr=1;
 
-function prepareGozarClip(index,slot){
-  if(index>=gozarIntroClips.length || gozarIntroFinished) return;
-  const video=gozarVideoSlots[slot];
-  video.pause();
-  video.classList.remove('active');
-  video.onended=null;
-  video.onerror=()=>{
-    video.dataset.failed='true';
-    if(index===gozarClipIndex) handleGozarClipError(index);
-  };
-  video.oncanplay=()=>{
-    if(index===0 && gozarIntroStarted && gozarClipIndex<0) showGozarClip(index,slot);
-    if(index===gozarClipIndex+1) gozarPreparedIndex=index;
-  };
-  video.dataset.failed='';
-  video.src=gozarIntroClips[index].src;
-  video.load();
+function resizeGozarCanvas(){
+  const rect=gozarCanvas.getBoundingClientRect();
+  gozarDpr=Math.min(window.devicePixelRatio||1,1.5);
+  gozarCanvasWidth=Math.max(1,rect.width);
+  gozarCanvasHeight=Math.max(1,rect.height);
+  gozarCanvas.width=Math.round(gozarCanvasWidth*gozarDpr);
+  gozarCanvas.height=Math.round(gozarCanvasHeight*gozarDpr);
+  gozarCtx.setTransform(gozarDpr,0,0,gozarDpr,0,0);
 }
-
+function drawGozarRunner(t){
+  const c=gozarCtx,w=gozarCanvasWidth,h=gozarCanvasHeight;
+  c.fillStyle='#080b12';c.fillRect(0,0,w,h);
+  const horizon=h*.58;
+  const glow=c.createRadialGradient(w*.5,horizon,5,w*.5,horizon,w*.65);
+  glow.addColorStop(0,'#4c101a');glow.addColorStop(1,'#080b12');
+  c.fillStyle=glow;c.fillRect(0,0,w,h);
+  c.strokeStyle='#ff344144';c.lineWidth=1;
+  for(let i=-5;i<=5;i++){c.beginPath();c.moveTo(w/2,horizon);c.lineTo(w/2+i*w*.22,h);c.stroke()}
+  const scroll=(t*.00022)%1;
+  for(let i=0;i<12;i++){
+    const p=(i/12+scroll)%1, y=horizon+p*p*(h-horizon);
+    c.strokeStyle='rgba(255,55,70,'+(0.08+p*.35)+')';
+    c.beginPath();c.moveTo(0,y);c.lineTo(w,y);c.stroke();
+  }
+  const laneW=w*.22,baseY=h*.79;
+  for(let i=0;i<3;i++){
+    const x=w/2+(i-1)*laneW;
+    c.fillStyle='#ff2630';c.shadowColor='#ff2630';c.shadowBlur=18;
+    c.fillRect(x-laneW*.34,baseY,laneW*.68,5);c.shadowBlur=0;
+  }
+  const phase=t*.004;
+  for(let i=0;i<4;i++){
+    const p=((t*.00042+i*.27)%1),y=horizon+p*p*(h-horizon);
+    const lane=(i%3)-1,x=w/2+lane*laneW;
+    const size=8+p*28;
+    c.fillStyle=i%2?'#ff3441':'#f5f5f5';c.shadowColor=c.fillStyle;c.shadowBlur=12*p;
+    c.fillRect(x-size/2,y-size,size,size);c.shadowBlur=0;
+  }
+  const jump=Math.abs(Math.sin(phase))*h*.055;
+  const px=w/2,py=h*.79-jump;
+  c.shadowColor='#ff3441';c.shadowBlur=25;c.fillStyle='#f7f7f7';
+  c.beginPath();c.roundRect(px-17,py-39,34,39,9);c.fill();c.shadowBlur=0;
+  c.fillStyle='#ed1725';c.fillRect(px-11,py-30,22,7);
+  c.fillStyle='#fff';c.fillRect(px-9,py-17,6,5);c.fillRect(px+3,py-17,6,5);
+  c.fillStyle='#ff3441';c.font='900 13px Vazirmatn, sans-serif';c.textAlign='center';c.fillText('ARCADE RUN',w/2,h*.13);
+  c.fillStyle='#fff';c.font='800 24px Vazirmatn, sans-serif';c.fillText('SCORE  '+String(Math.floor(t/18)%9999).padStart(4,'0'),w/2,h*.19);
+}
+function drawGozarSpace(t){
+  const c=gozarCtx,w=gozarCanvasWidth,h=gozarCanvasHeight;
+  c.fillStyle='#050711';c.fillRect(0,0,w,h);
+  const bg=c.createRadialGradient(w*.5,h*.5,2,w*.5,h*.5,w*.75);
+  bg.addColorStop(0,'#241044');bg.addColorStop(1,'#050711');c.fillStyle=bg;c.fillRect(0,0,w,h);
+  for(let i=0;i<75;i++){
+    const x=(i*83.17)%w,y=(i*137.31+t*(.018+(i%4)*.012))%h;
+    c.fillStyle=i%7===0?'#ff6370':'#c9d7ff';c.globalAlpha=.35+(i%5)*.12;
+    c.fillRect(x,y, i%7===0?2:1.5,i%7===0?2:1.5);
+  }c.globalAlpha=1;
+  for(let i=0;i<7;i++){
+    const x=(i*97+t*.09)%w,y=(i*61+Math.sin(t*.002+i)*h*.12+h*.25)%h;
+    c.fillStyle=i%2?'#ff3441':'#8c5cff';c.shadowColor=c.fillStyle;c.shadowBlur=18;
+    c.beginPath();c.moveTo(x,y-13);c.lineTo(x+12,y+10);c.lineTo(x-12,y+10);c.closePath();c.fill();c.shadowBlur=0;
+  }
+  const x=w/2+Math.sin(t*.002)*w*.19,y=h*.72;
+  c.fillStyle='#ff3441';c.shadowColor='#ff3441';c.shadowBlur=26;
+  c.beginPath();c.moveTo(x,y-38);c.lineTo(x+25,y+25);c.lineTo(x,y+13);c.lineTo(x-25,y+25);c.closePath();c.fill();c.shadowBlur=0;
+  c.fillStyle='#fff';c.beginPath();c.arc(x,y-4,6,0,Math.PI*2);c.fill();
+  for(let i=0;i<5;i++){
+    const py=(t*.32+i*h*.23)%h;
+    c.fillStyle='#ffb13b';c.globalAlpha=.8;
+    c.beginPath();c.ellipse(x+(i-2)*10,py,2,10,0,0,Math.PI*2);c.fill();
+  }c.globalAlpha=1;
+  c.textAlign='center';c.fillStyle='#fff';c.font='900 14px Vazirmatn, sans-serif';c.fillText('NEON SPACE BATTLE',w/2,h*.13);
+  c.fillStyle='#ff6b75';c.font='800 24px Vazirmatn, sans-serif';c.fillText('LEVEL UP',w/2,h*.2);
+}
+function animateGozarScene(now){
+  if(gozarIntroFinished)return;
+  const scene=gozarIntroScenes[gozarSceneIndex];
+  if(!scene)return;
+  const elapsed=now-gozarSceneStarted;
+  if(scene.type==='runner')drawGozarRunner(elapsed);
+  else if(scene.type==='space')drawGozarSpace(elapsed);
+  if(scene.type!=='brand'){
+    gozarProgress.style.width=(((gozarSceneIndex+1)/gozarIntroScenes.length)*100)+'%';
+    if(elapsed>=scene.seconds){startNextGozarScene();return;}
+    gozarAnimationFrame=requestAnimationFrame(animateGozarScene);
+  }
+}
+function startNextGozarScene(){
+  gozarSceneIndex++;
+  if(gozarSceneIndex>=gozarIntroScenes.length){finishGozarIntro();return;}
+  const scene=gozarIntroScenes[gozarSceneIndex];
+  gozarSceneStarted=performance.now();
+  if(scene.type==='brand'){
+    gozarCanvas.style.display='none';
+    gozarCaption.textContent='';
+    gozarProgress.style.width='100%';
+    gozarFinalLogo.classList.add('show');
+    window.setTimeout(finishGozarIntro,scene.seconds);
+    return;
+  }
+  gozarCaption.textContent=scene.caption;
+  gozarCaption.style.animation='none';void gozarCaption.offsetWidth;gozarCaption.style.animation='';
+  gozarProgress.style.transition='none';gozarProgress.style.width=(((gozarSceneIndex)/gozarIntroScenes.length)*100)+'%';
+  requestAnimationFrame(()=>{gozarProgress.style.transition='width .25s linear';});
+  gozarAnimationFrame=requestAnimationFrame(animateGozarScene);
+}
 function finishGozarIntro(){
-  const intro=document.getElementById('gozarIntro');
-  if(!intro || gozarIntroFinished) return;
+  if(gozarIntroFinished)return;
   gozarIntroFinished=true;
-  if(gozarClipTimer) clearTimeout(gozarClipTimer);
-  gozarVideoSlots.forEach(video=>{video.pause();video.removeAttribute('src');video.load();});
+  cancelAnimationFrame(gozarAnimationFrame);
+  const intro=document.getElementById('gozarIntro');
   intro.classList.add('intro-leaving');
   window.setTimeout(()=>intro.remove(),560);
 }
-
-function handleGozarClipError(index){
-  if(gozarIntroFinished || index!==gozarClipIndex) return;
-  if(gozarClipTimer) clearTimeout(gozarClipTimer);
-  playGozarIntroClip(index+1);
-}
-
-function showGozarClip(index,slot){
-  if(gozarIntroFinished || index<=gozarClipIndex) return;
-  if(index>=gozarIntroClips.length){finishGozarIntro();return;}
-  gozarClipIndex=index;
-  gozarActiveSlot=slot;
-  const video=gozarVideoSlots[slot];
-  const caption=document.getElementById('introVideoCaption');
-  const progress=document.getElementById('introVideoProgress');
-  caption.textContent=gozarIntroClips[index].caption;
-  caption.style.animation='none';
-  void caption.offsetWidth;
-  caption.style.animation='';
-  progress.style.width=(((index+1)/gozarIntroClips.length)*100)+'%';
-  gozarVideoSlots.forEach((item,i)=>item.classList.toggle('active',i===slot));
-  video.currentTime=0;
-  video.play().catch(()=>handleGozarClipError(index));
-  if(gozarClipTimer) clearTimeout(gozarClipTimer);
-  gozarClipTimer=window.setTimeout(()=>playGozarIntroClip(index+1),gozarIntroClips[index].seconds*1000);
-  prepareGozarClip(index+1,1-slot);
-}
-
-function playGozarIntroClip(index){
-  if(gozarIntroFinished || index<=gozarClipIndex) return;
-  if(index>=gozarIntroClips.length){finishGozarIntro();return;}
-  const slot=1-gozarActiveSlot;
-  const next=gozarVideoSlots[slot];
-  if(next.dataset.failed==='true'){
-    next.dataset.failed='';
-    playGozarIntroClip(index+1);
-    return;
-  }
-  if(next.readyState>=3 && next.src===gozarIntroClips[index].src){
-    showGozarClip(index,slot);
-  }else{
-    prepareGozarClip(index,slot);
-    next.oncanplay=()=>showGozarClip(index,slot);
-  }
-}
-
 function startGozarIntroVideos(){
-  if(gozarIntroFinished || gozarIntroStarted) return;
-  gozarIntroStarted=true;
+  if(gozarIntroFinished)return;
   document.getElementById('introLogoStage').style.display='none';
   document.getElementById('introVideoStage').classList.add('active');
-  playGozarIntroClip(0);
+  resizeGozarCanvas();
+  gozarCaption.textContent=gozarIntroScenes[0].caption;
+  gozarSceneStarted=performance.now();
+  gozarAnimationFrame=requestAnimationFrame(animateGozarScene);
 }
-prepareGozarClip(0,0);
-window.setTimeout(startGozarIntroVideos,2700);
+window.addEventListener('resize',resizeGozarCanvas,{passive:true});
+window.setTimeout(startGozarIntroVideos,1450);
 
 if(tg){
   tg.ready();
