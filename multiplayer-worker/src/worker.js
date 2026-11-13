@@ -20,6 +20,8 @@ export class Room {
     this.bots = [];
     this.botCount = 0;
     this.hostId = null;
+    this.nextBossRow = 55;
+    this.roomEvent = null;
   }
 
   getRealPlayers() {
@@ -103,9 +105,51 @@ export class Room {
         finished: this.finished,
         results: this.finalResults,
         hostId: this.hostId,
+        event: this.roomEvent,
+        nextBossRow: this.nextBossRow,
         players
       });
     }
+  }
+
+  getMaxProgress() {
+    return this.getPlayers().reduce((max, player) =>
+      Math.max(max, Math.max(0, Number(player.row) || 0)), 0);
+  }
+
+  startSharedBossIfNeeded() {
+    if (!this.started || this.finished || this.roomEvent || this.getMaxProgress() < this.nextBossRow) return false;
+    const now = Date.now();
+    this.roomEvent = {
+      id: crypto.randomUUID(),
+      phase: "boss",
+      startedAt: now,
+      endsAt: now + 21724,
+      seed: Math.floor(Math.random() * 2147483646) + 1
+    };
+    return true;
+  }
+
+  advanceRoomEvent() {
+    if (!this.roomEvent) return false;
+    const now = Date.now();
+    if (now < this.roomEvent.endsAt) return false;
+    if (this.roomEvent.phase === "boss") {
+      const meteorStart = this.roomEvent.endsAt;
+      this.roomEvent = {
+        ...this.roomEvent,
+        phase: "meteor",
+        startedAt: meteorStart,
+        endsAt: meteorStart + 10000
+      };
+      return true;
+    }
+    if (this.roomEvent.phase === "meteor") {
+      this.roomEvent = null;
+      this.nextBossRow = this.getMaxProgress() + 10;
+      return true;
+    }
+    return false;
   }
 
   async fetch(request) {
@@ -219,6 +263,7 @@ export class Room {
         }
 
         ws.serializeAttachment(player);
+        this.startSharedBossIfNeeded();
         this.broadcast();
         break;
       }
@@ -246,7 +291,14 @@ export class Room {
           finishedAt: bot.alive === false ? (Number(bot.finishedAt) || Date.now()) : null,
           isAI: true
         }));
+        this.startSharedBossIfNeeded();
         this.broadcast();
+        break;
+      }
+
+      case "eventTick": {
+        if (!this.started || this.finished) break;
+        if (this.advanceRoomEvent()) this.broadcast();
         break;
       }
 
@@ -312,6 +364,8 @@ export class Room {
 
         this.resetVersion++;
         this.roomSeed = Math.floor(Math.random() * 2147483647);
+        this.roomEvent = null;
+        this.nextBossRow = 55;
 
         for (const socket of this.state.getWebSockets()) {
           const current = socket.deserializeAttachment();
