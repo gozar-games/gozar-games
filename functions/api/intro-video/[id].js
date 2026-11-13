@@ -4,6 +4,12 @@ export async function onRequestGet({ request, env, params }) {
   if (!Number.isSafeInteger(id) || id < 1) return new Response("Not found", { status: 404 });
 
   try {
+    // Edge-cache photo responses so repeat visitors do not re-download them from Telegram.
+    const cache = caches.default;
+    const cacheKey = new Request(new URL(request.url).toString(), { method: "GET" });
+    const cached = await cache.match(cacheKey);
+    if (cached) return cached;
+
     const item = await env.DB.prepare(
       "SELECT file_id, media_type FROM intro_videos WHERE id = ? AND active = 1"
     ).bind(id).first();
@@ -34,7 +40,11 @@ export async function onRequestGet({ request, env, params }) {
       const value = media.headers.get(key);
       if (value) responseHeaders.set(key, value);
     }
-    return new Response(media.body, { status: media.status, headers: responseHeaders });
+    const response = new Response(media.body, { status: media.status, headers: responseHeaders });
+    if (item.media_type === "photo" && media.status === 200) {
+      await cache.put(cacheKey, response.clone());
+    }
+    return response;
   } catch (error) {
     console.error("Intro video stream error:", error);
     return new Response("Video playback failed", { status: 500 });
