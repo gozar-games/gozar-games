@@ -87,7 +87,8 @@ export async function onRequestPost({ request, env }) {
       } else if (isAdmin && message.video) {
         const video = message.video;
         const draft = await env.DB.prepare("SELECT title FROM intro_video_drafts WHERE user_id = ?").bind(userId).first();
-        const title = (message.caption || draft?.title || "GOZAR GAMES").trim().slice(0, 100);
+        const caption = (message.caption || "").trim();
+        const title = (caption || draft?.title || "GOZAR GAMES").slice(0, 100);
         await env.DB.prepare("DELETE FROM intro_video_drafts WHERE user_id = ?").bind(userId).run();
         const max = await env.DB.prepare("SELECT COALESCE(MAX(sort_order), 0) AS n FROM intro_videos").first();
         await env.DB.prepare("INSERT INTO intro_videos (file_id, file_unique_id, title, duration, sort_order) VALUES (?, ?, ?, ?, ?)")
@@ -96,6 +97,18 @@ export async function onRequestPost({ request, env }) {
           inline_keyboard: [[{ text: "📂 مدیریت ویدیوها", callback_data: "admin_list" }]]
         });
       } else if (isAdmin && message.text) {
+        const renameDraft = await env.DB.prepare("SELECT title FROM intro_video_drafts WHERE user_id = ?").bind(userId).first();
+        if (renameDraft?.title?.startsWith("__rename__:")) {
+          const targetId = Number(renameDraft.title.split(":")[1]);
+          const newTitle = message.text.trim().slice(0, 100);
+          if (newTitle && !newTitle.startsWith("/")) {
+            await env.DB.prepare("UPDATE intro_videos SET title = ? WHERE id = ?").bind(newTitle, targetId).run();
+            await env.DB.prepare("DELETE FROM intro_video_drafts WHERE user_id = ?").bind(userId).run();
+            await send(env, chatId, "✅ عنوان ویدیو تغییر کرد.");
+          } else {
+            await send(env, chatId, "لطفاً عنوان معتبر بفرست.");
+          }
+        } else {
         const title = message.text.trim().replace(/^\\/title\\s*/i, "").slice(0, 100);
         if (!title || title.startsWith("/")) {
           await send(env, chatId, "عنوان ویدیو را به‌صورت یک پیام متنی معمولی بفرست.");
@@ -103,7 +116,8 @@ export async function onRequestPost({ request, env }) {
           await env.DB.prepare("INSERT INTO intro_video_drafts (user_id, title) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET title = excluded.title, updated_at = CURRENT_TIMESTAMP").bind(userId, title).run();
           await send(env, chatId, `✅ عنوان ذخیره شد: «${title}»\\nحالا ویدیوی مربوط به همین عنوان را ارسال کن.`);
         }
-
+        }
+      }
     }
 
     if (callback) {
@@ -126,11 +140,16 @@ export async function onRequestPost({ request, env }) {
             await send(env, chatId, `#${item.id} · ${item.title}\nوضعیت: ${item.active ? "فعال" : "غیرفعال"} · ترتیب: ${item.sort_order}`, {
               inline_keyboard: [
                 [{ text: item.active ? "⏸ غیرفعال‌کردن" : "▶️ فعال‌کردن", callback_data: `toggle:${item.id}` }],
+                [{ text: "✏️ تغییر عنوان", callback_data: `renametitle:${item.id}` }],
                 [{ text: "⬆️", callback_data: `moveup:${item.id}` }, { text: "⬇️", callback_data: `movedown:${item.id}` }, { text: "🗑 حذف", callback_data: `delete:${item.id}` }]
               ]
             });
           }
         }
+      } else if (isAdmin && /^renametitle:\d+$/.test(data)) {
+        const id = Number(data.split(":")[1]);
+        await env.DB.prepare("INSERT INTO intro_video_drafts (user_id, title) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET title = excluded.title, updated_at = CURRENT_TIMESTAMP").bind(userId, "__rename__:" + id).run();
+        await send(env, chatId, "عنوان جدید این ویدیو را در یک پیام متنی بفرست.");
       } else if (isAdmin && /^(toggle|delete|moveup|movedown):\d+$/.test(data)) {
         const [action, rawId] = data.split(":");
         const id = Number(rawId);
