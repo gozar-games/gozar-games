@@ -38,11 +38,13 @@ async function ensureTable(env) {
       file_unique_id TEXT,
       title TEXT NOT NULL,
       duration INTEGER DEFAULT 0,
+      media_type TEXT NOT NULL DEFAULT 'video',
       active INTEGER NOT NULL DEFAULT 1,
       sort_order INTEGER NOT NULL DEFAULT 0,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
   `).run();
+  try { await env.DB.prepare("ALTER TABLE intro_videos ADD COLUMN media_type TEXT NOT NULL DEFAULT 'video'").run(); } catch {}
   await env.DB.prepare(`
     CREATE TABLE IF NOT EXISTS intro_video_drafts (
       user_id TEXT PRIMARY KEY,
@@ -53,7 +55,7 @@ async function ensureTable(env) {
 }
 
 async function adminPanel(env, chatId) {
-  await send(env, chatId, "👑 پنل مدیریت GOZAR GAMES\n\nبرای افزودن ویدیو، اول عنوان دلخواهش را به‌صورت یک پیام متنی بفرست؛ بعد فایل ویدیویی را ارسال کن. همان عنوان پایین ویدیو نمایش داده می‌شود.\n\nبرای مدیریت ویدیوهای قبلی از دکمه زیر استفاده کن.", {
+  await send(env, chatId, "👑 پنل مدیریت GOZAR GAMES\n\nبرای افزودن محتوا، کپشن را همراه عکس یا ویدیو بفرست تا همان نمایش داده شود؛ یا اول عنوان را به‌صورت پیام متنی بفرست و سپس عکس/ویدیو را ارسال کن.\n\nعکس‌ها به‌مدت ۵ ثانیه نمایش داده می‌شوند و ویدیوها تا پایان فایل پخش می‌شوند.\n\nبرای مدیریت محتوا از فهرست زیر استفاده کن.", {
     inline_keyboard: [
       [{ text: "📂 فهرست ویدیوها", callback_data: "admin_list" }],
       [{ text: "⬅️ منوی اصلی", callback_data: "home" }]
@@ -91,10 +93,22 @@ export async function onRequestPost({ request, env }) {
         const title = (caption || draft?.title || "GOZAR GAMES").slice(0, 100);
         await env.DB.prepare("DELETE FROM intro_video_drafts WHERE user_id = ?").bind(userId).run();
         const max = await env.DB.prepare("SELECT COALESCE(MAX(sort_order), 0) AS n FROM intro_videos").first();
-        await env.DB.prepare("INSERT INTO intro_videos (file_id, file_unique_id, title, duration, sort_order) VALUES (?, ?, ?, ?, ?)")
+        await env.DB.prepare("INSERT INTO intro_videos (file_id, file_unique_id, title, duration, media_type, sort_order) VALUES (?, ?, ?, ?, 'video', ?)")
           .bind(video.file_id, video.file_unique_id || null, title, video.duration || 0, (max?.n || 0) + 1).run();
-        await send(env, chatId, "✅ ویدیو دریافت و به فهرست اضافه شد.\nبرای مدیریت و ترتیب پخش، پنل مدیریت را باز کن.", {
+        await send(env, chatId, "✅ ویدیو دریافت و به فهرست محتوا اضافه شد.\nبرای مدیریت و ترتیب پخش، پنل مدیریت را باز کن.", {
           inline_keyboard: [[{ text: "📂 مدیریت ویدیوها", callback_data: "admin_list" }]]
+        });
+      } else if (isAdmin && message.photo?.length) {
+        const photo = message.photo[message.photo.length - 1];
+        const draft = await env.DB.prepare("SELECT title FROM intro_video_drafts WHERE user_id = ?").bind(userId).first();
+        const caption = (message.caption || "").trim();
+        const title = (caption || draft?.title || "GOZAR GAMES").slice(0, 100);
+        await env.DB.prepare("DELETE FROM intro_video_drafts WHERE user_id = ?").bind(userId).run();
+        const max = await env.DB.prepare("SELECT COALESCE(MAX(sort_order), 0) AS n FROM intro_videos").first();
+        await env.DB.prepare("INSERT INTO intro_videos (file_id, file_unique_id, title, duration, media_type, sort_order) VALUES (?, ?, ?, 0, 'photo', ?)")
+          .bind(photo.file_id, photo.file_unique_id || null, title, (max?.n || 0) + 1).run();
+        await send(env, chatId, "✅ عکس دریافت و به فهرست محتوا اضافه شد.", {
+          inline_keyboard: [[{ text: "📂 مدیریت محتوا", callback_data: "admin_list" }]]
         });
       } else if (isAdmin && message.text) {
         const renameDraft = await env.DB.prepare("SELECT title FROM intro_video_drafts WHERE user_id = ?").bind(userId).first();
