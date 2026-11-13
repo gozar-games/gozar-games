@@ -1,0 +1,1684 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#080808">
+<title>GOZAR GAMES | Crossy Road</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800;900&display=swap');
+:root{--bg:#080808;--panel:#151515;--line:#303030;--accent:#ed1725;--muted:#aaa}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:#f5f5f5;font-family:Vazirmatn,sans-serif;overscroll-behavior:none}
+body{min-height:100vh;min-height:100dvh;overflow:hidden;touch-action:pan-x pan-y}
+button{font:inherit;color:inherit;cursor:pointer}
+.app{width:100%;max-width:none;height:100vh;height:100dvh;margin:0;padding:calc(8px + env(safe-area-inset-top)) 10px calc(8px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:7px}
+.top{height:40px;flex:none;display:flex;align-items:center;justify-content:space-between}
+.back{border:1px solid #383838;background:#191919;border-radius:11px;padding:8px 12px;font-size:12px}
+.brand{font-weight:900;letter-spacing:.4px}.brand span{color:var(--accent)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:9px;flex:none}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:6px 12px;text-align:center}
+.stat strong{display:block;font-size:22px;line-height:1.3;color:#fff;direction:ltr}
+.stat small{font-size:10px;color:var(--muted)}
+.stage{position:relative;flex:1;min-height:220px;width:calc(100% + 24px);margin-inline:-12px;overflow:hidden;border:0;border-radius:0;background:linear-gradient(#8bd5ff,#d2efff 55%,#b6e1a1);box-shadow:0 8px 28px #0006;touch-action:none}
+#game{display:block;width:100%;height:100%;touch-action:none;outline:none}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:22px;background:#05090dcc;backdrop-filter:blur(5px);text-align:center}
+.overlay.hidden{display:none}
+.dialog{width:min(100%,300px);background:#151515ed;border:1px solid #454545;border-radius:19px;padding:20px 17px;box-shadow:0 15px 45px #0008}
+.dialog .emoji{font-size:42px}
+.dialog h1{font-size:23px;margin:5px 0 4px}
+.dialog p{font-size:12px;color:#bbb;line-height:1.9;margin:5px 0 15px}
+.skin-picker{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 15px}
+.skin-option{min-width:0;border:1px solid #454545;border-radius:13px;background:#202020;padding:9px 6px 8px;display:flex;flex-direction:column;align-items:center;gap:4px;transition:border-color .15s,background .15s,transform .15s}
+.skin-option .skin-icon{font-size:29px;line-height:1.25}
+.skin-option strong{font-size:11px}
+.skin-option small{font-size:9px;color:#aaa}
+.skin-option.active{border:2px solid #ed1725;background:#35191d;box-shadow:0 0 0 2px #ed172533}
+.skin-option:active{transform:scale(.97)}
+.primary{border:0;border-radius:12px;background:var(--accent);padding:11px 22px;font-weight:900;min-width:145px}
+.secondary{border:1px solid #444;border-radius:12px;background:#242424;padding:10px 16px;font-weight:800;margin-right:6px}
+.controls{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;flex:none;direction:ltr}
+.control{height:51px;border:1px solid #383838;border-radius:14px;background:#191919;font-size:21px;font-weight:900;touch-action:none;user-select:none;-webkit-user-select:none}
+.control.forward{background:#292020;border-color:#713038;color:#ff7078}
+.control:active{transform:scale(.96);background:#333}
+.hint{flex:none;text-align:center;color:#999;font-size:10px;line-height:1.7}
+.toast{position:absolute;top:12px;left:50%;transform:translateX(-50%);padding:7px 12px;background:#151515dd;border:1px solid #555;border-radius:20px;font-size:11px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .2s}
+.toast.show{opacity:1}
+.boss-hud{position:absolute;top:48px;left:50%;transform:translateX(-50%);z-index:5;width:min(82%,310px);padding:7px 10px;border:1px solid #ff5965;border-radius:12px;background:#19090de8;box-shadow:0 0 18px #ff173755;text-align:center;pointer-events:none}.boss-hud.hidden{display:none}.boss-hud strong{display:block;font-size:12px;color:#ff7b83}.boss-hud small{font-size:11px;color:#fff}.boss-track{height:5px;margin-top:5px;border-radius:9px;background:#4a252a;overflow:hidden}.boss-track i{display:block;height:100%;width:100%;background:#ff394b;transition:width .1s linear}
+.spectator-bar{position:absolute;top:10px;left:10px;right:10px;z-index:4;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px;background:#111e;border:1px solid #ffffff35;border-radius:12px;backdrop-filter:blur(8px);font-size:11px}.spectator-bar.hidden{display:none}.spectator-bar strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.spectator-actions{display:flex;gap:5px;flex:none}.spectator-actions button{border:1px solid #555;border-radius:8px;background:#292929;padding:6px 8px;font-size:10px}
+.multiplayer-panel{border-top:1px solid #393939;margin-top:13px;padding-top:11px;display:grid;gap:7px;text-align:right}.mp-input{width:100%;border:1px solid #444;border-radius:10px;background:#0f0f0f;color:#fff;padding:9px 10px;font:inherit;font-size:12px;outline:none}.mp-row{display:grid;grid-template-columns:1fr 1fr;gap:7px}.mp-button{border:1px solid #484848;border-radius:10px;background:#242424;padding:9px 6px;font-size:11px;font-weight:800}.mp-button.primary-mp{background:#8e1720;border-color:#b62a35}.room-status{font-size:10px;color:#c9c9c9;line-height:1.8;white-space:pre-line}.room-code{direction:ltr;font-weight:900;font-size:18px;letter-spacing:3px;color:#ff7279}.room-hidden{display:none!important}
+@media(min-height:760px){.app{gap:11px}.control{height:56px}.hint{font-size:11px}}
+@media(max-height:620px){.app{gap:6px;padding-top:5px;padding-bottom:5px}.top{height:34px}.stat{padding:3px 9px}.stat strong{font-size:18px}.control{height:43px}.hint{font-size:9px}}
+/* Mobile start menu: keep the complete multiplayer form reachable on short screens. */
+#startOverlay{overflow-y:auto;overflow-x:hidden;align-items:flex-start;padding:10px 9px;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
+#startOverlay .dialog{flex:none;width:min(100%,420px);max-height:none;margin:auto;padding:14px 12px;}
+#startOverlay .dialog .emoji{font-size:34px;line-height:1.1}
+#startOverlay .dialog h1{font-size:20px;margin:4px 0}
+#startOverlay .dialog p{font-size:11px;line-height:1.7;margin:4px 0 9px}
+#startOverlay .skin-picker{gap:6px;margin:8px 0 10px}
+#startOverlay .skin-option{padding:7px 5px 6px;gap:3px}
+#startOverlay .skin-option .skin-icon{font-size:24px}
+#startOverlay .skin-option strong{font-size:10px}
+#startOverlay .skin-option small{font-size:9px}
+#startOverlay .primary{padding:9px 18px;min-height:40px}
+#startOverlay .multiplayer-panel{margin-top:9px;padding-top:8px;gap:6px}
+#startOverlay .mp-input{padding:8px 9px;font-size:12px;min-height:38px}
+#startOverlay .mp-button{padding:8px 5px;min-height:38px;font-size:10px}
+#startOverlay .room-status{font-size:10px;line-height:1.6;overflow-wrap:anywhere}
+#startOverlay .room-code{display:block;padding:5px 0;font-size:20px;min-height:34px}
+#startOverlay .mp-row{gap:6px}
+@media(max-width:380px){#startOverlay{padding-inline:6px}#startOverlay .dialog{padding:11px 9px}#startOverlay .skin-option .skin-icon{font-size:22px}#startOverlay .skin-option strong{font-size:9px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <button class="back" id="backButton">← بازگشت</button>
+    <div class="brand">GOZAR <span>GAMES</span></div>
+  </header>
+
+  <section class="stats">
+    <div class="stat"><strong id="score">0</strong><small>امتیاز</small></div>
+    <div class="stat"><strong id="best">0</strong><small>رکورد</small></div>
+  </section>
+
+  <main class="stage" id="stage">
+    <canvas id="game" aria-label="بازی سه بعدی Crossy Road"></canvas>
+    <div class="toast" id="toast"></div>
+    <div class="boss-hud hidden" id="bossHud"><strong>👹 باس فایت!</strong><small id="bossTimer">۱۰ ثانیه برای فرار</small><div class="boss-track"><i id="bossProgress"></i></div></div>
+    <div class="spectator-bar hidden" id="spectatorBar"><strong id="spectatorName">در حال تماشا</strong><div class="spectator-actions"><button id="spectatorPrev">قبلی</button><button id="spectatorNext">بعدی</button><button id="spectatorStop">پایان</button></div></div>
+    <section class="overlay" id="startOverlay">
+      <div class="dialog">
+        <div class="emoji">🐤</div>
+        <h1>Crossy Road</h1>
+        <p>شخصیت مورد علاقه‌ات را انتخاب کن و وارد بازی شو.<br>از جاده‌ها، رودخانه‌ها و ریل قطار عبور کن!</p>
+        <div class="skin-picker" role="group" aria-label="انتخاب شخصیت">
+          <button class="skin-option" id="chickenSkin" type="button" aria-pressed="false">
+            <span class="skin-icon">🐔</span><strong>مرغ سفید</strong><small>شخصیت کلاسیک</small>
+          </button>
+          <button class="skin-option" id="suitSkin" type="button" aria-pressed="false">
+            <span class="skin-icon">🕴️</span><strong>مرد کت‌وشلواری</strong><small>استایل رسمی</small>
+          </button>
+          <button class="skin-option" id="spiderSkin" type="button" aria-pressed="false">
+            <span class="skin-icon">🕷️</span><strong>اسپایدرمن</strong><small>قهرمان تارزن</small>
+          </button>
+          <button class="skin-option" id="batmanSkin" type="button" aria-pressed="false">
+            <span class="skin-icon">🦇</span><strong>بتمن</strong><small>شوالیه تاریکی</small>
+          </button>
+          <button class="skin-option" id="groguSkin" type="button" aria-pressed="false">
+            <span class="skin-icon">👽</span><strong>گروگو</strong><small>بیبی یودا</small>
+          </button>
+          <button class="skin-option" id="tinkerbellSkin" type="button" aria-pressed="false">
+            <span class="skin-icon">🧚‍♀️</span><strong>تینکربل</strong><small>پری جنگل</small>
+          </button>
+          <button class="skin-option" id="duckSkin" type="button" aria-pressed="false">
+            <span class="skin-icon">🦆</span><strong>اردک سبز</strong><small>اردک مکعبی</small>
+          </button>
+          <button class="skin-option" id="grootSkin" type="button" aria-pressed="false">
+            <span class="skin-icon">🌳</span><strong>گروت</strong><small>نگهبان کوچک جنگل</small>
+          </button>
+        </div>
+        <button class="primary" id="startButton">بازی تک‌نفره</button>
+        <div class="multiplayer-panel">
+          <strong style="font-size:13px">🌐 بازی آنلاین ۴ نفره</strong>
+          <input class="mp-input" id="playerName" maxlength="16" placeholder="اسم بازیکنت" value="بازیکن">
+          <div class="mp-row">
+            <button class="mp-button primary-mp" id="createRoomButton">ساخت اتاق</button>
+            <button class="mp-button" id="joinRoomButton">ورود با کد</button>
+          </div>
+          <input class="mp-input" id="roomCodeInput" maxlength="6" placeholder="کد اتاق دوستان" style="text-transform:uppercase;direction:ltr;text-align:center;letter-spacing:3px">
+          <div id="roomStatus" class="room-status">برای بازی با دوستان، اتاق بساز یا کد اتاق را وارد کن.</div>
+          <div id="roomCodeDisplay" class="room-code room-hidden"></div>
+          <div class="mp-row room-hidden" id="roomActions">
+            <button class="mp-button primary-mp" id="startRoomButton">شروع مسابقه</button>
+            <button class="mp-button" id="leaveRoomButton">خروج از اتاق</button>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="overlay hidden" id="gameOverOverlay">
+      <div class="dialog">
+        <div class="emoji">💥</div>
+        <h1>GAME OVER</h1>
+        <p id="finalText">امتیاز: 0</p>
+        <button class="primary" id="retryButton">بازی دوباره</button>
+        <button class="secondary room-hidden" id="spectateButton">تماشای بازیکنان</button>
+        <button class="secondary room-hidden" id="gameOverLeaveButton">خروج از اتاق</button>
+        <button class="secondary" id="homeButton">بازگشت</button>
+      </div>
+    </section>
+  </main>
+
+  <section class="controls" aria-label="کنترل بازی">
+    <button class="control" id="leftButton" aria-label="چپ">◀</button>
+    <button class="control forward" id="forwardButton" aria-label="جلو">▲</button>
+    <button class="control" id="rightButton" aria-label="راست">▶</button>
+  </section>
+  <div class="hint">برای حرکت به جلو روی ▲ بزن؛ برای چپ و راست از دکمه‌ها یا کشیدن انگشت استفاده کن.</div>
+</div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+
+const canvas = document.getElementById('game');
+const stage = document.getElementById('stage');
+const scoreEl = document.getElementById('score');
+const bestEl = document.getElementById('best');
+const startOverlay = document.getElementById('startOverlay');
+const gameOverOverlay = document.getElementById('gameOverOverlay');
+const finalText = document.getElementById('finalText');
+const toastEl = document.getElementById('toast');
+const bossHud = document.getElementById('bossHud');
+const bossTimerEl = document.getElementById('bossTimer');
+const bossProgressEl = document.getElementById('bossProgress');
+
+// Multiplayer is served by a Cloudflare Pages Function backed by a Durable Object.
+const ROOM_API = '/api/rooms';
+let roomSocket = null;
+let spectatorMode = false;
+let spectatorTargetId = '';
+let roomHostId = '';
+let aiBots = [];
+let aiAccumulator = 0;
+let aiBroadcastAccumulator = 0;
+let roomCode = '';
+let myPlayerId = '';
+let roomSeed = 0;
+let roomStartedAt = 0;
+let roomStarted = false;
+let lastResetVersion = -1;
+let lastNetPositionAt = 0;
+let remotePlayers = new Map();
+const roomStatusEl = document.getElementById('roomStatus');
+const roomCodeDisplay = document.getElementById('roomCodeDisplay');
+const roomActions = document.getElementById('roomActions');
+function sendRoomMessage(payload) {
+  if(roomSocket && roomSocket.readyState === WebSocket.OPEN) roomSocket.send(JSON.stringify(payload));
+}
+function setRoomStatus(message) { roomStatusEl.textContent = message; }
+function roomName() { return (document.getElementById('playerName').value || 'بازیکن').trim().slice(0,16) || 'بازیکن'; }
+function roomWsUrl(code) { const scheme=location.protocol==='https:'?'wss:':'ws:'; return `${scheme}//${location.host}${ROOM_API}/${encodeURIComponent(code)}/ws?name=${encodeURIComponent(roomName())}&skin=${encodeURIComponent(selectedSkin)}`; }
+function connectRoom(code) {
+  if(roomSocket) { try{roomSocket.close(1000,'switch room');}catch(_){} }
+  roomCode=code.toUpperCase(); setRoomStatus('در حال اتصال به اتاق...');
+  const ws=new WebSocket(roomWsUrl(roomCode)); roomSocket=ws;
+  ws.addEventListener('open',()=>{setRoomStatus('اتصال برقرار شد؛ در انتظار اطلاعات اتاق...'); roomCodeDisplay.textContent=roomCode; roomCodeDisplay.classList.remove('room-hidden'); roomActions.classList.remove('room-hidden'); document.getElementById('startButton').classList.add('room-hidden');});
+  ws.addEventListener('message',event=>{let msg;try{msg=JSON.parse(event.data)}catch(_){return;} handleRoomMessage(msg);});
+  ws.addEventListener('close',event=>{if(roomSocket!==ws)return; roomSocket=null; roomStarted=false; roomActions.classList.add('room-hidden'); if(event.code!==1000)setRoomStatus('ارتباط با اتاق قطع شد. دوباره وارد شو.');});
+  ws.addEventListener('error',()=>setRoomStatus('اتصال برقرار نشد؛ آدرس API و اتصال Cloudflare را بررسی کن.'));
+}
+function makeNameSprite(name) {
+  const c=document.createElement('canvas'); c.width=320;c.height=80; const ctx=c.getContext('2d');
+  ctx.fillStyle='rgba(12,12,12,.82)';ctx.beginPath();ctx.roundRect(8,8,304,64,18);ctx.fill();
+  ctx.fillStyle='#fff';ctx.font='bold 32px Vazirmatn, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(name.slice(0,16),160,41);
+  const tex=new THREE.CanvasTexture(c); const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));sprite.scale.set(1.55,.39,1);sprite.position.y=2.35;return sprite;
+}
+function addRemotePlayer(data) {
+  const group=new THREE.Group();
+  const body=new THREE.Group();
+  const skin=buildSkinModel(data.skin,body);
+  group.add(body);
+  group.add(makeNameSprite(data.name||'بازیکن'));
+  world.add(group);
+  const entry={group,body,data,skin};
+  remotePlayers.set(data.id,entry);
+  return entry;
+}
+function syncRemotePlayers(players) {
+  const keep=new Set();
+  const aiPlayers=(players||[]).filter(p=>p.isAI&&p.alive!==false);
+  for(const data of players||[]){
+    if(data.id===myPlayerId)continue;
+    keep.add(data.id);
+    let entry=remotePlayers.get(data.id);
+    if(!entry)entry=addRemotePlayer(data);
+
+    const incomingSkin=validSkins.includes(data.skin)?data.skin:'chicken';
+    if(entry.skin!==incomingSkin){
+      buildSkinModel(incomingSkin,entry.body);
+      entry.skin=incomingSkin;
+    }
+
+    entry.data=data;
+    // If two AI snapshots arrive at the exact same tile, separate only
+    // their rendered positions so both models remain visible to every client.
+    const overlappingAI=!!data.isAI&&aiPlayers.some(other=>
+      other.id!==data.id &&
+      Math.abs((Number(other.row)||0)-(Number(data.row)||0))<0.35 &&
+      Math.abs((Number(other.x)||0)-(Number(data.x)||0))<0.72
+    );
+    const visualOffset=overlappingAI?(data.id==='ai-1'?-0.43:0.43):0;
+    entry.group.position.set(((Number(data.x)||0)+visualOffset)*LANE_WIDTH,0,-(Number(data.row)||0)*1.35);
+    entry.group.visible=data.alive!==false;
+    entry.group.traverse(n=>{if(n.isSprite)n.position.y=data.alive===false?2.1:2.35;});
+  }
+  for(const [id,entry] of remotePlayers){
+    if(!keep.has(id)){
+      world.remove(entry.group);
+      entry.group.traverse(n=>{
+        if(n.isSprite&&n.material.map)n.material.map.dispose();
+        if(n.isSprite)n.material.dispose();
+      });
+      remotePlayers.delete(id);
+    }
+  }
+}
+function handleRoomMessage(msg) {
+  if(msg.type==='error'){setRoomStatus(msg.message||'خطا در اتاق');showToast(msg.message||'خطا در اتاق');return;}
+  if(msg.type!=='state')return;
+  myPlayerId=msg.playerId||myPlayerId; const incomingHostId=msg.hostId||''; if(incomingHostId!==roomHostId){roomHostId=incomingHostId;aiBots=[];} const previousRoomSeed=roomSeed; roomSeed=msg.seed||roomSeed; roomStarted=!!msg.started; roomStartedAt=msg.startAt||0;
+  if(roomSeed && roomSeed!==previousRoomSeed) resetGame();
+  const players=msg.players||[]; const realPlayers=players.filter(p=>!p.isAI); const me=players.find(p=>p.id===myPlayerId);
+  if(roomStarted && myPlayerId===roomHostId){
+    const desiredBots=realPlayers.length<=2?realPlayers.length:0;
+    if(aiBots.length!==desiredBots){
+      const existingBots=players.filter(p=>p.isAI).slice(0,desiredBots);
+      aiBots=Array.from({length:desiredBots},(_,index)=>{
+        const saved=existingBots[index];
+        return saved
+          ? {...saved,id:`ai-${index+1}`,x:index===0?-2:2,ridingLog:null,cooldown:.18+index*.32}
+          : {id:`ai-${index+1}`,name:`هوش مصنوعی ${index+1}`,skin:index===0?'suit':'spider',x:index===0?-2:2,row:0,alive:true,finishedAt:null,ridingLog:null,cooldown:.18+index*.32};
+      });
+      aiAccumulator=0;aiBroadcastAccumulator=0;
+    }
+  }
+  const furthestPlayerRow=players.reduce((max,p)=>Math.max(max,Number(p.row)||0),playerRow);
+  ensureRowsThrough(furthestPlayerRow);
+  const aiDebug=players.filter(p=>p.isAI).map(p=>`${p.id}: x=${Number(p.x).toFixed(2)}, row=${Number(p.row)||0}`).join(' | ');
+  setRoomStatus(`اتاق آماده است · ${players.length}/4 بازیکن\n${players.map(p=>(p.id===myPlayerId?'● ':'○ ')+p.name+(p.alive===false?' (حذف شده)':'')).join('\n')}\n${roomStarted?'بازی در حال اجراست':'برای شروع، منتظر دوستانت بمان.'}${aiDebug?'\nموقعیت AI: '+aiDebug:''}`);
+  syncRemotePlayers(players);
+  if(msg.resetVersion!==lastResetVersion && lastResetVersion!==-1){lastResetVersion=msg.resetVersion;aiBots=[];resetGame();}
+  else lastResetVersion=msg.resetVersion;
+  refreshSpectatorControls();
+  if(msg.finished){
+    stopSpectating(false);
+    const results=Array.isArray(msg.results)?msg.results:[];
+    if(results.length) finalText.textContent='نتیجه نهایی مسابقه:\n'+results.map((p,i)=>(i+1)+'. '+(p.name||'بازیکن')+' — '+(Number(p.row)||0)+' خانه').join('\n');
+    gameOverOverlay.classList.remove('hidden');
+  }
+  if(roomStarted && !running && !ended && !spectatorMode){startGame(true);}
+  if(!roomStarted && running){running=false;ended=false;startOverlay.classList.remove('hidden');}
+}
+async function createRoom() {
+  try{const response=await fetch(`${ROOM_API}/create`,{method:'POST'});const data=await response.json();if(!response.ok||!data.code)throw new Error(data.error||'ساخت اتاق ناموفق بود');resetGame();connectRoom(data.code);}
+  catch(error){setRoomStatus('ساخت اتاق انجام نشد: '+error.message);}
+}
+function joinRoom() {const code=document.getElementById('roomCodeInput').value.trim().toUpperCase();if(!/^[A-Z0-9]{6}$/.test(code)){setRoomStatus('کد اتاق باید ۶ حرف یا عدد باشد.');return;}resetGame();connectRoom(code);}
+function leaveRoom() {stopSpectating(false);aiBots=[];roomHostId='';if(roomSocket){roomSocket.close(1000,'left room');roomSocket=null;}document.getElementById('startButton').classList.remove('room-hidden');roomCode='';roomStarted=false;myPlayerId='';roomSeed=0;roomStartedAt=0;for(const entry of remotePlayers.values())world.remove(entry.group);remotePlayers.clear();roomActions.classList.add('room-hidden');roomCodeDisplay.classList.add('room-hidden');setRoomStatus('از اتاق خارج شدی.');resetGame();}
+
+const BEST_KEY = 'gozar_crossy_best_v1';
+let best = Number(localStorage.getItem(BEST_KEY) || 0);
+if (!Number.isFinite(best) || best < 0) best = 0;
+bestEl.textContent = String(best);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x9bdcff);
+scene.fog = new THREE.Fog(0x9bdcff, 22, 48);
+// skyGlow sphere removed: its opaque inner surface blocked the map as the camera moved forward.
+
+const camera = new THREE.PerspectiveCamera(43, 1, 0.1, 220);
+camera.position.set(0, 13, 11.5);
+// Shared look target used by resetGame() and the smooth camera follow.
+const cameraLookTarget = new THREE.Vector3(0, 0, -3.5);
+camera.lookAt(cameraLookTarget);
+
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
+} catch (err) {
+  startOverlay.classList.remove('hidden');
+  startOverlay.querySelector('p').textContent = 'مرورگر دستگاه از WebGL پشتیبانی نمی‌کند. لطفاً مرورگر دیگری را امتحان کن.';
+  document.getElementById('startButton').disabled = true;
+  throw err;
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.85));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = true;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0x68805b, 2.0);
+scene.add(hemiLight);
+const sun = new THREE.DirectionalLight(0xffffff, 2.4);
+sun.position.set(-5, 12, 7);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.bias = -0.00018;
+sun.shadow.normalBias = 0.025;
+sun.shadow.radius = 4;
+sun.shadow.camera.left = -12; sun.shadow.camera.right = 12;
+sun.shadow.camera.top = 15; sun.shadow.camera.bottom = -15;
+scene.add(sun);
+
+const materials = {
+  grass: new THREE.MeshStandardMaterial({color:0x64b94f, roughness:1}),
+  grassAlt: new THREE.MeshStandardMaterial({color:0x70c75a, roughness:1}),
+  road: new THREE.MeshStandardMaterial({color:0x42464c, roughness:1}),
+  roadLine: new THREE.MeshStandardMaterial({color:0xf4e7a4, roughness:1}),
+  water: new THREE.MeshStandardMaterial({color:0x2798cf, roughness:.35, metalness:.05}),
+  rail: new THREE.MeshStandardMaterial({color:0x777d85, metalness:.65, roughness:.35}),
+  sleeper: new THREE.MeshStandardMaterial({color:0x79563d, roughness:1}),
+  log: new THREE.MeshStandardMaterial({color:0x95602f, roughness:1}),
+  leaf: new THREE.MeshStandardMaterial({color:0x268b43, roughness:1}),
+  trunk: new THREE.MeshStandardMaterial({color:0x80502b, roughness:1}),
+  white: new THREE.MeshStandardMaterial({color:0xffffff, roughness:.8}),
+  dark: new THREE.MeshStandardMaterial({color:0x25282c, roughness:.8})
+};
+
+// Map progression: the first four environments unlock at fixed scores.
+// After 380 points, a new random environment is selected every 80 points.
+const MAP_THEMES = ['main','red','desert','winter','neon','darkforest'];
+const MAP_NAMES = {main:'جنگل سبز',red:'شهر سرخ',desert:'بیابان و ریل قطار',winter:'زمستان برفی',neon:'شهر نئونی',darkforest:'جنگل تاریک'};
+const randomMapSegments = new Map();
+let currentMapTheme = 'main';
+function mapThemeForScore(value) {
+  if(value < 50) return 'main';
+  if(value < 90) return 'red';
+  if(value < 140) return 'desert';
+  if(value < 175) return 'winter';
+  if(value < 230) return 'neon';
+  if(value < 330) return 'darkforest';
+  if(value < 400) return 'winter';
+  if(value < 500) return 'red';
+  const segment = Math.floor((value - 500) / 80);
+  if(!randomMapSegments.has(segment)) {
+    const previous = segment === 0 ? 'red' : randomMapSegments.get(segment - 1);
+    const choices = MAP_THEMES.filter(name => name !== previous);
+    randomMapSegments.set(segment, randomItem(choices));
+  }
+  return randomMapSegments.get(segment);
+}
+function applyMapTheme(theme, announce=false) {
+  if(!theme) return;
+  const changed = currentMapTheme !== theme;
+  currentMapTheme = theme;
+  const palettes = {
+    main:{grass:0x64b94f,grassAlt:0x70c75a,road:0x42464c,line:0xf4e7a4,water:0x2798cf,rail:0x777d85,sleeper:0x79563d,log:0x95602f,sky:0x9bdcff,fog:0x9bdcff},
+    red:{grass:0xf07855,grassAlt:0xff8a60,road:0x824d50,line:0xffc3a5,water:0x39b9b0,rail:0x9a7770,sleeper:0x8d4036,log:0x9b4d38,sky:0xff987f,fog:0xff987f},
+    desert:{grass:0xe8ad62,grassAlt:0xf4c078,road:0x454b59,line:0xf1d7a1,water:0x3b9fc4,rail:0x777d85,sleeper:0x76513c,log:0x98643a,sky:0xf3c27c,fog:0xf3c27c},
+    winter:{grass:0xb9d8ee,grassAlt:0xd9efff,road:0x657b9d,line:0xeaf8ff,water:0x9fe8f5,rail:0x9baec8,sleeper:0x8b8fa7,log:0xc4d9e8,sky:0x9fc9f4,fog:0xb9d7f5},
+    neon:{grass:0x17172e,grassAlt:0x202044,road:0x171923,line:0x20e8ff,water:0x172d55,rail:0x55557c,sleeper:0x383052,log:0x685080,sky:0x100d2b,fog:0x171334},
+    darkforest:{grass:0x17251b,grassAlt:0x203324,road:0x252b28,line:0xb6a879,water:0x142d34,rail:0x4b5550,sleeper:0x40372c,log:0x51412d,sky:0x07130e,fog:0x102017}
+  }[theme];
+  for(const key of ['grass','grassAlt','road','water','rail','sleeper','log']) {
+    if(materials[key]) materials[key].color.setHex(palettes[key]);
+  }
+  materials.roadLine.color.setHex(palettes.line);
+  materials.grass.map = theme === 'main' ? grassSurfaceTexture : null;
+  materials.grassAlt.map = materials.grass.map;
+  materials.grass.needsUpdate = true;
+  materials.grassAlt.needsUpdate = true;
+  scene.background = new THREE.Color(palettes.sky);
+  scene.fog.color.setHex(palettes.fog);
+  scene.fog.near = (theme==='neon'||theme==='darkforest') ? 12 : 22;
+  scene.fog.far = (theme==='neon'||theme==='darkforest') ? 34 : 48;
+  hemiLight.intensity = theme==='darkforest' ? .72 : (theme==='neon' ? 1.05 : 2.0);
+  sun.intensity = (theme==='darkforest'||theme==='neon') ? .55 : 2.4;
+  if(changed && announce) showToast('🗺️ مپ جدید: ' + MAP_NAMES[theme]);
+}
+
+// Procedural, lightweight surface maps: detailed without downloading image assets.
+function makeSurfaceTexture(kind, base, count=900) {
+  const c=document.createElement('canvas'); c.width=256; c.height=256;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle=base; ctx.fillRect(0,0,256,256);
+  if(kind==='grass') {
+    for(let i=0;i<count;i++) {
+      const x=Math.random()*256,y=Math.random()*256;
+      ctx.strokeStyle=Math.random()>.5?'rgba(28,83,34,.22)':'rgba(225,244,177,.24)';
+      ctx.lineWidth=.7+Math.random()*1.1; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+1+Math.random()*4,y-2-Math.random()*5); ctx.stroke();
+    }
+    for(let i=0;i<55;i++){ctx.fillStyle='rgba(255,255,255,.10)';ctx.beginPath();ctx.arc(Math.random()*256,Math.random()*256,1+Math.random()*2,0,Math.PI*2);ctx.fill();}
+  } else if(kind==='road') {
+    for(let i=0;i<count*1.5;i++){const v=Math.random()>.5?255:0;ctx.fillStyle=`rgba(${v},${v},${v},${Math.random()*.12})`;ctx.fillRect(Math.random()*256,Math.random()*256,1+Math.random()*3,1+Math.random()*2);}
+    for(let i=0;i<22;i++){ctx.strokeStyle='rgba(20,20,20,.12)';ctx.lineWidth=1;ctx.beginPath();let x=Math.random()*256,y=Math.random()*256;ctx.moveTo(x,y);ctx.lineTo(x+8+Math.random()*18,y+Math.random()*3);ctx.stroke();}
+  } else if(kind==='water') {
+    for(let y=0;y<256;y+=8){ctx.strokeStyle=`rgba(220,245,255,${.06+Math.random()*.13})`;ctx.lineWidth=1+Math.random()*2;ctx.beginPath();for(let x=0;x<=256;x+=8){const yy=y+Math.sin((x+y)*.045)*2.5; if(x===0)ctx.moveTo(x,yy);else ctx.lineTo(x,yy);}ctx.stroke();}
+    for(let i=0;i<75;i++){ctx.fillStyle='rgba(225,250,255,.12)';ctx.beginPath();ctx.ellipse(Math.random()*256,Math.random()*256,2+Math.random()*7,.7+Math.random()*1.5,0,0,Math.PI*2);ctx.fill();}
+  } else if(kind==='bark') {
+    for(let i=0;i<150;i++){ctx.strokeStyle=Math.random()>.5?'rgba(48,25,10,.18)':'rgba(235,190,125,.16)';ctx.lineWidth=.5+Math.random()*2;ctx.beginPath();let x=Math.random()*256;ctx.moveTo(x,0);ctx.bezierCurveTo(x-5,70,x+5,170,x,256);ctx.stroke();}
+  }
+  const tex=new THREE.CanvasTexture(c); tex.colorSpace=THREE.SRGBColorSpace; tex.wrapS=tex.wrapT=THREE.RepeatWrapping; tex.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+  return tex;
+}
+const grassSurfaceTexture=makeSurfaceTexture('grass','#70ad50',1150);
+grassSurfaceTexture.repeat.set(3,1);
+materials.grass.map=grassSurfaceTexture;
+materials.grassAlt.map=grassSurfaceTexture;
+materials.road.map=makeSurfaceTexture('road','#62666a',1450); materials.road.map.repeat.set(4,1);
+materials.water.map=makeSurfaceTexture('water','#3a9fc8',400); materials.water.map.repeat.set(3,1);
+materials.log.map=makeSurfaceTexture('bark','#98643a',150); materials.log.map.repeat.set(1.5,1);
+materials.grass.needsUpdate=true; materials.road.needsUpdate=true; materials.water.needsUpdate=true; materials.log.needsUpdate=true;
+
+function roundedBox(parent,x,y,z,sx,sy,sz,material,radius=.1,segments=3) {
+  const r=Math.min(radius,sx*.18,sy*.22,sz*.18), shape=new THREE.Shape();
+  shape.moveTo(-sx/2+r,-sy/2); shape.lineTo(sx/2-r,-sy/2); shape.quadraticCurveTo(sx/2,-sy/2,sx/2,-sy/2+r);
+  shape.lineTo(sx/2,sy/2-r); shape.quadraticCurveTo(sx/2,sy/2,sx/2-r,sy/2);
+  shape.lineTo(-sx/2+r,sy/2); shape.quadraticCurveTo(-sx/2,sy/2,-sx/2,sy/2-r);
+  shape.lineTo(-sx/2,-sy/2+r); shape.quadraticCurveTo(-sx/2,-sy/2,-sx/2+r,-sy/2);
+  const geometry=new THREE.ExtrudeGeometry(shape,{depth:sz,bevelEnabled:true,bevelSegments:2,steps:1,bevelSize:r*.35,bevelThickness:r*.35,curveSegments:segments});
+  geometry.translate(0,0,-sz/2);
+  const mesh=new THREE.Mesh(geometry,material); mesh.position.set(x,y,z); mesh.castShadow=true; mesh.receiveShadow=true; parent.add(mesh); return mesh;
+}
+
+const unitBox = new THREE.BoxGeometry(1,1,1);
+const unitCylinder = new THREE.CylinderGeometry(.5,.5,1,8);
+const world = new THREE.Group();
+scene.add(world);
+
+function box(parent, x,y,z, sx,sy,sz, material, cast=true, receive=true) {
+  const mesh = new THREE.Mesh(unitBox, material);
+  mesh.position.set(x,y,z);
+  mesh.scale.set(sx,sy,sz);
+  mesh.castShadow = cast;
+  mesh.receiveShadow = receive;
+  parent.add(mesh);
+  return mesh;
+}
+function makeMaterial(color, roughness=0.8) {
+  return new THREE.MeshStandardMaterial({color, roughness});
+}
+function randomItem(items){ return items[Math.floor(Math.random()*items.length)]; }
+
+const player = new THREE.Group();
+world.add(player);
+const playerBody = new THREE.Group();
+player.add(playerBody);
+const bodyMat = makeMaterial(0xffc94f,.88);
+const bellyMat = makeMaterial(0xfff0ce,.92);
+const beakMat = makeMaterial(0xf18a27,.72);
+const eyeMat = makeMaterial(0x171717, .22);
+const SKIN_KEY = 'gozar_crossy_skin_v1';
+const validSkins = ['chicken','suit','spider','batman','grogu','tinkerbell','duck','groot'];
+let savedSkin = localStorage.getItem(SKIN_KEY);
+let selectedSkin = validSkins.includes(savedSkin) ? savedSkin : 'chicken';
+
+function addVoxel(parent,x,y,z,sx,sy,sz,color,materialOptions={}) {
+  const mat = color?.isMaterial ? color : makeMaterial(color, materialOptions.roughness ?? .85);
+  return box(parent,x,y,z,sx,sy,sz,mat,true,true);
+}
+function buildChickenSkin(target=playerBody) {
+  // Classic voxel chicken: white body, square head, red comb, orange beak and feet.
+  const white = makeMaterial(0xf5f3e9,.92), cream = makeMaterial(0xfff8e8,.95);
+  const red = makeMaterial(0xd9272e,.8), orange = makeMaterial(0xf28a19,.78);
+  const black = makeMaterial(0x171717,.35);
+  addVoxel(target,0,.55,0,.62,.68,.58,white);
+  addVoxel(target,0,1.02,-.015,.57,.48,.55,cream);
+  addVoxel(target,0,1.31,-.015,.16,.18,.18,red);
+  addVoxel(target,-.12,1.27,-.015,.13,.13,.16,red);
+  addVoxel(target,.12,1.27,-.015,.13,.13,.16,red);
+  addVoxel(target,0,.99,-.34,.25,.15,.22,orange);
+  for(const x of [-.17,.17]) {
+    addVoxel(target,x,1.09,-.292,.075,.085,.035,black);
+    addVoxel(target,x,.16,.015,.15,.22,.17,orange);
+    addVoxel(target,x,.055,-.105,.25,.10,.30,orange);
+  }
+}
+function buildSuitSkin(target=playerBody) {
+  // Block-built businessman inspired by the supplied reference image.
+  const suit = makeMaterial(0x10151b,.82), suitSide = makeMaterial(0x202832,.86);
+  const shirt = makeMaterial(0xf2eee4,.9), skin = makeMaterial(0xe8b987,.9);
+  const hair = makeMaterial(0x211b1a,.9), beard = makeMaterial(0x392722,.95);
+  const shades = makeMaterial(0x080b10,.22), lens = makeMaterial(0x151c25,.16);
+  const tie = makeMaterial(0x8b2027,.75), shoe = makeMaterial(0x080a0d,.8);
+  const cigarette = makeMaterial(0xf4eee2,.65), ember = makeMaterial(0xf05b24,.6);
+  // Legs, shoes and tailored torso.
+  addVoxel(target,-.18,.25,0,.25,.55,.30,suit);
+  addVoxel(target,.18,.25,0,.25,.55,.30,suit);
+  addVoxel(target,-.18,.055,-.045,.34,.16,.43,shoe);
+  addVoxel(target,.18,.055,-.045,.34,.16,.43,shoe);
+  addVoxel(target,0,.76,0,.72,.66,.43,suit);
+  // White shirt panel and tie on the front (negative Z).
+  addVoxel(target,0,.83,-.226,.29,.53,.035,shirt);
+  addVoxel(target,0,.93,-.251,.105,.18,.045,tie);
+  addVoxel(target,0,.69,-.253,.14,.25,.05,tie);
+  // Neck and oversized square head.
+  addVoxel(target,0,1.16,-.005,.23,.20,.24,skin);
+  addVoxel(target,0,1.53,-.005,.66,.65,.55,skin);
+  // Dark swept hair cap and side blocks.
+  addVoxel(target,0,1.87,-.005,.69,.19,.59,hair);
+  addVoxel(target,-.30,1.70,-.005,.12,.28,.56,hair);
+  addVoxel(target,.30,1.70,-.005,.12,.28,.56,hair);
+  // Ears.
+  addVoxel(target,-.385,1.52,-.005,.12,.19,.18,skin);
+  addVoxel(target,.385,1.52,-.005,.12,.19,.18,skin);
+  // Sunglasses: broad black band, two dark lenses and bridge.
+  addVoxel(target,0,1.60,-.291,.66,.19,.055,shades);
+  addVoxel(target,-.16,1.60,-.326,.23,.145,.025,lens);
+  addVoxel(target,.16,1.60,-.326,.23,.145,.025,lens);
+  addVoxel(target,0,1.60,-.345,.09,.045,.025,shades);
+  // Beard and moustache framing the lower face.
+  addVoxel(target,0,1.27,-.294,.48,.19,.09,beard);
+  addVoxel(target,-.12,1.39,-.302,.22,.085,.07,beard);
+  addVoxel(target,.12,1.39,-.302,.22,.085,.07,beard);
+  addVoxel(target,0,1.34,-.355,.14,.07,.035,skin);
+  // Arms and hands. One arm extends forward to hold the cigarette.
+  addVoxel(target,-.47,.78,-.015,.22,.58,.25,suit);
+  addVoxel(target,-.47,.45,-.06,.20,.18,.22,skin);
+  addVoxel(target,.47,.78,-.015,.22,.58,.25,suit);
+  addVoxel(target,.47,.48,-.19,.20,.18,.20,skin);
+  addVoxel(target,.47,.49,-.36,.13,.12,.12,skin);
+  // Small stylized cigarette with orange tip, held in front of the face.
+  addVoxel(target,.47,.53,-.56,.10,.10,.43,cigarette);
+  addVoxel(target,.47,.53,-.785,.105,.105,.09,ember);
+}
+function buildSpiderSkin(target=playerBody) {
+  const red=makeMaterial(0xc91625,.72), blue=makeMaterial(0x123b83,.7);
+  const dark=makeMaterial(0x10131c,.5), white=makeMaterial(0xf4f5f7,.3);
+  // Classic red-and-blue blocky Spider-Man suit.
+  addVoxel(target,0,.25,0,.28,.48,.30,blue);
+  addVoxel(target,-.18,.25,0,.18,.48,.30,blue);
+  addVoxel(target,.18,.25,0,.18,.48,.30,blue);
+  addVoxel(target,0,.78,0,.70,.65,.42,red);
+  addVoxel(target,-.43,.77,0,.18,.58,.23,red);
+  addVoxel(target,.43,.77,0,.18,.58,.23,red);
+  addVoxel(target,0,1.49,-.005,.62,.62,.55,red);
+  addVoxel(target,0,1.13,-.005,.22,.18,.24,red);
+  // Blue panels on sides and legs.
+  addVoxel(target,-.23,.70,-.218,.20,.48,.035,blue);
+  addVoxel(target,.23,.70,-.218,.20,.48,.035,blue);
+  addVoxel(target,-.18,.29,-.17,.22,.35,.08,blue);
+  addVoxel(target,.18,.29,-.17,.22,.35,.08,blue);
+  // Large expressive white eye lenses.
+  addVoxel(target,-.16,1.53,-.292,.20,.25,.045,white);
+  addVoxel(target,.16,1.53,-.292,.20,.25,.045,white);
+  addVoxel(target,-.16,1.53,-.321,.12,.17,.018,dark);
+  addVoxel(target,.16,1.53,-.321,.12,.17,.018,dark);
+  // Small black spider emblem.
+  addVoxel(target,0,.91,-.239,.07,.20,.035,dark);
+  addVoxel(target,-.10,.91,-.239,.12,.06,.035,dark);
+  addVoxel(target,.10,.91,-.239,.12,.06,.035,dark);
+}
+function buildBatmanSkin(target=playerBody) {
+  const black=makeMaterial(0x171b25,.72), charcoal=makeMaterial(0x303744,.78);
+  const yellow=makeMaterial(0xf2c230,.65), skin=makeMaterial(0xd5b18d,.85);
+  const white=makeMaterial(0xf2f3f5,.3);
+  // Dark armored body, boots and gloves.
+  addVoxel(target,-.17,.25,0,.25,.5,.32,black);
+  addVoxel(target,.17,.25,0,.25,.5,.32,black);
+  addVoxel(target,-.17,.06,-.04,.34,.14,.40,charcoal);
+  addVoxel(target,.17,.06,-.04,.34,.14,.40,charcoal);
+  addVoxel(target,0,.77,0,.72,.67,.44,charcoal);
+  addVoxel(target,-.45,.75,0,.22,.58,.25,black);
+  addVoxel(target,.45,.75,0,.22,.58,.25,black);
+  // Chest bat emblem and yellow utility belt.
+  addVoxel(target,0,.89,-.237,.30,.12,.035,yellow);
+  addVoxel(target,0,.89,-.261,.16,.055,.025,black);
+  addVoxel(target,0,.48,-.232,.70,.13,.045,yellow);
+  addVoxel(target,0,1.50,0,.64,.62,.56,black);
+  // Cowl with pointed bat ears.
+  addVoxel(target,-.22,1.91,-.01,.16,.42,.18,black);
+  addVoxel(target,.22,1.91,-.01,.16,.42,.18,black);
+  // Pale eye slits and lower face.
+  addVoxel(target,-.15,1.55,-.292,.17,.075,.035,white);
+  addVoxel(target,.15,1.55,-.292,.17,.075,.035,white);
+  addVoxel(target,0,1.28,-.285,.27,.22,.035,skin);
+  // Short cape behind the shoulders.
+  addVoxel(target,0,.86,.27,.78,.92,.12,black);
+}
+function buildGroguSkin(target=playerBody) {
+  // Small green alien with wide ears, glossy dark eyes and a warm beige robe.
+  const green=makeMaterial(0x9bbd9b,.88), lightGreen=makeMaterial(0xb7d2ad,.82);
+  const innerEar=makeMaterial(0xc97868,.92), robe=makeMaterial(0x8b765f,.98);
+  const robeLight=makeMaterial(0xb09a7e,.96), robeDark=makeMaterial(0x665543,.98);
+  const eye=makeMaterial(0x080d12,.12), eyeShine=makeMaterial(0xe8f3ee,.12);
+  const nose=makeMaterial(0x789b82,.9);
+  // Robe and thick folded collar.
+  addVoxel(target,0,.48,0,.82,.88,.62,robe);
+  addVoxel(target,0,.91,-.20,.94,.28,.42,robeLight);
+  addVoxel(target,-.34,.91,-.12,.34,.30,.58,robeLight);
+  addVoxel(target,.34,.91,-.12,.34,.30,.58,robeLight);
+  addVoxel(target,0,.50,-.326,.12,.76,.035,robeDark);
+  // Neck and oversized rounded-square head.
+  addVoxel(target,0,1.12,-.015,.42,.28,.40,green);
+  addVoxel(target,0,1.57,-.015,.92,.76,.66,lightGreen);
+  // Long, flat ears with pink inner surfaces.
+  addVoxel(target,-.73,1.62,-.005,.72,.20,.30,green);
+  addVoxel(target,.73,1.62,-.005,.72,.20,.30,green);
+  addVoxel(target,-.73,1.62,-.17,.60,.105,.035,innerEar);
+  addVoxel(target,.73,1.62,-.17,.60,.105,.035,innerEar);
+  // Large glossy eyes and tiny nose.
+  addVoxel(target,-.235,1.64,-.354,.25,.30,.075,eye);
+  addVoxel(target,.235,1.64,-.354,.25,.30,.075,eye);
+  addVoxel(target,-.285,1.73,-.398,.055,.065,.018,eyeShine);
+  addVoxel(target,.185,1.73,-.398,.055,.065,.018,eyeShine);
+  addVoxel(target,0,1.48,-.37,.13,.09,.08,nose);
+  // Small hands peeking out from the robe sleeves.
+  addVoxel(target,-.57,.47,-.02,.20,.18,.22,green);
+  addVoxel(target,.57,.47,-.02,.20,.18,.22,green);
+}
+function buildTinkerbellSkin(target=playerBody) {
+  // Voxel fairy: blonde bun, bright green leaf dress, blue eyes and translucent wings.
+  const skin=makeMaterial(0xf0c69e,.9), skinLight=makeMaterial(0xffd9b7,.88);
+  const hair=makeMaterial(0xf2ca45,.82), hairLight=makeMaterial(0xffdf69,.78);
+  const green=makeMaterial(0x78c934,.72), greenLight=makeMaterial(0xa2e64d,.68);
+  const greenDark=makeMaterial(0x438d25,.82), blue=makeMaterial(0x287fc5,.3);
+  const white=makeMaterial(0xf7fbff,.28), shoe=makeMaterial(0x4e9b28,.7);
+  // Legs and tiny green shoes.
+  addVoxel(target,-.13,.25,0,.13,.48,.15,skin);
+  addVoxel(target,.13,.25,0,.13,.48,.15,skin);
+  addVoxel(target,-.13,.055,-.055,.22,.12,.28,shoe);
+  addVoxel(target,.13,.055,-.055,.22,.12,.28,shoe);
+  // Leaf-shaped dress, bodice and pointed skirt.
+  addVoxel(target,0,.91,0,.48,.55,.34,green);
+  addVoxel(target,0,.57,-.015,.70,.28,.40,greenLight);
+  addVoxel(target,-.25,.43,-.015,.22,.20,.36,green);
+  addVoxel(target,.25,.43,-.015,.22,.20,.36,green);
+  addVoxel(target,0,.38,-.205,.18,.20,.035,greenDark);
+  // Neck, head and face.
+  addVoxel(target,0,1.24,-.01,.18,.20,.18,skin);
+  addVoxel(target,0,1.57,-.015,.52,.56,.46,skinLight);
+  // Blonde side-swept hair and signature top bun.
+  addVoxel(target,0,1.87,-.015,.55,.18,.48,hair);
+  addVoxel(target,-.18,1.70,-.22,.18,.28,.10,hairLight);
+  addVoxel(target,.08,2.00,.005,.28,.23,.28,hair);
+  addVoxel(target,.08,2.13,.005,.20,.12,.20,hairLight);
+  // Bright blue eyes, small nose and smile.
+  addVoxel(target,-.13,1.61,-.253,.095,.12,.035,blue);
+  addVoxel(target,.13,1.61,-.253,.095,.12,.035,blue);
+  addVoxel(target,-.13,1.64,-.276,.035,.045,.018,white);
+  addVoxel(target,.13,1.64,-.276,.035,.045,.018,white);
+  addVoxel(target,0,1.51,-.255,.065,.055,.045,skin);
+  addVoxel(target,0,1.43,-.254,.13,.025,.018,makeMaterial(0xb96861,.8));
+  // Arms stretched gently to each side.
+  addVoxel(target,-.39,.94,-.005,.28,.12,.14,skin);
+  addVoxel(target,.39,.94,-.005,.28,.12,.14,skin);
+  addVoxel(target,-.55,.91,-.005,.12,.10,.12,skin);
+  addVoxel(target,.55,.91,-.005,.12,.10,.12,skin);
+  // Two pairs of delicate translucent wings, visible from front and back.
+  const wingMat=new THREE.MeshStandardMaterial({color:0xdff8ff,roughness:.28,metalness:.05,transparent:true,opacity:.52,side:THREE.DoubleSide,depthWrite:false});
+  const wingPairs=[
+    {x:-.40,y:1.28,z:.20,w:.48,h:.72,rot:-.42},
+    {x:.40,y:1.28,z:.20,w:.48,h:.72,rot:.42},
+    {x:-.32,y:1.05,z:.22,w:.38,h:.48,rot:.55},
+    {x:.32,y:1.05,z:.22,w:.38,h:.48,rot:-.55}
+  ];
+  for(const wing of wingPairs){
+    const mesh=new THREE.Mesh(new THREE.PlaneGeometry(wing.w,wing.h),wingMat);
+    mesh.position.set(wing.x,wing.y,wing.z);
+    mesh.rotation.z=wing.rot;
+    mesh.castShadow=false;
+    target.add(mesh);
+  }
+}
+function buildDuckSkin(target=playerBody) {
+  // Blocky green-headed duck with a yellow bill, large eyes, plum vest and orange feet.
+  const green = makeMaterial(0x16a77e,.82), greenTop = makeMaterial(0x39c99b,.78);
+  const yellow = makeMaterial(0xffd21c,.72), yellowSide = makeMaterial(0xd9a90b,.78);
+  const white = makeMaterial(0xf4fbf8,.82), dark = makeMaterial(0x21101b,.42);
+  const plum = makeMaterial(0x542239,.88), plumLight = makeMaterial(0x7a3854,.86);
+  const orange = makeMaterial(0xf05a18,.78), black = makeMaterial(0x160d14,.25);
+  // Orange block feet and short legs.
+  addVoxel(target,-.19,.12,-.015,.20,.22,.20,orange);
+  addVoxel(target,.19,.12,-.015,.20,.22,.20,orange);
+  addVoxel(target,-.22,.055,-.16,.42,.12,.34,orange);
+  addVoxel(target,.22,.055,-.16,.42,.12,.34,orange);
+  // Dark plum body/vest with a pale collar.
+  addVoxel(target,0,.57,0,.78,.72,.62,plum);
+  addVoxel(target,0,.88,-.015,.82,.20,.65,plumLight);
+  addVoxel(target,0,.91,-.335,.78,.22,.08,white);
+  addVoxel(target,0,.39,-.322,.54,.23,.045,dark);
+  addVoxel(target,-.48,.57,0,.16,.48,.48,plum);
+  addVoxel(target,.48,.57,0,.16,.48,.48,plum);
+  // Green square head and white eye panels.
+  addVoxel(target,0,1.40,-.015,.88,.90,.72,green);
+  addVoxel(target,0,1.79,-.025,.92,.16,.74,greenTop);
+  addVoxel(target,-.39,1.43,-.39,.30,.48,.14,white);
+  addVoxel(target,.39,1.43,-.39,.30,.48,.14,white);
+  addVoxel(target,-.39,1.46,-.474,.105,.16,.035,black);
+  addVoxel(target,.39,1.46,-.474,.105,.16,.035,black);
+  // Wide projecting yellow duck bill.
+  addVoxel(target,0,1.23,-.59,.62,.34,.48,yellow);
+  addVoxel(target,0,1.13,-.57,.58,.10,.42,yellowSide);
+}
+function buildGrootSkin(target=playerBody) {
+  // A compact voxel tree creature inspired by the supplied Groot reference.
+  const bark=makeMaterial(0x79502f,.94), barkLight=makeMaterial(0x9b6940,.9);
+  const barkDark=makeMaterial(0x49301f,.96), leaf=makeMaterial(0x547b32,.9);
+  const eye=makeMaterial(0x090b0c,.18), eyeShine=makeMaterial(0xffffff,.12);
+  addVoxel(target,-.19,.12,-.015,.25,.22,.25,barkDark);
+  addVoxel(target,.19,.12,-.015,.25,.22,.25,barkDark);
+  addVoxel(target,-.19,.34,0,.17,.30,.18,bark);
+  addVoxel(target,.19,.34,0,.17,.30,.18,bark);
+  addVoxel(target,0,.72,0,.66,.68,.48,bark);
+  addVoxel(target,0,.82,-.255,.48,.48,.055,barkLight);
+  addVoxel(target,-.20,.70,-.29,.10,.52,.045,barkDark);
+  addVoxel(target,.18,.68,-.29,.09,.48,.045,barkDark);
+  addVoxel(target,-.05,.55,-.30,.08,.34,.04,barkLight);
+  addVoxel(target,-.43,.77,0,.18,.48,.20,barkDark);
+  addVoxel(target,-.51,.52,-.03,.18,.30,.18,bark);
+  addVoxel(target,.43,.77,0,.18,.48,.20,barkDark);
+  addVoxel(target,.51,.52,-.03,.18,.30,.18,bark);
+  addVoxel(target,-.55,.39,-.08,.22,.13,.14,barkLight);
+  addVoxel(target,.55,.39,-.08,.22,.13,.14,barkLight);
+  addVoxel(target,0,1.43,-.015,.78,.88,.66,bark);
+  addVoxel(target,-.20,1.89,-.005,.24,.22,.28,barkLight);
+  addVoxel(target,.03,1.99,0,.23,.30,.25,bark);
+  addVoxel(target,.25,1.88,.015,.22,.24,.24,barkDark);
+  addVoxel(target,-.36,1.70,0,.17,.28,.23,barkDark);
+  addVoxel(target,.36,1.69,0,.16,.27,.22,barkLight);
+  addVoxel(target,-.19,1.48,-.35,.20,.22,.075,eye);
+  addVoxel(target,.19,1.48,-.35,.20,.22,.075,eye);
+  addVoxel(target,-.23,1.54,-.395,.045,.05,.018,eyeShine);
+  addVoxel(target,.15,1.54,-.395,.045,.05,.018,eyeShine);
+  addVoxel(target,0,1.22,-.355,.20,.045,.035,barkDark);
+  addVoxel(target,-.34,1.94,-.015,.12,.09,.12,leaf);
+  addVoxel(target,.31,1.97,.015,.11,.08,.11,leaf);
+}
+function buildSkinModel(skinName, target) {
+  const safeSkin = validSkins.includes(skinName) ? skinName : 'chicken';
+  target.clear();
+  if(safeSkin === 'suit') buildSuitSkin(target);
+  else if(safeSkin === 'spider') buildSpiderSkin(target);
+  else if(safeSkin === 'batman') buildBatmanSkin(target);
+  else if(safeSkin === 'grogu') buildGroguSkin(target);
+  else if(safeSkin === 'tinkerbell') buildTinkerbellSkin(target);
+  else if(safeSkin === 'duck') buildDuckSkin(target);
+  else if(safeSkin === 'groot') buildGrootSkin(target);
+  else buildChickenSkin(target);
+  return safeSkin;
+}
+function applySkin(skinName, persist=true) {
+  selectedSkin = buildSkinModel(skinName, playerBody);
+  const skinButtons = {chicken:'chickenSkin',suit:'suitSkin',spider:'spiderSkin',batman:'batmanSkin',grogu:'groguSkin',tinkerbell:'tinkerbellSkin',duck:'duckSkin',groot:'grootSkin'};
+  for(const [skin,id] of Object.entries(skinButtons)) {
+    const button=document.getElementById(id);
+    if(button) {
+      button.classList.toggle('active',selectedSkin===skin);
+      button.setAttribute('aria-pressed',String(selectedSkin===skin));
+    }
+  }
+  if(persist) localStorage.setItem(SKIN_KEY,selectedSkin);
+  if(persist && roomSocket) sendRoomMessage({type:'skin',skin:selectedSkin});
+}
+applySkin(selectedSkin,false);
+player.position.set(0,0,0);
+
+const rows = new Map();
+let highestBuiltRow = -1;
+const moving = [];
+const decorations = [];
+let running = false;
+let ended = false;
+let score = 0;
+let maxForward = 0;
+let playerX = 0;
+let playerRow = 0;
+let jump = null;
+let lastTime = 0;
+let animationId = 0;
+let toastTimer = 0;
+let trainWarning = null;
+const LANE_WIDTH = 1.35;
+const ROAD_WIDTH = 18;
+const VISIBLE_BACK = 8;
+const VISIBLE_FRONT = 20;
+
+function laneGroup(z, type, index) {
+  const group = new THREE.Group();
+  group.position.z = z;
+  world.add(group);
+  // Continuous grassy shoulders keep the world from looking like a narrow floating strip.
+  box(group,0,-.23,0,38,.16,1.35,materials.grass,false,true);
+  const data = {group, type, index, theme:mapThemeForScore(index), objects:[], obstacles:[], speed:0, direction:1, safe:false, train:null, warning:null};
+  rows.set(index, data);
+  highestBuiltRow = Math.max(highestBuiltRow, index);
+  if (type === 'grass') buildGrass(data);
+  if (type === 'road') buildRoad(data);
+  if (type === 'river') buildRiver(data);
+  if (type === 'rail') buildRail(data);
+  // A few collectible gold coins appear on safe grassy rows.
+  if(type === 'grass' && index > 2 && Math.random() < .42) {
+    const lane=Math.floor(Math.random()*5)-2;
+    const coin=new THREE.Group();
+    const gold=makeMaterial(0xffc928,.22);
+    const shine=makeMaterial(0xfff2a0,.18);
+    const disk=new THREE.Mesh(new THREE.CylinderGeometry(.25,.25,.09,18),gold);
+    disk.rotation.x=Math.PI/2;
+    coin.add(disk);
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(.18,.035,8,18),shine);
+    ring.position.z=.055;
+    coin.add(ring);
+    coin.position.set(lane*LANE_WIDTH,.72,0);
+    group.add(coin);
+    data.coin={mesh:coin,lane,collected:false};
+  }
+  // Distinctive scenery beside the playable lanes for each map.
+  if(data.theme === 'red' && type !== 'road') {
+    const stone=makeMaterial(0xb93632), trim=makeMaterial(0xf06b55);
+    for(const side of [-1,1]) {
+      const tower=new THREE.Group(); tower.position.set(side*7.1,0,z*0);
+      box(tower,0,.72,0,.72,1.44,.72,stone,true,true);
+      box(tower,0,1.5,0,1.02,.18,1.02,trim,true,true);
+      box(tower,0,1.66,0,.62,.16,.62,stone,true,true);
+      group.add(tower);
+    }
+  } else if(data.theme === 'desert' && type === 'grass') {
+    const cactus=makeMaterial(0x397d49);
+    for(const side of [-1,1]) {
+      const x=side*6.8;
+      box(group,x,.72,0,.38,1.44,.38,cactus,true,true);
+      box(group,x-side*.28,.78,0,.22,.62,.24,cactus,true,true);
+      box(group,x+side*.28,1.0,0,.22,.72,.24,cactus,true,true);
+    }
+  } else if(data.theme === 'winter' && type === 'grass') {
+    const snow=makeMaterial(0xf3f9ff), ice=makeMaterial(0x9ed5f2);
+    for(const side of [-1,1]) {
+      const x=side*6.8;
+      const pine=new THREE.Mesh(new THREE.ConeGeometry(.75,1.8,4),snow);
+      pine.position.set(x,.9,0); pine.rotation.y=Math.PI/4; pine.castShadow=true; group.add(pine);
+      box(group,x,.12,.42,.72,.22,.72,ice,true,true);
+    }
+  }
+  if(data.theme === 'neon' && type !== 'road') {
+    const shell=makeMaterial(0x17172d);
+    const pink=new THREE.MeshStandardMaterial({color:0xff28c8,emissive:0xff149d,emissiveIntensity:1.7,roughness:.35});
+    const cyan=new THREE.MeshStandardMaterial({color:0x20dfff,emissive:0x00bfff,emissiveIntensity:1.8,roughness:.3});
+    for(const side of [-1,1]) { const x=side*7.0; box(group,x,1.45,0,1.15,2.9,1.15,shell,true,true); box(group,x,.7,.59,.88,.12,.035,side===1?pink:cyan,true,true); box(group,x,2.35,.59,.88,.1,.035,side===1?cyan:pink,true,true); }
+  } else if(data.theme === 'darkforest' && type === 'grass') {
+    const bark=makeMaterial(0x30251d), leaves=makeMaterial(0x102218);
+    for(const side of [-1,1]) { const x=side*6.8; box(group,x,.95,0,.38,1.9,.38,bark,true,true); const crown=new THREE.Mesh(new THREE.ConeGeometry(.95,2.25,5),leaves); crown.position.set(x,2.15,0); crown.castShadow=true; group.add(crown);
+      const lamp=new THREE.Group(); lamp.position.set(x-side*.9,0,.12); box(lamp,0,.82,0,.09,1.64,.09,makeMaterial(0x292d2a),true,true); box(lamp,0,1.68,0,.34,.12,.34,new THREE.MeshStandardMaterial({color:0xffd879,emissive:0xffb52e,emissiveIntensity:2.1}),true,true); group.add(lamp);
+      if(index%4===0){const glow=new THREE.PointLight(0xffc96b,1.1,5.5,2);glow.position.set(x-side*.9,1.65,.12);group.add(glow);}
+    }
+  }
+  return data;
+}
+function buildGrass(row) {
+  box(row.group,0,-.12,0,ROAD_WIDTH,.24,1.35,materials.grass);
+  // Grid-based trees: the center lane is ALWAYS open, so there is always
+  // a guaranteed route forward. Trees never occupy arbitrary half-lanes.
+  const candidates = [-2,-1,1,2];
+  const shuffled = [...candidates].sort(() => Math.random() - .5);
+  const wanted = Math.random() < .25 ? 0 : (Math.random() < .68 ? 1 : 2);
+  const chosen = [];
+  for (const lane of shuffled) {
+    if (chosen.length >= wanted) break;
+    // Keep at least one clear neighboring lane; don't form a solid wall.
+    if (chosen.some(other => Math.abs(other - lane) === 1)) continue;
+    chosen.push(lane);
+  }
+  for (const lane of chosen) {
+    const x = lane * LANE_WIDTH;
+    const tree = new THREE.Group();
+    tree.position.set(x,0,0);
+    row.group.add(tree);
+    // Environment-specific voxel obstacles keep each unlocked map visually distinct.
+    if(row.theme === 'desert') {
+      const cactusMat = makeMaterial(0x397d49);
+      box(tree,0,.66,0,.34,1.32,.34,cactusMat,true,true);
+      box(tree,-.28,.72,0,.24,.62,.28,cactusMat,true,true);
+      box(tree,-.17,1.02,0,.22,.22,.28,cactusMat,true,true);
+      box(tree,.28,.88,0,.24,.72,.28,cactusMat,true,true);
+      box(tree,.17,1.18,0,.22,.22,.28,cactusMat,true,true);
+    } else if(row.theme === 'winter') {
+      const trunkMat = makeMaterial(0x8793a5);
+      const snowMat = makeMaterial(0xf1f8ff);
+      box(tree,0,.28,0,.28,.56,.28,trunkMat,true,true);
+      for(let layer=0;layer<3;layer++) {
+        const size=1.0-layer*.22, y=.55+layer*.38;
+        const cone=new THREE.Mesh(new THREE.ConeGeometry(size*.62,.78,4),snowMat);
+        cone.position.set(0,y,0); cone.rotation.y=Math.PI/4; cone.castShadow=true; tree.add(cone);
+      }
+    } else if(row.theme === 'neon') {
+      const body=makeMaterial(0x18182d), trim=new THREE.MeshStandardMaterial({color:0xff35c9,emissive:0xe9009d,emissiveIntensity:1.6});
+      box(tree,0,.75,0,.82,1.5,.82,body,true,true);box(tree,0,1.1,.43,.62,.12,.035,trim,true,true);
+    } else if(row.theme === 'darkforest') {
+      const bark=makeMaterial(0x30251d), leaves=makeMaterial(0x102218);box(tree,0,.48,0,.28,.96,.28,bark,true,true);const crown=new THREE.Mesh(new THREE.ConeGeometry(.58,1.35,5),leaves);crown.position.y=1.25;crown.castShadow=true;tree.add(crown);
+    } else if(row.theme === 'red') {
+      const redStone = makeMaterial(0xb93632);
+      const coral = makeMaterial(0xf06450);
+      box(tree,0,.52,0,.82,1.04,.82,redStone,true,true);
+      box(tree,0,1.12,0,1.02,.18,1.02,coral,true,true);
+      box(tree,0,1.27,0,.72,.16,.72,redStone,true,true);
+    } else {
+      const trunkMat = makeMaterial(0x68412b);
+      box(tree,0,.30,0,.34,.62,.34,trunkMat,true,true);
+      const greens = [0x91c91d,0x9fd923,0x83b817];
+      const widths = [1.02,1.00,.96];
+      const heights = [.48,.48,.46];
+      let canopyY = .68;
+      for(let layer=0; layer<3; layer++) {
+        const foliage = new THREE.MeshStandardMaterial({color:greens[layer],roughness:1,flatShading:true});
+        const block = new THREE.Mesh(new THREE.BoxGeometry(widths[layer],heights[layer],.86),foliage);
+        block.position.set(0,canopyY+heights[layer]/2,0);
+        block.castShadow=true; block.receiveShadow=true; tree.add(block);
+        canopyY += heights[layer]-.035;
+      }
+    }
+    decorations.push(tree);
+    row.obstacles.push({x, lane});
+  }
+}
+
+function buildRoad(row) {
+  box(row.group,0,-.12,0,ROAD_WIDTH,.24,1.35,materials.road);
+  box(row.group,0,.015,-.64,ROAD_WIDTH,.035,.055,makeMaterial(0xd2c7a0),false,false);
+  box(row.group,0,.015,.64,ROAD_WIDTH,.035,.055,makeMaterial(0xd2c7a0),false,false);
+  for(let x=-8;x<=8;x+=2){
+    box(row.group,x,.012,0,.72,.025,.045,materials.roadLine,false,false);
+  }
+  row.speed = (1.7 + Math.random()*1.1) * (Math.random()<.5?-1:1);
+  const count = 2 + Math.floor(Math.random()*2);
+  const carSpacing = count === 2 ? 11.5 : 10.5;
+  for(let i=0;i<count;i++){
+    const car = new THREE.Group();
+    const vehicleType = Math.floor(Math.random()*4);
+    const glass = makeMaterial(0x18232c,.08);
+    const black = makeMaterial(0x17191c);
+    const tire = makeMaterial(0x17191c);
+    const hub = makeMaterial(0x879096,.28);
+    const bumper = makeMaterial(0xbfc5c7,.25);
+    const white = makeMaterial(0xf4f4ef,.32);
+    const dark = makeMaterial(0x252a30,.22);
+    const red = makeMaterial(0xd9233a,.38);
+    const blue = makeMaterial(0x174f9c,.32);
+    const orange = makeMaterial(0xf05a22,.35);
+    const green = makeMaterial(0x65a52b,.45);
+    const greenDark = makeMaterial(0x39751f,.48);
+    const roofWhite = makeMaterial(0xffffff,.28);
+    const sirenRed = makeMaterial(0xf12a32,.25);
+    const sirenBlue = makeMaterial(0x168bd1,.25);
+
+    if(vehicleType === 0) {
+      // White-and-red ambulance van with blue medical markings and roof lights.
+      box(car,0,.42,0,2.38,.66,1.02,white,true,true);
+      box(car,-.18,.87,0,1.35,.62,.98,white,true,true);
+      box(car,-.18,1.20,0,1.34,.07,.98,white,true,true);
+      box(car,-.18,.49,.516,1.82,.25,.025,red,false,false);
+      box(car,-.18,.49,-.516,1.82,.25,.025,red,false,false);
+      box(car,-.18,.91,.505,.82,.39,.025,glass,false,false);
+      box(car,-.18,.91,-.505,.82,.39,.025,glass,false,false);
+      box(car,.52,.91,0,.025,.39,.82,glass,false,false);
+      box(car,-.18,.71,.535,.64,.07,.025,blue,false,false);
+      box(car,-.18,.71,-.535,.64,.07,.025,blue,false,false);
+      box(car,.83,.50,0,.12,.20,.78,dark,true,true);
+      box(car,1.22,.19,0,.12,.18,1.08,bumper,true,true);
+      box(car,-1.22,.19,0,.12,.18,1.08,bumper,true,true);
+      for(const z of [-.32,.32]) {
+        box(car,1.17,.43,z,.035,.16,.18,roofWhite,false,false);
+        box(car,-.98,.43,z,.035,.13,.16,sirenRed,false,false);
+      }
+      box(car,-.10,1.29,0,.48,.10,.20,sirenRed,true,true);
+      box(car,.35,1.29,0,.48,.10,.20,sirenBlue,true,true);
+      box(car,-.18,1.02,.535,.12,.20,.035,blue,false,false);
+    } else if(vehicleType === 1) {
+      // Tall green utility van with a solid cargo side and roof rack.
+      box(car,0,.40,0,2.42,.68,1.02,green,true,true);
+      box(car,-.24,.86,0,1.36,.70,.98,green,true,true);
+      box(car,-.24,1.23,0,1.36,.08,.98,greenDark,true,true);
+      box(car,-.24,.91,.514,.88,.43,.025,glass,false,false);
+      box(car,-.24,.91,-.514,.88,.43,.025,glass,false,false);
+      box(car,.49,.89,0,.025,.43,.82,glass,false,false);
+      box(car,.48,.48,.52,.48,.035,.025,greenDark,false,false);
+      box(car,.48,.48,-.52,.48,.035,.025,greenDark,false,false);
+      box(car,-.22,1.32,0,1.42,.055,.06,dark,false,false);
+      box(car,-.22,1.38,-.38,1.42,.06,.055,dark,false,false);
+      box(car,-.22,1.38,.38,1.42,.06,.055,dark,false,false);
+      box(car,1.22,.18,0,.12,.17,1.06,bumper,true,true);
+      box(car,-1.22,.18,0,.12,.17,1.06,bumper,true,true);
+      for(const z of [-.53,.53]) box(car,-1.02,.40,z,.10,.14,.035,orange,false,false);
+    } else if(vehicleType === 2) {
+      // Low white racing coupe with orange stripes, number 01 and rear spoiler.
+      box(car,0,.34,0,2.40,.42,1.08,white,true,true);
+      box(car,-.18,.67,0,1.12,.48,.92,white,true,true);
+      box(car,-.18,.93,0,1.12,.055,.94,white,true,true);
+      box(car,-.18,.69,.47,.82,.30,.025,glass,false,false);
+      box(car,-.18,.69,-.47,.82,.30,.025,glass,false,false);
+      box(car,.40,.70,0,.025,.30,.74,glass,false,false);
+      for(const z of [-.22,.22]) {
+        box(car,.12,.57,z,.34,.06,.12,orange,false,false);
+        box(car,-.72,.57,z,.40,.06,.12,orange,false,false);
+        box(car,-.96,.38,z,.30,.10,.025,red,false,false);
+      }
+      box(car,-.10,.90,0,1.10,.07,.16,orange,false,false);
+      box(car,-.88,.78,0,.12,.08,1.18,blue,true,true);
+      box(car,-.88,.91,0,.10,.22,.08,blue,true,true);
+      box(car,1.22,.17,0,.12,.15,1.08,bumper,true,true);
+      box(car,-1.22,.17,0,.12,.15,1.08,bumper,true,true);
+      box(car,-.10,.48,.55,.32,.16,.025,orange,false,false);
+    } else {
+      // White off-road racer with tall cabin, roof rails and chunky wheels.
+      box(car,0,.40,0,2.38,.60,1.08,white,true,true);
+      box(car,-.22,.84,0,1.28,.66,.98,white,true,true);
+      box(car,-.22,1.20,0,1.30,.08,1.00,white,true,true);
+      box(car,-.22,.90,.51,.88,.43,.025,glass,false,false);
+      box(car,-.22,.90,-.51,.88,.43,.025,glass,false,false);
+      box(car,.48,.89,0,.025,.43,.84,glass,false,false);
+      box(car,-.22,1.28,-.34,1.44,.07,.07,orange,false,false);
+      box(car,-.22,1.28,.34,1.44,.07,.07,orange,false,false);
+      box(car,.02,.53,.55,.28,.16,.025,orange,false,false);
+      box(car,.02,.53,-.55,.28,.16,.025,orange,false,false);
+      box(car,-1.22,.18,0,.14,.22,1.14,bumper,true,true);
+      box(car,1.22,.18,0,.14,.22,1.14,bumper,true,true);
+      box(car,1.18,.46,0,.10,.16,.92,dark,false,false);
+      box(car,-.92,1.38,0,.08,.18,.82,blue,true,true);
+      for(const z of [-.53,.53]) box(car,1.12,.42,z,.08,.16,.04,orange,false,false);
+    }
+
+    // Wheels are deliberately kept within the original traffic collision footprint.
+    const wheelSize = vehicleType === 3 ? .50 : (vehicleType === 2 ? .40 : .46);
+    for(const wx of [-.78,.78]) for(const wz of [-.56,.56]) {
+      box(car,wx,.24,wz,wheelSize,wheelSize,.16,tire,true,true);
+      box(car,wx,.24,wz+(wz>0?.085:-.085),wheelSize*.54,wheelSize*.54,.025,hub,false,false);
+    }
+    // Face the direction of travel: the model's front points toward +X by default.
+    // Cars moving toward -X are rotated 180 degrees so they do not appear to reverse.
+    car.rotation.y = row.speed < 0 ? Math.PI : 0;
+    const startX = (i-(count-1)/2)*carSpacing;
+    car.position.set(startX,0,0);
+    row.group.add(car);
+    row.objects.push({mesh:car,x:startX,baseX:startX,width:1.55,kind:'car'});
+    moving.push({row,object:row.objects[row.objects.length-1]});
+  }
+}
+function buildRiver(row) {
+  box(row.group,0,-.13,0,ROAD_WIDTH,.26,1.35,materials.water);
+  const foamMat=new THREE.MeshStandardMaterial({color:0xb5e8f1,transparent:true,opacity:.48,roughness:.35});
+  for(const z of [-.62,.62]) box(row.group,0,.012,z,ROAD_WIDTH,.018,.035,foamMat,false,false);
+  row.speed = (2.0 + Math.random()*.55) * (Math.random()<.5?-1:1);
+  const count = 5;
+  const spacing = 5.2;
+  for(let i=0;i<count;i++){
+    const log = new THREE.Group();
+    const length = 3.25 + Math.random()*.55;
+    const logMat = makeMaterial(randomItem([0x9b6634,0x80502b,0xb17a42]));
+    box(log,0,.13,0,length,.28,.48,logMat);
+    for(const side of [-1,1]){
+      const end = new THREE.Mesh(unitCylinder,logMat);
+      end.rotation.z=Math.PI/2; end.scale.set(.48,.28,.28);
+      end.position.x=side*length/2; log.add(end);
+    }
+    const startX=(i-(count-1)/2)*spacing;
+    log.position.set(startX,0,0);
+    row.group.add(log);
+    row.objects.push({mesh:log,x:startX,baseX:startX,width:length,kind:'log'});
+    moving.push({row,object:row.objects[row.objects.length-1]});
+  }
+}
+
+function buildRail(row) {
+  box(row.group,0,-.12,0,ROAD_WIDTH,.24,1.35,materials.grass);
+  // Rails run parallel to the traffic lane; sleepers cross beneath both rails.
+  for(const z of [-.43,.43]){
+    box(row.group,0,.055,z,ROAD_WIDTH,.11,.105,materials.rail);
+  }
+  for(let x=-8.6;x<=8.6;x+=.48) box(row.group,x,.012,0,.13,.09,1.18,materials.sleeper);
+  row.speed = 0;
+  row.warning = null;
+  row.train = null;
+}
+function makeTrain(row) {
+  if(row.train) return;
+  const train = new THREE.Group();
+  const red = makeMaterial(0xc83232);
+  const cream = makeMaterial(0xf3e5c6);
+  roundedBox(train,0,.42,0,2.25,.62,.94,red,.14,4);
+  roundedBox(train,0,.79,-.05,1.45,.22,.9,cream,.08,4);
+  for(const x of [-.62,0,.62]) box(train,x,.59,-.49,.3,.28,.035,makeMaterial(0x9dd8ed,.25));
+  for(const x of [-.7,.7]) for(const z of [-.38,.38]){
+    const wheel = new THREE.Mesh(unitCylinder,materials.dark);
+    wheel.rotation.x=Math.PI/2;wheel.scale.set(.2,.12,.2);wheel.position.set(x,.13,z);train.add(wheel);
+  }
+  train.position.set(-16,0,0);
+  row.group.add(train);
+  row.train=train;
+  row.speed=11.5;
+  row.direction=1;
+}
+function buildRowUnseeded(index) {
+  const z = -index*1.35;
+  let type;
+  if(index<=1) type='grass';
+  else {
+    const roll=Math.random();
+    if(roll<.48) type='grass';
+    else if(roll<.76) type='road';
+    else if(roll<.94) type='river';
+    else type='rail';
+    const previous=rows.get(index-1);
+    if(previous && previous.type===type && type!=='grass' && Math.random()<.65) type='grass';
+  }
+  return laneGroup(z,type,index);
+}
+function buildRow(index) {
+  if(!roomSocket || !roomSeed) return buildRowUnseeded(index);
+  const originalRandom=Math.random;
+  let seed=(roomSeed ^ Math.imul(index+1,0x9E3779B1))>>>0;
+  Math.random=()=>{seed=(seed+0x6D2B79F5)>>>0;let t=seed;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;};
+  try{return buildRowUnseeded(index);}finally{Math.random=originalRandom;}
+}
+function ensureRowsThrough(targetRow) {
+  const lastNeeded = Math.max(0,targetRow) + VISIBLE_FRONT;
+  // Rows behind the camera are deliberately removed. Never recreate them:
+  // doing so made every new row rebuild the entire history and caused O(n²) lag.
+  for(let i=highestBuiltRow+1;i<=lastNeeded;i++) buildRow(i);
+}
+function ensureRows() { ensureRowsThrough(playerRow); }
+function clearWorld() {
+  for(const child of [...world.children]) world.remove(child);
+  rows.clear();highestBuiltRow=-1;moving.length=0;decorations.length=0;
+  world.add(player);
+}
+function resetGame() {
+  stopSpectating(false);
+  clearBoss();
+  clearMeteorShower();
+  nextBossDistance=55;
+  aiAccumulator=0;aiBroadcastAccumulator=0;
+  clearWorld();
+  randomMapSegments.clear();
+  for(const entry of remotePlayers.values()) world.add(entry.group);
+  score=0;maxForward=0;playerX=0;playerRow=0;jump=null;
+  running=false;ended=false;
+  applyMapTheme('main',false);
+  scoreEl.textContent='0';
+  player.position.set(0,0,0);
+  playerBody.position.y=0;
+  playerBody.rotation.set(0,0,0);
+  buildRow(0);
+  buildRow(1);
+  ensureRows();
+  camera.position.set(0,13,11.5);
+  cameraLookTarget.set(0,0,-3.5);
+  camera.lookAt(cameraLookTarget);
+  startOverlay.classList.remove('hidden');
+  gameOverOverlay.classList.add('hidden');
+  player.visible=true;
+  document.querySelector('.controls').style.display='grid';
+  document.querySelector('.hint').style.display='';
+  refreshSpectatorControls();
+  updateCamera(0);
+  render();
+}
+function updateSpectatorCamera(dt) {
+  const target=remotePlayers.get(spectatorTargetId);
+  if(!target || target.data.alive===false) return;
+  const row=Math.max(0,Number(target.data.row)||0);
+  ensureRowsThrough(row);
+  const targetZ=-Math.max(0,row-2)*1.35-2.0;
+  const desiredPosition=new THREE.Vector3(0,13,targetZ+11.5);
+  const desiredLookTarget=new THREE.Vector3(Number(target.data.x||0)*LANE_WIDTH,0,targetZ-1.5);
+  const follow=1-Math.exp(-dt*10);
+  camera.position.lerp(desiredPosition,follow);
+  cameraLookTarget.lerp(desiredLookTarget,follow);
+  camera.lookAt(cameraLookTarget);
+  document.getElementById('spectatorName').textContent='تماشای '+(target.data.name||'بازیکن');
+}
+function getAliveSpectators(){return [...remotePlayers.entries()].filter(([,p])=>p.data.alive!==false).sort((a,b)=>(Number(b[1].data.row)||0)-(Number(a[1].data.row)||0));}
+function refreshSpectatorControls(){
+  document.getElementById('spectateButton').classList.toggle('room-hidden',!roomSocket||getAliveSpectators().length===0);
+  document.getElementById('gameOverLeaveButton').classList.toggle('room-hidden',!roomSocket);
+}
+function startSpectating(offset=0){
+  const alive=getAliveSpectators();
+  if(!alive.length){showToast('بازیکن زنده‌ای برای تماشا نیست');return;}
+  let index=alive.findIndex(([id])=>id===spectatorTargetId);
+  index=index<0?0:(index+offset+alive.length)%alive.length;
+  spectatorTargetId=alive[index][0];spectatorMode=true;running=false;ended=true;
+  player.visible=false;gameOverOverlay.classList.add('hidden');startOverlay.classList.add('hidden');
+  document.querySelector('.controls').style.display='none';document.querySelector('.hint').style.display='none';
+  document.getElementById('spectatorBar').classList.remove('hidden');
+  lastTime=performance.now();if(!animationId)animationId=requestAnimationFrame(loop);
+}
+function stopSpectating(showOverlay=true){
+  spectatorMode=false;spectatorTargetId='';player.visible=true;
+  document.getElementById('spectatorBar').classList.add('hidden');
+  document.querySelector('.controls').style.display='grid';document.querySelector('.hint').style.display='';
+  if(showOverlay&&ended)gameOverOverlay.classList.remove('hidden');
+  if(!running&&!animationId)render();
+}
+function updateAIBots(dt) {
+  if(!roomSocket || !roomStarted || myPlayerId!==roomHostId || !aiBots.length || Date.now()<roomStartedAt) return;
+  aiAccumulator+=dt;aiBroadcastAccumulator+=dt;
+  let botStateDirty=false;
+  for(const bot of aiBots){
+    if(!bot.alive) continue;
+    const current=rows.get(bot.row);
+    if(current?.type==='road' && current.objects.some(o=>Math.abs(o.x-bot.x*LANE_WIDTH)<.82)){bot.alive=false;bot.finishedAt=Date.now();botStateDirty=true;continue;}
+    if(current?.type==='river'){
+      if(!bot.ridingLog) bot.ridingLog=current.objects.find(o=>Math.abs(o.x-bot.x*LANE_WIDTH)<o.width/2-.12)||null;
+      if(!bot.ridingLog){bot.alive=false;bot.finishedAt=Date.now();botStateDirty=true;continue;}
+      bot.x+=current.speed*dt/LANE_WIDTH;
+      if(Math.abs(bot.x*LANE_WIDTH-bot.ridingLog.x)>bot.ridingLog.width/2-.08){bot.alive=false;bot.finishedAt=Date.now();botStateDirty=true;continue;}
+    } else bot.ridingLog=null;
+    if(current?.type==='rail' && current.train && Math.abs(current.train.position.x-bot.x*LANE_WIDTH)<2.05){bot.alive=false;bot.finishedAt=Date.now();botStateDirty=true;continue;}
+  }
+  while(aiAccumulator>=.52){
+    aiAccumulator-=.52;
+    for(const bot of aiBots){
+      if(!bot.alive) continue;
+      bot.cooldown-=.52;if(bot.cooldown>0)continue;
+      const botIndex=aiBots.indexOf(bot);
+      // Stagger the opponents so they do not advance in synchronized lockstep.
+      bot.cooldown=.24+(botIndex===1?.42:0)+((bot.row+botIndex)%3)*.07;
+      const nextRow=bot.row+1;ensureRowsThrough(nextRow);
+      const lane=rows.get(nextRow);if(!lane)continue;
+      let choices=[];
+      if(lane.type==='grass') choices=[-2,-1,0,1,2].filter(x=>!lane.obstacles.some(o=>o.lane===x));
+      else if(lane.type==='road') choices=[-2,-1,0,1,2].filter(x=>!lane.objects.some(o=>Math.abs(o.x-x*LANE_WIDTH)<1.15));
+      else if(lane.type==='river') choices=lane.objects.filter(o=>o.kind==='log').map(o=>({x:o.x/LANE_WIDTH,log:o})).filter(v=>Math.abs(v.x)<=2.45 && Math.abs(v.x*LANE_WIDTH-v.log.x)<v.log.width/2-.12);
+      else {if(lane.train && Math.abs(lane.train.position.x-bot.x*LANE_WIDTH)<2.05)continue;choices=[bot.x];}
+      if(!choices.length)continue;
+
+      // Keep AI opponents in separate lanes. The first bot may claim a
+      // destination; later bots must choose another safe position instead
+      // of following into the exact same spot and visually merging.
+      const otherBots=aiBots.filter(other=>other!==bot&&other.alive&&other.row>=nextRow-1);
+      const separated=choices.filter(choice=>{
+        const candidateX=typeof choice==='number'?choice:choice.x;
+        return !otherBots.some(other=>
+          Math.abs(other.row-nextRow)<=1 &&
+          Math.abs(other.x-candidateX)<(lane.type==='river'?1.15:.78)
+        );
+      });
+      if(separated.length) choices=separated;
+      else if(otherBots.length) continue;
+
+      // Give each opponent a different lane route, not just a different spawn point.
+      const route=botIndex===0?[-2,-1,0,-1][bot.row%4]:[2,1,0,1][bot.row%4];
+      const preferred=choices.filter(choice=>{
+        const x=typeof choice==='number'?choice:choice.x;
+        return botIndex===0?x<=0:x>=0;
+      });
+      if(preferred.length) choices=preferred;
+      choices.sort((a,b)=>{
+        const ax=typeof a==='number'?a:a.x, bx=typeof b==='number'?b:b.x;
+        const aCost=Math.abs(ax-route), bCost=Math.abs(bx-route);
+        return aCost-bCost;
+      });
+      const pick=choices[0];bot.x=typeof pick==='number'?pick:pick.x;bot.row=nextRow;bot.ridingLog=lane.type==='river'?pick.log:null;botStateDirty=true;
+    }
+  }
+  if(botStateDirty || aiBroadcastAccumulator>=.45){aiBroadcastAccumulator=0;sendRoomMessage({type:'bots',players:aiBots.map(bot=>({skin:bot.skin,x:bot.x,row:bot.row,alive:bot.alive,finishedAt:bot.finishedAt}))});}
+}
+function updateCamera(dt) {
+  // Keep the camera position and its look target in sync. Previously the
+  // camera body eased slowly while lookAt jumped immediately, which could
+  // make the player leave the frame during fast progress (notably around 60-70).
+  const targetZ = -Math.max(0,playerRow-2)*1.35 - 2.0;
+  const desiredPosition = new THREE.Vector3(0,13,targetZ+11.5);
+  const desiredLookTarget = new THREE.Vector3(0,0,targetZ-1.5);
+  const follow = 1 - Math.exp(-dt*10);
+  camera.position.lerp(desiredPosition,follow);
+  cameraLookTarget.lerp(desiredLookTarget,follow);
+  camera.lookAt(cameraLookTarget);
+}
+let nextBossDistance=55;
+let activeBoss=null;
+let meteorShower=null;
+function clearMeteorShower(){
+  if(!meteorShower)return;
+  for(const meteor of meteorShower.meteors){
+    world.remove(meteor.group);
+    world.remove(meteor.marker);
+    meteor.group.traverse(n=>{if(n.geometry)n.geometry.dispose();if(n.material&&!Array.isArray(n.material))n.material.dispose();});
+    if(meteor.marker.geometry)meteor.marker.geometry.dispose();
+    if(meteor.marker.material)meteor.marker.material.dispose();
+  }
+  meteorShower=null;
+}
+function startMeteorShower(){
+  clearMeteorShower();
+  nextBossDistance=Infinity;
+  meteorShower={time:10,spawnTimer:0,meteors:[]};
+  showToast('☄️ بارش شهاب‌سنگ! جاخالی بده!');
+}
+function spawnMeteor(){
+  const lane=Math.floor(Math.random()*5)-2;
+  const x=lane*LANE_WIDTH;
+  const z=player.position.z+(Math.random()*10-5);
+  const group=new THREE.Group();
+  const core=new THREE.Mesh(
+    new THREE.SphereGeometry(.22,8,8),
+    new THREE.MeshStandardMaterial({color:0xffd18a,emissive:0xff5a12,emissiveIntensity:2.2,roughness:.45})
+  );
+  const tail=new THREE.Mesh(
+    new THREE.ConeGeometry(.16,.85,7),
+    new THREE.MeshStandardMaterial({color:0xff4b16,emissive:0xc92708,emissiveIntensity:1.5,roughness:.6})
+  );
+  tail.position.y=.48;
+  group.add(core,tail);
+  group.position.set(x,9+Math.random()*3,z);
+  group.rotation.z=(Math.random()-.5)*.45;
+  world.add(group);
+  const marker=new THREE.Mesh(
+    new THREE.RingGeometry(.34,.58,16),
+    new THREE.MeshBasicMaterial({color:0xff4a24,transparent:true,opacity:.58,side:THREE.DoubleSide})
+  );
+  marker.rotation.x=-Math.PI/2;
+  marker.position.set(x,.035,z);
+  world.add(marker);
+  meteorShower.meteors.push({group,marker,speed:9+Math.random()*3});
+}
+function updateMeteorShower(dt){
+  if(!meteorShower)return;
+  meteorShower.time-=dt;
+  meteorShower.spawnTimer+=dt;
+  while(meteorShower.spawnTimer>=.28){
+    meteorShower.spawnTimer-=.28;
+    spawnMeteor();
+  }
+  for(let i=meteorShower.meteors.length-1;i>=0;i--){
+    const meteor=meteorShower.meteors[i];
+    meteor.group.position.y-=meteor.speed*dt;
+    meteor.group.rotation.y+=dt*2.8;
+    meteor.marker.material.opacity=.35+Math.sin(performance.now()*.012+i)*.22;
+    const dx=Math.abs(meteor.group.position.x-player.position.x);
+    const dz=Math.abs(meteor.group.position.z-player.position.z);
+    if(meteor.group.position.y<=.78 && dx<.88 && dz<.92){
+      clearMeteorShower();
+      finishGame('شهاب‌سنگ بهت برخورد کرد!');
+      return;
+    }
+    if(meteor.group.position.y<=.12){
+      world.remove(meteor.group);
+      world.remove(meteor.marker);
+      meteor.group.traverse(n=>{if(n.geometry)n.geometry.dispose();if(n.material&&!Array.isArray(n.material))n.material.dispose();});
+      meteor.marker.geometry.dispose();
+      meteor.marker.material.dispose();
+      meteorShower.meteors.splice(i,1);
+    }
+  }
+  if(meteorShower && meteorShower.time<=0){
+    clearMeteorShower();
+    nextBossDistance=maxForward+10;
+    showToast('✅ بارش تموم شد! ۱۰ مسافت تا باس بعدی');
+  }
+}
+function clearBoss(){
+  if(activeBoss){world.remove(activeBoss.group);activeBoss.group.traverse(n=>{if(n.geometry)n.geometry.dispose();if(n.material&&!Array.isArray(n.material))n.material.dispose();});activeBoss=null;}
+  bossHud.classList.add('hidden');
+}
+function spawnBoss(){
+  if(activeBoss||!running)return;
+  const group=new THREE.Group();
+  const armor=makeMaterial(0x5b1720,.45), dark=makeMaterial(0x17171b,.55);
+  const glow=new THREE.MeshStandardMaterial({color:0xff334b,emissive:0xff102e,emissiveIntensity:1.8});
+  box(group,0,.68,0,.92,1.12,.72,armor,true,true);
+  box(group,0,1.42,0,.78,.48,.68,dark,true,true);
+  box(group,-.22,1.48,.36,.13,.13,.05,glow,true,true);
+  box(group,.22,1.48,.36,.13,.13,.05,glow,true,true);
+  box(group,-.57,.42,0,.24,.76,.28,dark,true,true);
+  box(group,.57,.42,0,.24,.76,.28,dark,true,true);
+  group.position.set(playerX*LANE_WIDTH,0,player.position.z+9.45);
+  world.add(group);
+  activeBoss={group,time:20,start:20};
+  bossHud.classList.remove('hidden');bossTimerEl.textContent='۲۰ ثانیه برای فرار';bossProgressEl.style.width='100%';
+  showToast('🚨 باس فایت شروع شد! فرار کن!');
+}
+function updateBoss(dt){
+  if(!activeBoss)return;
+  activeBoss.time-=dt;
+  const gap=activeBoss.group.position.z-player.position.z;
+  activeBoss.group.position.z-=3.6*dt;
+  const follow=1-Math.exp(-dt*5);
+  activeBoss.group.position.x=THREE.MathUtils.lerp(activeBoss.group.position.x,player.position.x,follow);
+  activeBoss.group.rotation.y=Math.sin(performance.now()*.006)*.08;
+  const remaining=Math.max(0,activeBoss.time);
+  bossTimerEl.textContent=remaining.toFixed(1)+' ثانیه تا نجات';
+  bossProgressEl.style.width=(remaining/activeBoss.start*100)+'%';
+  if(gap<1.05 && Math.abs(activeBoss.group.position.x-player.position.x)<1.05){clearBoss();finishGame('باس بهت رسید!');return;}
+  if(activeBoss.time<=0){clearBoss();score+=10;scoreEl.textContent=String(score);showToast('🏆 باس رو جا گذاشتی! +۱۰ امتیاز');startMeteorShower();}
+}
+function updateScore() {
+  score=Math.max(score,maxForward);
+  scoreEl.textContent=String(score);
+  const nextTheme=mapThemeForScore(score);
+  if(nextTheme !== currentMapTheme) applyMapTheme(nextTheme,true);
+  if(maxForward>=nextBossDistance && !activeBoss && !meteorShower && running){nextBossDistance=Infinity;spawnBoss();}
+}
+function showToast(message) {
+  toastEl.textContent=message;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>toastEl.classList.remove('show'),1300);
+}
+function movePlayer(dx,dz) {
+  if(!running || ended || jump) return;
+  const nextX = dx !== 0 ? THREE.MathUtils.clamp(playerX + dx, -2, 2) : playerX;
+  const nextRow = dz !== 0 ? playerRow + 1 : playerRow;
+  if(nextX === playerX && dx !== 0) return;
+
+  // Trees are solid obstacles: stop the move instead of ending the run.
+  const destinationRow = rows.get(nextRow);
+  if(destinationRow?.type === 'grass') {
+    // Movement happens on five discrete columns. Only the tree in the
+    // exact destination column blocks the player; nearby trees must not
+    // make a visually open gap impossible to pass through.
+    const targetLane = Math.round(nextX);
+    const blocked = destinationRow.obstacles.some(obstacle =>
+      obstacle.lane === targetLane
+    );
+    if(blocked) {
+      showToast('🌳 درخت راه را بسته؛ یک خانه چپ یا راست برو');
+      return;
+    }
+  }
+
+  playerX = nextX;
+  if(roomSocket) sendRoomMessage({type:'move',dx,dz,x:playerX});
+  if(dz !== 0) {
+    playerRow = nextRow;
+    maxForward = Math.max(maxForward, playerRow);
+    updateScore();
+    ensureRows();
+  }
+  // Collect coins after any move, including left/right moves on the same row.
+  const landedRow = rows.get(playerRow);
+  if(landedRow?.coin && !landedRow.coin.collected &&
+     landedRow.coin.lane === Math.round(playerX)) {
+    landedRow.coin.collected=true;
+    landedRow.coin.mesh.visible=false;
+    score += 5;
+    updateScore();
+    showToast('🪙 سکه جمع شد! +۵ امتیاز');
+  }
+  const target = new THREE.Vector3(playerX * LANE_WIDTH, 0, -playerRow * 1.35);
+  jump = {from:player.position.clone(), to:target, elapsed:0, duration:.17};
+  playerBody.rotation.z = dx * .22;
+  if(playerRow > maxForward + VISIBLE_FRONT - 3) ensureRows();
+}
+function checkLanding() {
+  const row=rows.get(playerRow);
+  if(!row) return;
+  if(row.type==='river') {
+    const log=row.objects.find(o=>Math.abs(o.x-playerX*LANE_WIDTH)<(o.width/2+.22));
+    if(!log) { finishGame('الوار زیر پایت نیست؛ دوباره تلاش کن'); return; }
+    player.userData.riding=log;
+  } else player.userData.riding=null;
+}
+function finishGame(reason) {
+  if(ended) return;
+  running=false;ended=true;jump=null;
+  if(roomSocket) sendRoomMessage({type:'dead'});
+  best=Math.max(best,score);
+  localStorage.setItem(BEST_KEY,String(best));
+  bestEl.textContent=String(best);
+  finalText.textContent=`${reason} امتیاز تو: ${score}`;
+  refreshSpectatorControls();
+  gameOverOverlay.classList.remove('hidden');
+}
+function startGame(fromNetwork=false) {
+  if(roomSocket && !fromNetwork) { sendRoomMessage({type:'start'}); return; }
+  if(ended) resetGame();
+  running=true;ended=false;
+  startOverlay.classList.add('hidden');
+  gameOverOverlay.classList.add('hidden');
+  lastTime=performance.now();
+  if(!animationId) animationId=requestAnimationFrame(loop);
+}
+function animatePlayer(dt) {
+  if(!jump) return;
+  jump.elapsed+=dt;
+  const t=Math.min(1,jump.elapsed/jump.duration);
+  const eased=t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+  player.position.lerpVectors(jump.from,jump.to,eased);
+  player.position.y=Math.sin(t*Math.PI)*.48;
+  if(t>=1) {
+    player.position.copy(jump.to);player.position.y=0;jump=null;
+    playerBody.rotation.z=0;
+    checkLanding();
+    const row=rows.get(playerRow);
+    if(row?.type==='rail' && row.train && Math.abs(row.train.position.x-playerX*LANE_WIDTH)<2.05) finishGame('قطار بهت برخورد کرد!');
+  }
+}
+function updateTraffic(dt) {
+  const shared=!!(roomSocket && roomStartedAt);
+  const globalElapsed=shared?Math.max(0,(Date.now()-roomStartedAt)/1000):0;
+  const elapsedSpeed=shared?1:(1+Math.min(score*.018,.9));
+  for(const row of rows.values()) {
+    if(row.coin && !row.coin.collected) row.coin.mesh.rotation.y += dt*2.8;
+    if(row.type==='road') {
+      for(const obj of row.objects) {
+        if(shared){const raw=obj.baseX+row.speed*elapsedSpeed*globalElapsed;obj.x=((raw+14)%28+28)%28-14;}
+        else {obj.x+=row.speed*elapsedSpeed*dt;if(row.speed>0 && obj.x>14)obj.x=-14;if(row.speed<0 && obj.x<-14)obj.x=14;}
+        obj.mesh.position.x=obj.x;
+      }
+    } else if(row.type==='river') {
+      for(const obj of row.objects) {
+        if(shared){const raw=obj.baseX+row.speed*globalElapsed;obj.x=((raw+14)%28+28)%28-14;}
+        else {obj.x+=row.speed*dt;if(row.speed>0 && obj.x>14)obj.x=-14;if(row.speed<0 && obj.x<-14)obj.x=14;}
+        obj.mesh.position.x=obj.x;
+      }
+    } else if(row.type==='rail') {
+      if(shared){
+        const phase=(globalElapsed+row.index*.73)%4.2;
+        const shouldRun=(row.index%7===4) && phase<(33/11.5);
+        if(shouldRun){if(!row.train)makeTrain(row);row.train.position.x=-16+11.5*phase;row.speed=11.5;}
+        else if(row.train){row.group.remove(row.train);row.train=null;row.warning=null;}
+      } else {
+        const dist=playerRow-row.index;
+        if(!row.train && !row.warning && Math.abs(dist)<7 && Math.random()<dt*.18) {row.warning=2.0;if(row.index===playerRow || Math.abs(dist)<=2) showToast('⚠️ قطار نزدیک می‌شود!');}
+        if(row.warning!==null){row.warning-=dt;if(row.warning<=0){row.warning=null;makeTrain(row);}}
+        if(row.train){row.train.position.x+=row.speed*dt;if(row.train.position.x>17){row.group.remove(row.train);row.train=null;row.warning=null;}}
+      }
+    }
+  }
+  const current=rows.get(playerRow);
+  if(current?.type==='road') {
+    for(const obj of current.objects) {
+      if(Math.abs(obj.x-playerX*LANE_WIDTH)<.78) {finishGame('ماشین بهت برخورد کرد!');break;}
+    }
+  }
+  if(current?.type==='river' && !jump) {
+    const riding=player.userData.riding;
+    if(!riding || !current.objects.includes(riding)) {finishGame('در آب افتادی!');return;}
+    playerX += (current.speed*dt)/LANE_WIDTH;
+    playerX=THREE.MathUtils.clamp(playerX,-3.2,3.2);
+    player.position.x=playerX*LANE_WIDTH;
+    if(roomSocket && Date.now()-lastNetPositionAt>1000){lastNetPositionAt=Date.now();sendRoomMessage({type:'position',x:playerX});}
+    if(Math.abs(playerX*LANE_WIDTH-riding.x)>riding.width/2+.15) finishGame('از کنده جا ماندی!');
+  }
+  const rail=rows.get(playerRow);
+  if(rail?.type==='rail' && rail.train && Math.abs(rail.train.position.x-playerX*LANE_WIDTH)<2.05) finishGame('قطار بهت برخورد کرد!');
+}
+function cleanupRows() {
+  const watched= spectatorMode ? remotePlayers.get(spectatorTargetId) : null;
+  const botRow=(roomSocket && myPlayerId===roomHostId)?aiBots.reduce((max,bot)=>Math.max(max,bot.alive?bot.row:0),0):0;
+  const activeRow=watched ? Math.max(0,Number(watched.data.row)||0) : Math.max(playerRow,botRow);
+  const min=activeRow-VISIBLE_BACK;
+  for(const [index,row] of rows) {
+    if(index<min) {
+      world.remove(row.group);rows.delete(index);
+    }
+  }
+}
+function loop(now) {
+  animationId=0;
+  const dt=Math.min((now-lastTime)/1000,.05);
+  lastTime=now;
+  const aiActive=!!(roomSocket&&roomStarted&&myPlayerId===roomHostId&&aiBots.some(bot=>bot.alive));
+  if(running || spectatorMode || aiActive) {
+    if(materials.water.map) materials.water.map.offset.x=(materials.water.map.offset.x+dt*.018)%1;
+    if(running)animatePlayer(dt);
+    updateTraffic(dt);
+    if(running)updateBoss(dt);
+    if(running)updateMeteorShower(dt);
+    if(aiActive)updateAIBots(dt);
+    if(spectatorMode){const alive=getAliveSpectators();if(!alive.some(([id])=>id===spectatorTargetId)){if(alive.length)spectatorTargetId=alive[0][0];else stopSpectating(true);}}
+    cleanupRows();
+    if(spectatorMode)updateSpectatorCamera(dt);else if(running)updateCamera(dt);
+  }
+  render();
+  if(running || spectatorMode || aiActive) animationId=requestAnimationFrame(loop);
+}
+let renderWidth=0, renderHeight=0;
+function render() {
+  if(!renderer) return;
+  const w=stage.clientWidth,h=stage.clientHeight;
+  if(w&&h && (w!==renderWidth || h!==renderHeight)) {
+    renderWidth=w; renderHeight=h;
+    renderer.setSize(w,h,false);
+    camera.aspect=w/h;
+    camera.updateProjectionMatrix();
+  }
+  renderer.render(scene,camera);
+}
+function handleMove(kind) {
+  if(!running) return;
+  if(kind==='forward') movePlayer(0,1);
+  if(kind==='left') movePlayer(-1,0);
+  if(kind==='right') movePlayer(1,0);
+}
+document.getElementById('chickenSkin').addEventListener('click',()=>applySkin('chicken'));
+document.getElementById('suitSkin').addEventListener('click',()=>applySkin('suit'));
+document.getElementById('spiderSkin').addEventListener('click',()=>applySkin('spider'));
+document.getElementById('batmanSkin').addEventListener('click',()=>applySkin('batman'));
+document.getElementById('groguSkin').addEventListener('click',()=>applySkin('grogu'));
+document.getElementById('tinkerbellSkin').addEventListener('click',()=>applySkin('tinkerbell'));
+document.getElementById('duckSkin').addEventListener('click',()=>applySkin('duck'));
+document.getElementById('grootSkin').addEventListener('click',()=>applySkin('groot'));
+document.getElementById('startButton').addEventListener('click',()=>startGame());
+document.getElementById('createRoomButton').addEventListener('click',createRoom);
+document.getElementById('joinRoomButton').addEventListener('click',joinRoom);
+document.getElementById('startRoomButton').addEventListener('click',()=>sendRoomMessage({type:'start'}));
+document.getElementById('leaveRoomButton').addEventListener('click',leaveRoom);
+document.getElementById('retryButton').addEventListener('click',()=>{stopSpectating(false);if(roomSocket){sendRoomMessage({type:'reset'});return;}resetGame();startGame();});
+document.getElementById('spectateButton').addEventListener('click',()=>startSpectating());
+document.getElementById('spectatorPrev').addEventListener('click',()=>startSpectating(-1));
+document.getElementById('spectatorNext').addEventListener('click',()=>startSpectating(1));
+document.getElementById('spectatorStop').addEventListener('click',()=>stopSpectating(true));
+document.getElementById('gameOverLeaveButton').addEventListener('click',leaveRoom);
+document.getElementById('homeButton').addEventListener('click',()=>{gameOverOverlay.classList.add('hidden');startOverlay.classList.remove('hidden');if(roomSocket){leaveRoom();}else resetGame();});
+document.getElementById('leftButton').addEventListener('pointerdown',e=>{e.preventDefault();handleMove('left');});
+document.getElementById('rightButton').addEventListener('pointerdown',e=>{e.preventDefault();handleMove('right');});
+document.getElementById('forwardButton').addEventListener('pointerdown',e=>{e.preventDefault();handleMove('forward');});
+document.getElementById('backButton').addEventListener('click',()=>{
+  if(tg && tg.close) tg.close();
+  else if(history.length>1) history.back();
+  else location.href='/';
+});
+let pointerStart=null;
+stage.addEventListener('pointerdown',e=>{
+  if(e.target.closest('.overlay') || !running) return;
+  pointerStart={x:e.clientX,y:e.clientY,id:e.pointerId};
+  try{stage.setPointerCapture(e.pointerId);}catch(_){}
+},{passive:false});
+stage.addEventListener('pointerup',e=>{
+  if(!pointerStart || pointerStart.id!==e.pointerId) return;
+  const dx=e.clientX-pointerStart.x,dy=e.clientY-pointerStart.y;
+  pointerStart=null;
+  if(Math.max(Math.abs(dx),Math.abs(dy))<18) {handleMove('forward');return;}
+  if(Math.abs(dx)>Math.abs(dy)) handleMove(dx>0?'right':'left');
+  else if(dy<0) handleMove('forward');
+  else showToast('برای پیشروی، انگشت را به بالا بکش');
+});
+stage.addEventListener('pointercancel',()=>pointerStart=null);
+document.addEventListener('keydown',e=>{
+  const keys={ArrowUp:'forward',w:'forward',ArrowLeft:'left',a:'left',ArrowRight:'right',d:'right'};
+  if(keys[e.key]){e.preventDefault();handleMove(keys[e.key]);}
+});
+window.addEventListener('resize',render);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', render);
+document.addEventListener('visibilitychange',()=>{if(document.hidden && running){running=false;showToast('بازی متوقف شد');}});
+if(renderer) resetGame();
+</script>
+</body>
+</html>
