@@ -191,6 +191,7 @@ let roomSeed = 0;
 let roomStartedAt = 0;
 let roomStarted = false;
 let roomEventKey = '';
+let roomClockOffset = 0;
 let lastRoomEventTickAt = 0;
 let lastResetVersion = -1;
 let lastNetPositionAt = 0;
@@ -202,6 +203,7 @@ function sendRoomMessage(payload) {
   if(roomSocket && roomSocket.readyState === WebSocket.OPEN) roomSocket.send(JSON.stringify(payload));
 }
 function setRoomStatus(message) { roomStatusEl.textContent = message; }
+function roomNow() { return Date.now()+roomClockOffset; }
 function roomName() { return (document.getElementById('playerName').value || 'بازیکن').trim().slice(0,16) || 'بازیکن'; }
 function roomWsUrl(code) { const scheme=location.protocol==='https:'?'wss:':'ws:'; return `${scheme}//${location.host}${ROOM_API}/${encodeURIComponent(code)}/ws?name=${encodeURIComponent(roomName())}&skin=${encodeURIComponent(selectedSkin)}`; }
 async function connectRoom(code) {
@@ -284,6 +286,7 @@ function syncRemotePlayers(players) {
 function handleRoomMessage(msg) {
   if(msg.type==='error'){setRoomStatus(msg.message||'خطا در اتاق');showToast(msg.message||'خطا در اتاق');return;}
   if(msg.type!=='state')return;
+  if(Number.isFinite(msg.serverNow))roomClockOffset=msg.serverNow-Date.now();
   myPlayerId=msg.playerId||myPlayerId; const incomingHostId=msg.hostId||''; if(incomingHostId!==roomHostId){roomHostId=incomingHostId;aiBots=[];}
   const isRoomHost = myPlayerId === roomHostId;
   document.getElementById('startRoomButton').classList.toggle('room-hidden', !isRoomHost);
@@ -309,7 +312,6 @@ function handleRoomMessage(msg) {
   const aiDebug=players.filter(p=>p.isAI).map(p=>`${p.id}: x=${Number(p.x).toFixed(2)}, row=${Number(p.row)||0}`).join(' | ');
   setRoomStatus(`اتاق آماده است · ${players.length}/4 بازیکن\n${players.map(p=>(p.id===myPlayerId?'● ':'○ ')+p.name+(p.alive===false?' (حذف شده)':'')).join('\n')}\n${roomStarted?'بازی در حال اجراست':'برای شروع، منتظر دوستانت بمان.'}${aiDebug?'\nموقعیت AI: '+aiDebug:''}`);
   syncRemotePlayers(players);
-  syncRoomEvent(msg.event||null);
   if(msg.resetVersion!==lastResetVersion && lastResetVersion!==-1){lastResetVersion=msg.resetVersion;aiBots=[];resetGame();}
   else lastResetVersion=msg.resetVersion;
   refreshSpectatorControls();
@@ -321,6 +323,7 @@ function handleRoomMessage(msg) {
   }
   if(roomStarted && !running && !ended && !spectatorMode){startGame(true);}
   if(!roomStarted && running){running=false;ended=false;startOverlay.classList.remove('hidden');}
+  syncRoomEvent(msg.event||null);
 }
 async function createRoom() {
   try{const response=await fetch(`${ROOM_API}/create`,{method:'POST'});const data=await response.json();if(!response.ok||!data.code)throw new Error(data.error||'ساخت اتاق ناموفق بود');resetGame();connectRoom(data.code);}
@@ -1449,10 +1452,10 @@ function clearMeteorShower(){
 function startMeteorShower(sharedEvent=null){
   clearMeteorShower();
   if(!roomSocket) nextBossScore=Infinity;
-  const elapsed=sharedEvent?Math.max(0,(Date.now()-sharedEvent.startedAt)/1000):0;
+  const elapsed=sharedEvent?Math.max(0,(roomNow()-sharedEvent.startedAt)/1000):0;
   meteorShower={
     time:Math.max(0,10-elapsed),
-    spawnTimer:elapsed,
+    spawnTimer:0,
     meteors:[],
     randomState:(Number(sharedEvent?.seed)||0x6d2b79f5)>>>0,
     shared:!!sharedEvent,
@@ -1520,7 +1523,7 @@ function spawnMeteor(){
 function updateMeteorShower(dt){
   if(!meteorShower)return;
   meteorShower.time=meteorShower.shared
-    ? Math.max(0,10-(Date.now()-meteorShower.startedAt)/1000)
+    ? Math.max(0,10-(roomNow()-meteorShower.startedAt)/1000)
     : meteorShower.time-dt;
   meteorShower.spawnTimer+=dt;
   while(meteorShower.spawnTimer>=.28){
@@ -1610,7 +1613,7 @@ function spawnBoss(sharedEvent=null){
   group.position.set(playerX*LANE_WIDTH,0,player.position.z+6.5);
   world.add(group);
   group.scale.setScalar(.015);
-  const bossElapsed=sharedEvent?Math.max(0,(Date.now()-sharedEvent.startedAt)/1000):0;
+  const bossElapsed=sharedEvent?Math.max(0,(roomNow()-sharedEvent.startedAt)/1000):0;
   activeBoss={group,time:Math.max(0,20-Math.max(0,bossElapsed-1.724)),start:20,intro:Math.min(1,bossElapsed/1.724),aura,entranceLight,impactDone:false,eventId:sharedEvent?.id||null,startedAt:sharedEvent?.startedAt||Date.now()};
   // Cinematic arrival: expanding ground shockwave, red sparks and a short smoke burst.
   const shockwave=new THREE.Mesh(
@@ -1630,7 +1633,7 @@ function spawnBoss(sharedEvent=null){
 function updateBoss(dt){
   if(!activeBoss)return;
   if(activeBoss.eventId){
-    const elapsed=Math.max(0,(Date.now()-activeBoss.startedAt)/1000);
+    const elapsed=Math.max(0,(roomNow()-activeBoss.startedAt)/1000);
     activeBoss.intro=Math.min(1,elapsed/1.724);
     activeBoss.time=Math.max(0,20-Math.max(0,elapsed-1.724));
   }else{
@@ -1656,7 +1659,7 @@ function updateBoss(dt){
     spawnBurst(activeBoss.group.position.x,.12,activeBoss.group.position.z,0x251014,16);
     playBossImpact();
   }
-  activeBoss.time-=dt;
+  if(!activeBoss.eventId)activeBoss.time-=dt;
   const gap=activeBoss.group.position.z-player.position.z;
   activeBoss.group.position.z-=3.6*dt;
   const follow=1-Math.exp(-dt*5);
