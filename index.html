@@ -1106,7 +1106,13 @@ async function loadUploadedIntroVideos(){
   }
 }
 function playUploadedIntroAt(index){
-  if(index>=uploadedIntroItems.length){finishGozarIntro();return;}
+  if(index>=uploadedIntroItems.length){
+    uploadedIntroVideo.classList.remove('active');
+    gozarCaption.style.display='none';
+    gozarFinalLogo.classList.add('show');
+    window.setTimeout(finishGozarIntro,2200);
+    return;
+  }
   uploadedIntroIndex=index;
   const item=uploadedIntroItems[index];
   gozarCanvas.style.display='none';
