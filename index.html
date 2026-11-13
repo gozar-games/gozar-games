@@ -1133,7 +1133,12 @@ function playUploadedIntroAt(index){
   gozarCaption.textContent=item.title||'GOZAR GAMES';
   gozarCaption.style.display='block';
   gozarProgress.style.width=((index/uploadedIntroItems.length)*100)+'%';
-  uploadedIntroVideo.onended=()=>playUploadedIntroAt(uploadedIntroIndex+1);
+  let advanced=false;
+  uploadedIntroVideo.onended=()=>{
+    if(advanced)return;
+    advanced=true;
+    playUploadedIntroAt(uploadedIntroIndex+1);
+  };
   uploadedIntroVideo.onerror=()=>{
     introVideoLoading.classList.remove('show');
     console.error('Intro video playback failed:',item.id);
