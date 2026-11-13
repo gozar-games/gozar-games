@@ -1326,8 +1326,8 @@ function spawnBoss(){
   box(group,.57,.42,0,.24,.76,.28,dark,true,true);
   group.position.set(playerX*LANE_WIDTH,0,player.position.z+9.45);
   world.add(group);
-  activeBoss={group,time:10,start:10};
-  bossHud.classList.remove('hidden');bossTimerEl.textContent='۱۰ ثانیه برای فرار';bossProgressEl.style.width='100%';
+  activeBoss={group,time:20,start:20};
+  bossHud.classList.remove('hidden');bossTimerEl.textContent='۲۰ ثانیه برای فرار';bossProgressEl.style.width='100%';
   showToast('🚨 باس فایت شروع شد! فرار کن!');
 }
 function updateBoss(dt){
