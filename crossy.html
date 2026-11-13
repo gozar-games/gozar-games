@@ -882,35 +882,104 @@ function buildRoad(row) {
   const carSpacing = count === 2 ? 11.5 : 10.5;
   for(let i=0;i<count;i++){
     const car = new THREE.Group();
-    const color = randomItem([0xe51b2b,0x2686e8,0xf1c40f,0x8b55d8,0xf1f1ed,0x24a86b,0xff7a24,0x20b8b0]);
-    const paint = makeMaterial(color);
-    const darkPaint = makeMaterial(new THREE.Color(color).multiplyScalar(.72));
-    const glass = makeMaterial(0x080d13,.08);
-    const bumper = makeMaterial(0xbfc5c7,.25);
+    const vehicleType = Math.floor(Math.random()*4);
+    const glass = makeMaterial(0x18232c,.08);
+    const black = makeMaterial(0x17191c);
     const tire = makeMaterial(0x17191c);
-    const hub = makeMaterial(0x626b70,.25);
+    const hub = makeMaterial(0x879096,.28);
+    const bumper = makeMaterial(0xbfc5c7,.25);
+    const white = makeMaterial(0xf4f4ef,.32);
+    const dark = makeMaterial(0x252a30,.22);
+    const red = makeMaterial(0xd9233a,.38);
+    const blue = makeMaterial(0x174f9c,.32);
+    const orange = makeMaterial(0xf05a22,.35);
+    const green = makeMaterial(0x65a52b,.45);
+    const greenDark = makeMaterial(0x39751f,.48);
+    const roofWhite = makeMaterial(0xffffff,.28);
+    const sirenRed = makeMaterial(0xf12a32,.25);
+    const sirenBlue = makeMaterial(0x168bd1,.25);
 
-    // Long, squared-off voxel vehicle with a raised cabin and flat hood.
-    box(car,0,.38,0,2.30,.58,.98,paint,true,true);
-    box(car,.66,.70,0,.98,.08,.98,darkPaint,true,true); // hood top edge
-    box(car,-.28,.82,0,1.12,.86,.94,paint,true,true); // cabin
-    box(car,-.28,1.265,0,1.10,.055,.91,paint,true,true); // flat roof
-
-    // Large black side windows and front windshield.
-    box(car,-.28,.91,.481,.83,.48,.025,glass,false,false);
-    box(car,-.28,.91,-.481,.83,.48,.025,glass,false,false);
-    box(car,.292,.91,0,.025,.48,.78,glass,false,false);
-    // White headlights and pale block bumpers at the front (+X).
-    for(const z of [-.34,.34]) box(car,1.158,.40,z,.035,.16,.20,makeMaterial(0xf5f5ed),false,false);
-    box(car,1.19,.17,0,.12,.17,1.04,bumper,true,true);
-    box(car,-1.18,.17,0,.12,.17,1.04,bumper,true,true);
-    for(const z of [-.505,.505]) {
-      box(car,-1.02,.39,z,.10,.16,.035,makeMaterial(0xe72c32),false,false);
+    if(vehicleType === 0) {
+      // White-and-red ambulance van with blue medical markings and roof lights.
+      box(car,0,.42,0,2.38,.66,1.02,white,true,true);
+      box(car,-.18,.87,0,1.35,.62,.98,white,true,true);
+      box(car,-.18,1.20,0,1.34,.07,.98,white,true,true);
+      box(car,-.18,.49,.516,1.82,.25,.025,red,false,false);
+      box(car,-.18,.49,-.516,1.82,.25,.025,red,false,false);
+      box(car,-.18,.91,.505,.82,.39,.025,glass,false,false);
+      box(car,-.18,.91,-.505,.82,.39,.025,glass,false,false);
+      box(car,.52,.91,0,.025,.39,.82,glass,false,false);
+      box(car,-.18,.71,.535,.64,.07,.025,blue,false,false);
+      box(car,-.18,.71,-.535,.64,.07,.025,blue,false,false);
+      box(car,.83,.50,0,.12,.20,.78,dark,true,true);
+      box(car,1.22,.19,0,.12,.18,1.08,bumper,true,true);
+      box(car,-1.22,.19,0,.12,.18,1.08,bumper,true,true);
+      for(const z of [-.32,.32]) {
+        box(car,1.17,.43,z,.035,.16,.18,roofWhite,false,false);
+        box(car,-.98,.43,z,.035,.13,.16,sirenRed,false,false);
+      }
+      box(car,-.10,1.29,0,.48,.10,.20,sirenRed,true,true);
+      box(car,.35,1.29,0,.48,.10,.20,sirenBlue,true,true);
+      box(car,-.18,1.02,.535,.12,.20,.035,blue,false,false);
+    } else if(vehicleType === 1) {
+      // Tall green utility van with a solid cargo side and roof rack.
+      box(car,0,.40,0,2.42,.68,1.02,green,true,true);
+      box(car,-.24,.86,0,1.36,.70,.98,green,true,true);
+      box(car,-.24,1.23,0,1.36,.08,.98,greenDark,true,true);
+      box(car,-.24,.91,.514,.88,.43,.025,glass,false,false);
+      box(car,-.24,.91,-.514,.88,.43,.025,glass,false,false);
+      box(car,.49,.89,0,.025,.43,.82,glass,false,false);
+      box(car,.48,.48,.52,.48,.035,.025,greenDark,false,false);
+      box(car,.48,.48,-.52,.48,.035,.025,greenDark,false,false);
+      box(car,-.22,1.32,0,1.42,.055,.06,dark,false,false);
+      box(car,-.22,1.38,-.38,1.42,.06,.055,dark,false,false);
+      box(car,-.22,1.38,.38,1.42,.06,.055,dark,false,false);
+      box(car,1.22,.18,0,.12,.17,1.06,bumper,true,true);
+      box(car,-1.22,.18,0,.12,.17,1.06,bumper,true,true);
+      for(const z of [-.53,.53]) box(car,-1.02,.40,z,.10,.14,.035,orange,false,false);
+    } else if(vehicleType === 2) {
+      // Low white racing coupe with orange stripes, number 01 and rear spoiler.
+      box(car,0,.34,0,2.40,.42,1.08,white,true,true);
+      box(car,-.18,.67,0,1.12,.48,.92,white,true,true);
+      box(car,-.18,.93,0,1.12,.055,.94,white,true,true);
+      box(car,-.18,.69,.47,.82,.30,.025,glass,false,false);
+      box(car,-.18,.69,-.47,.82,.30,.025,glass,false,false);
+      box(car,.40,.70,0,.025,.30,.74,glass,false,false);
+      for(const z of [-.22,.22]) {
+        box(car,.12,.57,z,.34,.06,.12,orange,false,false);
+        box(car,-.72,.57,z,.40,.06,.12,orange,false,false);
+        box(car,-.96,.38,z,.30,.10,.025,red,false,false);
+      }
+      box(car,-.10,.90,0,1.10,.07,.16,orange,false,false);
+      box(car,-.88,.78,0,.12,.08,1.18,blue,true,true);
+      box(car,-.88,.91,0,.10,.22,.08,blue,true,true);
+      box(car,1.22,.17,0,.12,.15,1.08,bumper,true,true);
+      box(car,-1.22,.17,0,.12,.15,1.08,bumper,true,true);
+      box(car,-.10,.48,.55,.32,.16,.025,orange,false,false);
+    } else {
+      // White off-road racer with tall cabin, roof rails and chunky wheels.
+      box(car,0,.40,0,2.38,.60,1.08,white,true,true);
+      box(car,-.22,.84,0,1.28,.66,.98,white,true,true);
+      box(car,-.22,1.20,0,1.30,.08,1.00,white,true,true);
+      box(car,-.22,.90,.51,.88,.43,.025,glass,false,false);
+      box(car,-.22,.90,-.51,.88,.43,.025,glass,false,false);
+      box(car,.48,.89,0,.025,.43,.84,glass,false,false);
+      box(car,-.22,1.28,-.34,1.44,.07,.07,orange,false,false);
+      box(car,-.22,1.28,.34,1.44,.07,.07,orange,false,false);
+      box(car,.02,.53,.55,.28,.16,.025,orange,false,false);
+      box(car,.02,.53,-.55,.28,.16,.025,orange,false,false);
+      box(car,-1.22,.18,0,.14,.22,1.14,bumper,true,true);
+      box(car,1.22,.18,0,.14,.22,1.14,bumper,true,true);
+      box(car,1.18,.46,0,.10,.16,.92,dark,false,false);
+      box(car,-.92,1.38,0,.08,.18,.82,blue,true,true);
+      for(const z of [-.53,.53]) box(car,1.12,.42,z,.08,.16,.04,orange,false,false);
     }
-    // Chunky black wheels with simple square hubs.
-    for(const wx of [-.78,.78]) for(const wz of [-.53,.53]) {
-      box(car,wx,.25,wz,.43,.48,.16,tire,true,true);
-      box(car,wx,.25,wz+(wz>0?.085:-.085),.23,.27,.025,hub,false,false);
+
+    // Wheels are deliberately kept within the original traffic collision footprint.
+    const wheelSize = vehicleType === 3 ? .50 : (vehicleType === 2 ? .40 : .46);
+    for(const wx of [-.78,.78]) for(const wz of [-.56,.56]) {
+      box(car,wx,.24,wz,wheelSize,wheelSize,.16,tire,true,true);
+      box(car,wx,.24,wz+(wz>0?.085:-.085),wheelSize*.54,wheelSize*.54,.025,hub,false,false);
     }
     // Face the direction of travel: the model's front points toward +X by default.
     // Cars moving toward -X are rotated 180 degrees so they do not appear to reverse.
