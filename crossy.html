@@ -1313,14 +1313,18 @@ function movePlayer(dx,dz) {
   if(dz !== 0) {
     playerRow = nextRow;
     maxForward = Math.max(maxForward, playerRow);
-    if(destinationRow?.coin && !destinationRow.coin.collected && destinationRow.coin.lane === Math.round(playerX)) {
-      destinationRow.coin.collected=true;
-      destinationRow.coin.mesh.visible=false;
-      score += 5;
-      updateScore();
-      showToast('🪙 سکه جمع شد! +۵ امتیاز');
-    } else updateScore();
+    updateScore();
     ensureRows();
+  }
+  // Collect coins after any move, including left/right moves on the same row.
+  const landedRow = rows.get(playerRow);
+  if(landedRow?.coin && !landedRow.coin.collected &&
+     landedRow.coin.lane === Math.round(playerX)) {
+    landedRow.coin.collected=true;
+    landedRow.coin.mesh.visible=false;
+    score += 5;
+    updateScore();
+    showToast('🪙 سکه جمع شد! +۵ امتیاز');
   }
   const target = new THREE.Vector3(playerX * LANE_WIDTH, 0, -playerRow * 1.35);
   jump = {from:player.position.clone(), to:target, elapsed:0, duration:.17};
