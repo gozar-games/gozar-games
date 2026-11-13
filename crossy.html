@@ -1443,19 +1443,36 @@ function spawnBoss(){
   box(group,.22,1.48,.36,.13,.13,.05,glow,true,true);
   box(group,-.57,.42,0,.24,.76,.28,dark,true,true);
   box(group,.57,.42,0,.24,.76,.28,dark,true,true);
-  group.position.set(playerX*LANE_WIDTH,0,player.position.z+9.45);
+  // A visible red arrival ring and light make the boss entrance unmistakable.
+  const aura=new THREE.Mesh(
+    new THREE.TorusGeometry(.88,.055,8,36),
+    new THREE.MeshBasicMaterial({color:0xff263d,transparent:true,opacity:0})
+  );
+  aura.rotation.x=-Math.PI/2;
+  aura.position.y=.055;
+  group.add(aura);
+  const entranceLight=new THREE.PointLight(0xff1838,0,5);
+  entranceLight.position.set(0,1.1,.15);
+  group.add(entranceLight);
+  group.position.set(playerX*LANE_WIDTH,0,player.position.z+5.0);
   world.add(group);
-  group.scale.setScalar(.06);
-  activeBoss={group,time:20,start:20,intro:0};
+  group.scale.setScalar(.015);
+  activeBoss={group,time:20,start:20,intro:0,aura,entranceLight};
   bossHud.classList.remove('hidden');bossTimerEl.textContent='۲۰ ثانیه برای فرار';bossProgressEl.style.width='100%';
   showToast('🚨 باس فایت شروع شد! فرار کن!');
 }
 function updateBoss(dt){
   if(!activeBoss)return;
   activeBoss.time-=dt;
-  activeBoss.intro=Math.min(1,activeBoss.intro+dt*2.6);
-  const introEase=1-Math.pow(1-activeBoss.intro,3);
-  activeBoss.group.scale.setScalar(.06+introEase*.94);
+  activeBoss.intro=Math.min(1,activeBoss.intro+dt*.9);
+  const t=activeBoss.intro;
+  // Overshoot slightly, then settle to full size over about 1.1 seconds.
+  const bounce=1+Math.sin(t*Math.PI*2.5)*Math.pow(1-t,2)*.16;
+  const introEase=1-Math.pow(1-t,3);
+  activeBoss.group.scale.setScalar(.015+introEase*.985*bounce);
+  activeBoss.aura.material.opacity=.78*(1-t);
+  activeBoss.aura.scale.setScalar(.65+t*.8);
+  activeBoss.entranceLight.intensity=3.5*(1-t);
   const gap=activeBoss.group.position.z-player.position.z;
   activeBoss.group.position.z-=3.6*dt;
   const follow=1-Math.exp(-dt*5);
