@@ -70,6 +70,7 @@ async function ensureTables(db) {
         telegram_id TEXT NOT NULL,
         match_id TEXT NOT NULL,
         xp_awarded INTEGER NOT NULL DEFAULT 0,
+        coins_awarded INTEGER NOT NULL DEFAULT 0,
         kills INTEGER NOT NULL DEFAULT 0,
         wave INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -141,17 +142,37 @@ export async function onRequestPost({ request, env }) {
       WHERE telegram_id = ? AND date(created_at) = date('now')
     `).bind(telegramId).first();
     const xpAwarded = Math.max(0, Math.min(requestedXp, 1000 - (daily?.xp || 0)));
+    const dailyCoins = await env.DB.prepare(`
+      SELECT COALESCE(SUM(coins_awarded), 0) AS coins
+      FROM battle_match_rewards
+      WHERE telegram_id = ? AND date(created_at) = date('now')
+    `).bind(telegramId).first();
+    const coinsAwarded = Math.max(0, Math.min(500, kills * 10 + wave * 25, 2500 - (dailyCoins?.coins || 0)));
+    const username = user.username || null;
 
     const results = await env.DB.batch([
       env.DB.prepare(`
         INSERT OR IGNORE INTO battle_match_rewards
-          (telegram_id, match_id, xp_awarded, kills, wave)
-        SELECT ?, ?, ?, ?, ?
-        WHERE ? > 0
+          (telegram_id, match_id, xp_awarded, coins_awarded, kills, wave)
+        SELECT ?, ?, ?, ?, ?, ?
+        WHERE (? > 0 OR ? > 0)
           AND (SELECT COALESCE(SUM(xp_awarded), 0)
                FROM battle_match_rewards
                WHERE telegram_id = ? AND date(created_at) = date('now')) + ? <= 1000
-      `).bind(telegramId, matchId, xpAwarded, kills, wave, xpAwarded, telegramId, xpAwarded),
+          AND (SELECT COALESCE(SUM(coins_awarded), 0)
+               FROM battle_match_rewards
+               WHERE telegram_id = ? AND date(created_at) = date('now')) + ? <= 2500
+      `).bind(telegramId, matchId, xpAwarded, coinsAwarded, kills, wave, xpAwarded, coinsAwarded, telegramId, xpAwarded, telegramId, coinsAwarded),
+      env.DB.prepare(`
+        INSERT INTO players
+          (telegram_id, username, coins, daily_streak, last_reward_date, missed_days)
+        SELECT ?, ?, ?, 0, NULL, 0
+        WHERE changes() > 0
+        ON CONFLICT(telegram_id) DO UPDATE SET
+          username = COALESCE(excluded.username, players.username),
+          coins = players.coins + excluded.coins,
+          updated_at = CURRENT_TIMESTAMP
+      `).bind(telegramId, username, coinsAwarded),
       env.DB.prepare(`
         INSERT INTO battle_progress
           (telegram_id, xp, level, best_wave, total_kills, updated_at)
@@ -181,6 +202,7 @@ export async function onRequestPost({ request, env }) {
     return Response.json({
       success: true,
       xp_awarded: xpAwarded,
+      coins_awarded: coinsAwarded,
       progress: {
         xp,
         level,
