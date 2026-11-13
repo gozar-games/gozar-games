@@ -105,6 +105,8 @@ function reload(){if(reloading||ammo>=weaponStat('mag'))return;reloading=true;re
 function activateShield(){let now=performance.now();if(now<shieldReady)return;shieldEnd=now+6000;shieldReady=shieldEnd+20000;$('shield').disabled=true;setTimeout(()=>{$('shield').disabled=false},26000)}
 function loop(now){if(!running)return;let dt=Math.min((now-last)/1000,.033);last=now;update(dt,now);draw();requestAnimationFrame(loop)}
 function update(dt,now){
+ // Aim and fire in the same direction as the movement joystick; retain the last direction when released.
+ const moveLen=Math.hypot(move.x,move.y);if(moveLen>0.12){aim={x:move.x/moveLen,y:move.y/moveLen};player.angle=Math.atan2(aim.y,aim.x);}
  const oldX=player.x,oldY=player.y;
  if(bannerTimer>0){bannerTimer-=dt;if(bannerTimer<=0)$('banner').style.opacity=0}
  if(reloading&&now>=reloadEnd){ammo=weaponStat('mag');reloading=false}
