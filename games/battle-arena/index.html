@@ -137,7 +137,7 @@ function update(dt,now){
  let autoTarget=null,bestTargetDistance=Infinity;
  for(const e of enemies){
   const dx=e.x-player.x,dy=e.y-player.y,dist=Math.hypot(dx,dy);
-  if(dist>430||dist<1||dist>=bestTargetDistance)continue;
+  if(dist>250||dist<1||dist>=bestTargetDistance)continue;
   const steps=Math.ceil(dist/24);let blocked=false;
   for(let k=1;k<steps;k++){const t=k/steps;if(circleHitsWall(player.x+dx*t,player.y+dy*t,3)){blocked=true;break}}
   if(!blocked){autoTarget=e;bestTargetDistance=dist}
