@@ -202,9 +202,21 @@ function sendRoomMessage(payload) {
 function setRoomStatus(message) { roomStatusEl.textContent = message; }
 function roomName() { return (document.getElementById('playerName').value || 'بازیکن').trim().slice(0,16) || 'بازیکن'; }
 function roomWsUrl(code) { const scheme=location.protocol==='https:'?'wss:':'ws:'; return `${scheme}//${location.host}${ROOM_API}/${encodeURIComponent(code)}/ws?name=${encodeURIComponent(roomName())}&skin=${encodeURIComponent(selectedSkin)}`; }
-function connectRoom(code) {
+async function connectRoom(code) {
   if(roomSocket) { try{roomSocket.close(1000,'switch room');}catch(_){} }
-  roomCode=code.toUpperCase(); setRoomStatus('در حال اتصال به اتاق...');
+  roomCode=code.toUpperCase();
+  setRoomStatus('در حال بررسی کد اتاق...');
+  try {
+    const check = await fetch(`${ROOM_API}/${encodeURIComponent(roomCode)}/ws`, { method: 'GET', cache: 'no-store' });
+    const result = await check.json();
+    if (!check.ok || result.exists !== true) {
+      throw new Error('اتاقی با این کد پیدا نشد؛ کد را بررسی کن.');
+    }
+  } catch(error) {
+    setRoomStatus(error.message || 'بررسی اتاق انجام نشد؛ اتصال اینترنت را بررسی کن.');
+    return;
+  }
+  setRoomStatus('در حال اتصال به اتاق...');
   const ws=new WebSocket(roomWsUrl(roomCode)); roomSocket=ws;
   ws.addEventListener('open',()=>{setRoomStatus('اتصال برقرار شد؛ در انتظار اطلاعات اتاق...'); roomCodeDisplay.textContent=roomCode; roomCodeDisplay.classList.remove('room-hidden'); roomActions.classList.remove('room-hidden'); document.getElementById('startButton').classList.add('room-hidden');});
   ws.addEventListener('message',event=>{let msg;try{msg=JSON.parse(event.data)}catch(_){return;} handleRoomMessage(msg);});
@@ -270,7 +282,11 @@ function syncRemotePlayers(players) {
 function handleRoomMessage(msg) {
   if(msg.type==='error'){setRoomStatus(msg.message||'خطا در اتاق');showToast(msg.message||'خطا در اتاق');return;}
   if(msg.type!=='state')return;
-  myPlayerId=msg.playerId||myPlayerId; const incomingHostId=msg.hostId||''; if(incomingHostId!==roomHostId){roomHostId=incomingHostId;aiBots=[];} const previousRoomSeed=roomSeed; roomSeed=msg.seed||roomSeed; roomStarted=!!msg.started; roomStartedAt=msg.startAt||0;
+  myPlayerId=msg.playerId||myPlayerId; const incomingHostId=msg.hostId||''; if(incomingHostId!==roomHostId){roomHostId=incomingHostId;aiBots=[];}
+  const isRoomHost = myPlayerId === roomHostId;
+  document.getElementById('startRoomButton').classList.toggle('room-hidden', !isRoomHost);
+  document.getElementById('retryButton').classList.toggle('room-hidden', !!roomSocket && !isRoomHost);
+  const previousRoomSeed=roomSeed; roomSeed=msg.seed||roomSeed; roomStarted=!!msg.started; roomStartedAt=msg.startAt||0;
   if(roomSeed && roomSeed!==previousRoomSeed) resetGame();
   const players=msg.players||[]; const realPlayers=players.filter(p=>!p.isAI); const me=players.find(p=>p.id===myPlayerId);
   if(roomStarted && myPlayerId===roomHostId){
