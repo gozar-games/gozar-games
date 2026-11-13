@@ -1336,7 +1336,7 @@ function updateBoss(dt){
   if(!activeBoss)return;
   activeBoss.time-=dt;
   const gap=activeBoss.group.position.z-player.position.z;
-  activeBoss.group.position.z-=5*dt;
+  activeBoss.group.position.z-=4*dt;
   const follow=1-Math.exp(-dt*5);
   activeBoss.group.position.x=THREE.MathUtils.lerp(activeBoss.group.position.x,player.position.x,follow);
   activeBoss.group.rotation.y=Math.sin(performance.now()*.006)*.08;
