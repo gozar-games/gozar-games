@@ -34,7 +34,7 @@ h1{font-size:clamp(27px,7vw,42px);margin:0;font-weight:900}h1 span{color:var(--r
 .primary{border:0;border-radius:12px;background:linear-gradient(120deg,#ed1725,#8e101a);color:white;font:900 16px Vazirmatn;padding:13px 28px;margin-top:10px}
 .small{font-size:11px;color:#77818b}
 #mapPicker{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0 8px}
-.mapChoice{min-height:92px;border:2px solid #46515d;border-radius:12px;background:#17212a center/cover;position:relative;overflow:hidden;color:#fff;font:800 11px Vazirmatn;text-shadow:0 2px 5px #000;padding:6px;display:flex;align-items:end;justify-content:center}
+.mapChoice{min-height:92px;border:2px solid #46515d;border-radius:12px;background-color:#17212a;background-position:center;background-size:contain;background-repeat:no-repeat;position:relative;overflow:hidden;color:#fff;font:800 11px Vazirmatn;text-shadow:0 2px 5px #000;padding:6px;display:flex;align-items:end;justify-content:center}
 .mapChoice:before{content:"";position:absolute;inset:0;background:linear-gradient(transparent 25%,#000c)}
 .mapChoice span{position:relative;z-index:1}
 .mapChoice.active{border-color:#ed1725;box-shadow:0 0 0 2px #ed172566}
@@ -218,7 +218,19 @@ function draw(){
  const gx0=Math.floor(camX/CELL)-2,gx1=Math.ceil((camX+W)/CELL)+2,gy0=Math.floor(camY/CELL)-2,gy1=Math.ceil((camY+H)/CELL)+2;for(let gx=gx0;gx<=gx1;gx++)for(let gy=gy0;gy<=gy1;gy++){let q=wallRect(gx,gy);if(q){let wx=q.x+ox,wy=q.y+oy;ctx.fillStyle='#30363a';ctx.fillRect(wx,wy,q.w,q.h);ctx.fillStyle='#45403a';ctx.fillRect(wx+3,wy+3,q.w-6,7);ctx.strokeStyle='#171c20';ctx.strokeRect(wx,wy,q.w,q.h)}}
  const sxp=x=>x+ox,syp=y=>y+oy;
  const mapImage=mapImages[selectedMap];
- if(mapImage){ctx.save();ctx.globalAlpha=.32;ctx.drawImage(mapImage,ox,oy,WORLD_W,WORLD_H);ctx.restore()}
+ // Keep each supplied portrait map at its natural pixel dimensions in world space.
+ // Repeating the artwork avoids stretching a 720px source across the 3200px world.
+ if(mapImage){
+  const tileW=mapImage.naturalWidth||mapImage.width,tileH=mapImage.naturalHeight||mapImage.height;
+  const firstTileX=Math.floor(camX/tileW)*tileW,firstTileY=Math.floor(camY/tileH)*tileH;
+  ctx.save();ctx.globalAlpha=.48;
+  for(let tileX=firstTileX;tileX<camX+W;tileX+=tileW){
+   for(let tileY=firstTileY;tileY<camY+H;tileY+=tileH){
+    ctx.drawImage(mapImage,tileX+ox,tileY+oy,tileW,tileH);
+   }
+  }
+  ctx.restore();
+ }
  if(chestReady&&assetImages.chests){const ci=chestReady.legendary?5:0,cx=(ci%3)*128,cy=Math.floor(ci/3)*128;ctx.drawImage(assetImages.chests,cx,cy,128,128,sxp(chestReady.x)-24,syp(chestReady.y)-24,48,48)}
  for(const d of drops){ctx.fillStyle=d.type==='ammo'?'#e0b64c':'#4bd47a';ctx.beginPath();ctx.arc(sxp(d.x),syp(d.y),d.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#101010';ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText(d.type==='ammo'?'A':'+',sxp(d.x),syp(d.y)+5)}
  for(const b of bullets){if(b.px!==undefined){ctx.strokeStyle='#ffd36b99';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(sxp(b.px),syp(b.py));ctx.lineTo(sxp(b.x),syp(b.y));ctx.stroke()}ctx.fillStyle='#fff0b2';ctx.beginPath();ctx.arc(sxp(b.x),syp(b.y),4,0,Math.PI*2);ctx.fill()}
