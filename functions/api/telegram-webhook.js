@@ -1,0 +1,153 @@
+const ADMIN_ID = "7634869996";
+
+async function telegram(env, method, body) {
+  const response = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${method}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  const data = await response.json();
+  if (!response.ok || !data.ok) throw new Error(data.description || "Telegram API error");
+  return data.result;
+}
+
+function menu(isAdmin) {
+  const rows = [
+    [{ text: "🎮 اجرای بازی", web_app: { url: "https://gozar-games.pages.dev" } }],
+    [{ text: "👤 پروفایل من", callback_data: "profile" }, { text: "🏆 رتبه‌بندی", callback_data: "ranking" }],
+    [{ text: "🎬 تماشای ویدیوها", callback_data: "videos" }]
+  ];
+  if (isAdmin) rows.push([{ text: "👑 پنل مدیریت", callback_data: "admin" }]);
+  return { inline_keyboard: rows };
+}
+
+async function send(env, chatId, text, reply_markup) {
+  return telegram(env, "sendMessage", {
+    chat_id: chatId,
+    text,
+    reply_markup,
+    disable_web_page_preview: true
+  });
+}
+
+async function ensureTable(env) {
+  await env.DB.prepare(`
+    CREATE TABLE IF NOT EXISTS intro_videos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      file_id TEXT NOT NULL,
+      file_unique_id TEXT,
+      title TEXT NOT NULL,
+      duration INTEGER DEFAULT 0,
+      active INTEGER NOT NULL DEFAULT 1,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
+}
+
+async function adminPanel(env, chatId) {
+  await send(env, chatId, "👑 پنل مدیریت GOZAR GAMES\n\nویدیو را ارسال کن تا به فهرست اضافه شود؛ یا از دکمه‌های زیر برای مدیریت استفاده کن.", {
+    inline_keyboard: [
+      [{ text: "📂 فهرست ویدیوها", callback_data: "admin_list" }],
+      [{ text: "⬅️ منوی اصلی", callback_data: "home" }]
+    ]
+  });
+}
+
+export async function onRequestPost({ request, env }) {
+  if (!env.TELEGRAM_BOT_TOKEN || !env.DB || !env.TELEGRAM_WEBHOOK_SECRET) {
+    return new Response("Missing Telegram bot configuration", { status: 503 });
+  }
+  if (request.headers.get("X-Telegram-Bot-Api-Secret-Token") !== env.TELEGRAM_WEBHOOK_SECRET) {
+    return new Response("Forbidden", { status: 403 });
+  }
+
+  let update;
+  try { update = await request.json(); } catch { return new Response("Bad Request", { status: 400 }); }
+
+  try {
+    await ensureTable(env);
+    const message = update.message;
+    const callback = update.callback_query;
+
+    if (message) {
+      const chatId = message.chat.id;
+      const userId = String(message.from?.id || "");
+      const isAdmin = userId === ADMIN_ID;
+
+      if (message.text?.startsWith("/start")) {
+        await send(env, chatId, "🎮 به GOZAR GAMES خوش اومدی!\n\nاز منوی زیر استفاده کن.", menu(isAdmin));
+      } else if (isAdmin && message.video) {
+        const video = message.video;
+        const title = (message.caption || `ویدیوی جدید ${video.file_unique_id}`).slice(0, 100);
+        const max = await env.DB.prepare("SELECT COALESCE(MAX(sort_order), 0) AS n FROM intro_videos").first();
+        await env.DB.prepare("INSERT INTO intro_videos (file_id, file_unique_id, title, duration, sort_order) VALUES (?, ?, ?, ?, ?)")
+          .bind(video.file_id, video.file_unique_id || null, title, video.duration || 0, (max?.n || 0) + 1).run();
+        await send(env, chatId, "✅ ویدیو دریافت و به فهرست اضافه شد.\nبرای مدیریت و ترتیب پخش، پنل مدیریت را باز کن.", {
+          inline_keyboard: [[{ text: "📂 مدیریت ویدیوها", callback_data: "admin_list" }]]
+        });
+      } else if (isAdmin && message.text) {
+        await send(env, chatId, "برای افزودن ویدیو، فایل ویدیویی را همین‌جا ارسال کن.", {
+          inline_keyboard: [[{ text: "👑 پنل مدیریت", callback_data: "admin" }]]
+        });
+      }
+    }
+
+    if (callback) {
+      const chatId = callback.message.chat.id;
+      const userId = String(callback.from?.id || "");
+      const isAdmin = userId === ADMIN_ID;
+      const data = callback.data || "";
+      await telegram(env, "answerCallbackQuery", { callback_query_id: callback.id });
+
+      if (data === "home") {
+        await send(env, chatId, "منوی اصلی GOZAR GAMES", menu(isAdmin));
+      } else if (data === "admin" && isAdmin) {
+        await adminPanel(env, chatId);
+      } else if (data === "admin_list" && isAdmin) {
+        const result = await env.DB.prepare("SELECT id, title, active, sort_order FROM intro_videos ORDER BY sort_order, id").all();
+        if (!result.results?.length) {
+          await send(env, chatId, "هنوز ویدیویی آپلود نشده است.", { inline_keyboard: [[{ text: "⬅️ پنل مدیریت", callback_data: "admin" }]] });
+        } else {
+          for (const item of result.results) {
+            await send(env, chatId, `#${item.id} · ${item.title}\nوضعیت: ${item.active ? "فعال" : "غیرفعال"} · ترتیب: ${item.sort_order}`, {
+              inline_keyboard: [
+                [{ text: item.active ? "⏸ غیرفعال‌کردن" : "▶️ فعال‌کردن", callback_data: `toggle:${item.id}` }],
+                [{ text: "⬆️", callback_data: `moveup:${item.id}` }, { text: "⬇️", callback_data: `movedown:${item.id}` }, { text: "🗑 حذف", callback_data: `delete:${item.id}` }]
+              ]
+            });
+          }
+        }
+      } else if (isAdmin && /^(toggle|delete|moveup|movedown):\d+$/.test(data)) {
+        const [action, rawId] = data.split(":");
+        const id = Number(rawId);
+        const item = await env.DB.prepare("SELECT id, active, sort_order FROM intro_videos WHERE id = ?").bind(id).first();
+        if (item) {
+          if (action === "toggle") await env.DB.prepare("UPDATE intro_videos SET active = ? WHERE id = ?").bind(item.active ? 0 : 1, id).run();
+          if (action === "delete") await env.DB.prepare("DELETE FROM intro_videos WHERE id = ?").bind(id).run();
+          if (action === "moveup" || action === "movedown") {
+            const direction = action === "moveup" ? -1 : 1;
+            const neighbor = await env.DB.prepare(`SELECT id, sort_order FROM intro_videos WHERE sort_order ${direction < 0 ? "<" : ">"} ? ORDER BY sort_order ${direction < 0 ? "DESC" : "ASC"} LIMIT 1`).bind(item.sort_order).first();
+            if (neighbor) {
+              await env.DB.batch([
+                env.DB.prepare("UPDATE intro_videos SET sort_order = ? WHERE id = ?").bind(neighbor.sort_order, id),
+                env.DB.prepare("UPDATE intro_videos SET sort_order = ? WHERE id = ?").bind(item.sort_order, neighbor.id)
+              ]);
+            }
+          }
+        }
+        await send(env, chatId, "تغییرات انجام شد.", { inline_keyboard: [[{ text: "📂 بازگشت به فهرست", callback_data: "admin_list" }]] });
+      } else if (data === "videos") {
+        await send(env, chatId, "🎬 ویدیوهای GOZAR در مینی‌اپ نمایش داده می‌شوند.", {
+          inline_keyboard: [[{ text: "🎮 باز کردن مینی‌اپ", web_app: { url: "https://gozar-games.pages.dev" } }]]
+        });
+      } else if (data === "profile" || data === "ranking") {
+        await send(env, chatId, data === "profile" ? "پروفایل بازیکن در مینی‌اپ در دسترس است." : "رتبه‌بندی به‌زودی فعال می‌شود.", menu(isAdmin));
+      }
+    }
+  } catch (error) {
+    console.error("Telegram webhook error:", error);
+  }
+
+  return new Response("OK");
+}
