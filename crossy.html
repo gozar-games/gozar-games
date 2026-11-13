@@ -1275,7 +1275,7 @@ function updateAIBots(dt) {
   function evaluateLane(rowIndex, fromX, targetX, depth) {
     const lane=rows.get(rowIndex);
     if(!lane) return null;
-    const travelTime=depth*.34;
+    const travelTime=depth*.62;
     let x=targetX;
     let reward=0;
     let danger=0;
@@ -1373,7 +1373,12 @@ function updateAIBots(dt) {
     }
     const scored=fallback.map(x=>evaluateLane(bot.row+1,bot.x,x,1)).filter(Boolean);
     scored.sort((a,b)=>b.reward-a.reward);
-    return scored.length?scored[0].x:bot.x;
+    // Small, occasional human-like imperfections: the AI may take the
+    // second-best safe route instead of always choosing the mathematically
+    // perfect path.
+    const imperfectChance=.055+Math.min(bot.row/220,.055);
+    const pickIndex=scored.length>1 && Math.random()<imperfectChance?1:0;
+    return scored.length?scored[pickIndex].x:bot.x;
   }
 
   // Existing hazards on the tile occupied by the AI are checked every frame.
@@ -1398,13 +1403,13 @@ function updateAIBots(dt) {
     }
   }
 
-  // Faster decision checks let the AI react smoothly; its actual reaction
-  // interval shrinks as the race gets farther and more difficult.
-  while(aiAccumulator>=.08) {
-    aiAccumulator-=.08;
+  // Decisions are paced like a human player, not an ultra-fast bot.
+  // Difficulty comes from better anticipation, not unrealistic movement speed.
+  while(aiAccumulator>=.05) {
+    aiAccumulator-=.05;
     for(const bot of aiBots) {
       if(!bot.alive) continue;
-      bot.cooldown=Math.max(0,(bot.cooldown||0)-.08);
+      bot.cooldown=Math.max(0,(bot.cooldown||0)-.05);
       if(bot.cooldown>0) continue;
       const nextRow=bot.row+1;
       ensureRowsThrough(nextRow);
@@ -1420,8 +1425,11 @@ function updateAIBots(dt) {
       if(next.coin && !next.coin.collected && next.coin.lane===Math.round(bot.x)) {
         bot.coins=(bot.coins||0)+1;
       }
-      const skill=Math.min(1,bot.row/180);
-      bot.cooldown=Math.max(.085,.24-skill*.15);
+      const progress=Math.min(1,bot.row/180);
+      // Around 0.62s per forward move at the start, gradually improving
+      // only slightly to about 0.52s on very long runs.
+      const baseDelay=.62-progress*.10;
+      bot.cooldown=baseDelay+(Math.random()*.12);
       if(Math.abs(previousX-bot.x)>.01 || bot.row===nextRow) botStateDirty=true;
     }
   }
