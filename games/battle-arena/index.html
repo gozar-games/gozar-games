@@ -38,7 +38,7 @@ h1{font-size:clamp(27px,7vw,42px);margin:0;font-weight:900}h1 span{color:var(--r
 <div id="overlay"><div class="menu">
 <div class="brand">GOZAR <b>GAMES</b></div>
 <h1 style="margin-top:12px">BATTLE <span>ARENA</span></h1>
-<p>نسخه آزمایشی اولیه — نبرد از شهر ویران‌شده آغاز می‌شود.<br>حرکت با جوی‌استیک یا WASD؛ برای نشانه‌گیری روی محیط بازی لمس کنید و سپس دکمه آتش را نگه دارید.</p>
+<p>نبرد در شهر ویران‌شده؛ دشمن‌ها رفتارهای متفاوت دارند.<br>حرکت با جوی‌استیک یا WASD؛ برای نشانه‌گیری روی محیط بازی لمس کنید و سپس دکمه آتش را نگه دارید.</p>
 <button class="primary" id="start">شروع بقا</button>
 <p class="small">این نسخه آزمایشی است؛ ذخیره ابری، فروشگاه و آنلاین هنوز متصل نیستند.</p>
 </div></div>
@@ -65,7 +65,7 @@ h1{font-size:clamp(27px,7vw,42px);margin:0;font-weight:900}h1 span{color:var(--r
 (()=>{
 const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
 const $=id=>document.getElementById(id);
-let W=0,H=0,dpr=1,running=false,last=0,player,enemies=[],bullets=[],drops=[],particles=[];
+let W=0,H=0,dpr=1,running=false,last=0,player,enemies=[],bullets=[],enemyBullets=[],drops=[],particles=[];
 let wave=1,kills=0,coins=0,health=100,ammo=12,reloading=false,reloadEnd=0,shieldEnd=0,shieldReady=0,between=0,spawnLeft=0,fireHeld=false,move={x:0,y:0},aim={x:1,y:0},bannerTimer=0;
 const rand=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0)}
@@ -73,22 +73,29 @@ addEventListener('resize',resize);resize();
 function start(){ $('overlay').style.display='none';$('hud').hidden=false;$('controls').hidden=false;running=true;player={x:0,y:0,r:17,speed:255,angle:0};aim={x:1,y:0};spawnWave();last=performance.now();requestAnimationFrame(loop)}
 function announce(t){$('banner').textContent=t;$('banner').style.opacity=1;bannerTimer=1.5}
 function spawnWave(){between=0;spawnLeft=Math.min(5+wave*2,32);$('wave').textContent='WAVE '+wave;announce('WAVE '+wave)}
-function spawnEnemy(){let a=rand(0,Math.PI*2),dist=rand(360,520);enemies.push({x:player.x+Math.cos(a)*dist,y:player.y+Math.sin(a)*dist,r:rand(14,19),hp:30+wave*5,speed:rand(48,70)+wave*2,hit:0})}
+function spawnEnemy(){let a=rand(0,Math.PI*2),dist=rand(360,520),roll=Math.random(),type=wave>=3&&roll>.78?'shooter':roll>.58?'runner':roll>.35?'heavy':'grunt';const cfg={grunt:{r:16,hp:32+wave*5,speed:76+wave*2,color:'#a83b40'},runner:{r:12,hp:22+wave*4,speed:125+wave*2,color:'#e08b36'},heavy:{r:23,hp:95+wave*12,speed:39+wave,color:'#666f79'},shooter:{r:17,hp:42+wave*6,speed:48+wave,color:'#8b65bd'}}[type];enemies.push({x:player.x+Math.cos(a)*dist,y:player.y+Math.sin(a)*dist,type,...cfg,hit:0,shotAt:performance.now()+rand(700,1500),phase:rand(0,6.28)})}
 function drop(x,y,type){drops.push({x,y,type,r:13,life:18})}
 function shoot(){if(!running||reloading||ammo<=0)return;ammo--;let a=Math.atan2(aim.y,aim.x);player.angle=a;bullets.push({x:player.x+Math.cos(a)*23,y:player.y+Math.sin(a)*23,vx:Math.cos(a)*650,vy:Math.sin(a)*650,life:.8,damage:20});if(ammo===0)reload()}
 function reload(){if(reloading||ammo===12)return;reloading=true;reloadEnd=performance.now()+1250}
 function activateShield(){let now=performance.now();if(now<shieldReady)return;shieldEnd=now+6000;shieldReady=shieldEnd+20000;$('shield').disabled=true;setTimeout(()=>{$('shield').disabled=false},26000)}
 function loop(now){if(!running)return;let dt=Math.min((now-last)/1000,.033);last=now;update(dt,now);draw();requestAnimationFrame(loop)}
 function update(dt,now){
+ const oldX=player.x,oldY=player.y;
  if(bannerTimer>0){bannerTimer-=dt;if(bannerTimer<=0)$('banner').style.opacity=0}
  if(reloading&&now>=reloadEnd){ammo=12;reloading=false}
  if(between>0){between-=dt;if(between<=0){wave++;spawnWave()}}
  else if(spawnLeft>0&&enemies.length<Math.min(5+wave,10)){spawnEnemy();spawnLeft--}
  const m=Math.hypot(move.x,move.y)||1;player.x+=move.x/m*player.speed*dt;player.y+=move.y/m*player.speed*dt;
  if(enemies.length===0&&spawnLeft===0&&between===0){between=7;announce('WAVE CLEAR')}
- for(const e of enemies){let dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;e.x+=dx/d*e.speed*dt;e.y+=dy/d*e.speed*dt;if(d<e.r+player.r&&now>e.hit){e.hit=now+650;if(now>shieldEnd)health=Math.max(0,health-8)}}
- for(const b of bullets){b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;for(const e of enemies){if(e.hp>0&&Math.hypot(e.x-b.x,e.y-b.y)<e.r+5){e.hp-=b.damage;b.life=0;if(e.hp<=0){kills++;coins+=10;if(Math.random()<.25)drop(e.x,e.y,Math.random()<.5?'ammo':'med');}break}}}
- bullets=bullets.filter(b=>b.life>0);enemies=enemies.filter(e=>e.hp>0);
+ for(const e of enemies){let dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1,nx=dx/d,ny=dy/d;
+  if(e.type==='shooter'){if(d>260){e.x+=nx*e.speed*dt;e.y+=ny*e.speed*dt}else if(d<185){e.x-=nx*e.speed*.7*dt;e.y-=ny*e.speed*.7*dt}if(now>e.shotAt&&d<520){enemyBullets.push({x:e.x+nx*e.r,y:e.y+ny*e.r,vx:nx*260,vy:ny*260,life:2.4,damage:7});e.shotAt=now+rand(1500,2200)}}
+  else if(e.type==='runner'){const sway=Math.sin(now/180+e.phase)*.65;e.x+=(nx-sway*ny)*e.speed*dt;e.y+=(ny+sway*nx)*e.speed*dt}
+  else {e.x+=nx*e.speed*dt;e.y+=ny*e.speed*dt}
+  if(d<e.r+player.r&&now>e.hit){e.hit=now+(e.type==='heavy'?900:650);if(now>shieldEnd)health=Math.max(0,health-(e.type==='heavy'?15:8))}
+ }
+ for(const b of bullets){b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;for(const e of enemies){if(e.hp>0&&Math.hypot(e.x-b.x,e.y-b.y)<e.r+5){e.hp-=b.damage;b.life=0;if(e.hp<=0){kills++;coins+=e.type==='heavy'?18: e.type==='shooter'?14:10;if(Math.random()<(e.type==='heavy'?.4:.25))drop(e.x,e.y,Math.random()<.5?'ammo':'med');}break}}}
+ for(const b of enemyBullets){b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;if(Math.hypot(b.x-player.x,b.y-player.y)<player.r+5){if(now>shieldEnd)health=Math.max(0,health-b.damage);b.life=0}}
+ bullets=bullets.filter(b=>b.life>0);enemyBullets=enemyBullets.filter(b=>b.life>0);enemies=enemies.filter(e=>e.hp>0);
  for(const d of drops){d.life-=dt;if(Math.hypot(d.x-player.x,d.y-player.y)<d.r+player.r){if(d.type==='ammo'){ammo=12;reloading=false}else health=Math.min(100,health+30);d.life=0}}
  drops=drops.filter(d=>d.life>0);
  $('health').style.width=health+'%';$('hptext').textContent='سلامت '+Math.round(health)+'%';$('coins').textContent=coins;$('kills').textContent=kills;$('ammo').textContent=reloading?'در حال تعویض…':ammo+' / ∞';
@@ -106,7 +113,8 @@ function draw(){
  const sxp=x=>x+ox,syp=y=>y+oy;
  for(const d of drops){ctx.fillStyle=d.type==='ammo'?'#e0b64c':'#4bd47a';ctx.beginPath();ctx.arc(sxp(d.x),syp(d.y),d.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#101010';ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText(d.type==='ammo'?'A':'+',sxp(d.x),syp(d.y)+5)}
  for(const b of bullets){ctx.fillStyle='#ffd36b';ctx.beginPath();ctx.arc(sxp(b.x),syp(b.y),4,0,Math.PI*2);ctx.fill()}
- for(const e of enemies){ctx.fillStyle='#9b3438';ctx.beginPath();ctx.arc(sxp(e.x),syp(e.y),e.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#e9a0a0';ctx.fillRect(sxp(e.x)-10,syp(e.y)-e.r-8,20,3)}
+ for(const b of enemyBullets){ctx.fillStyle='#ff5361';ctx.beginPath();ctx.arc(sxp(b.x),syp(b.y),5,0,Math.PI*2);ctx.fill()}
+ for(const e of enemies){ctx.fillStyle=e.color;ctx.beginPath();ctx.arc(sxp(e.x),syp(e.y),e.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#241b1c';ctx.fillRect(sxp(e.x)-e.r,syp(e.y)-e.r-9,e.r*2,4);ctx.fillStyle='#e9a0a0';ctx.fillRect(sxp(e.x)-e.r,syp(e.y)-e.r-9,e.r*2*clamp(e.hp/(e.type==='heavy'?95+wave*12:e.type==='shooter'?42+wave*6:e.type==='runner'?22+wave*4:32+wave*5),0,1),4);ctx.fillStyle='#f4e9e9';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText(e.type==='heavy'?'H':e.type==='runner'?'R':e.type==='shooter'?'S':'',sxp(e.x),syp(e.y)+3)}
  ctx.save();ctx.translate(W/2,H/2);ctx.rotate(player.angle);ctx.fillStyle='#17191b';ctx.fillRect(-13,-13,27,26);ctx.fillStyle='#8a7258';ctx.fillRect(-7,-17,15,9);ctx.fillStyle='#c7c9c9';ctx.fillRect(5,-4,22,7);ctx.restore();
  if(performance.now()<shieldEnd){ctx.strokeStyle='#52c9ff';ctx.lineWidth=4;ctx.beginPath();ctx.arc(W/2,H/2,29,0,Math.PI*2);ctx.stroke()}
 }
