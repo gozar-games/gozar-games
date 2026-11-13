@@ -498,6 +498,8 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 #enableIntroSound{border:0;border-radius:12px;background:#ed1725;color:white;padding:13px 22px;font:inherit;font-weight:900}
 #uploadedIntroVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#050505;display:none}
 #uploadedIntroVideo.active{display:block}
+#uploadedIntroPhoto{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#050505;display:none}
+#uploadedIntroPhoto.active{display:block}
 #introVideoLoading{position:absolute;z-index:5;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;background:radial-gradient(circle,#171014 0%,#050505 72%);color:#fff;text-align:center}
 #introVideoLoading.show{display:flex}
 .intro-loader-ring{width:44px;height:44px;border:3px solid #ffffff24;border-top-color:#ed1725;border-radius:50%;animation:introSpin .8s linear infinite}
@@ -521,6 +523,7 @@ button{font-family:inherit;color:inherit;cursor:pointer}
   <div class="intro-video-stage" id="introVideoStage">
     <canvas id="gozarArcadeCanvas" aria-hidden="true"></canvas>
     <video id="uploadedIntroVideo" playsinline webkit-playsinline preload="auto"></video>
+    <img id="uploadedIntroPhoto" alt="" />
     <div id="introVideoLoading"><div class="intro-loader-ring"></div><span>در حال آماده‌سازی ویدیو...</span></div>
     <div id="introSoundGate" hidden>
       <div class="sound-gate-card">
@@ -1098,6 +1101,7 @@ let uploadedIntroIndex=0;
 let uploadedIntroSoundEnabled=false;
 let uploadedIntroTimer=null;
 const uploadedIntroVideo=document.getElementById('uploadedIntroVideo');
+const uploadedIntroPhoto=document.getElementById('uploadedIntroPhoto');
 const introSoundGate=document.getElementById('introSoundGate');
 const introVideoLoading=document.getElementById('introVideoLoading');
 
@@ -1115,6 +1119,8 @@ async function loadUploadedIntroVideos(){
 function playUploadedIntroAt(index){
   if(index>=uploadedIntroItems.length){
     uploadedIntroVideo.classList.remove('active');
+    uploadedIntroPhoto.classList.remove('active');
+    clearTimeout(uploadedIntroTimer);
     gozarCaption.style.display='none';
     gozarFinalLogo.classList.add('show');
     window.setTimeout(finishGozarIntro,2200);
@@ -1124,7 +1130,9 @@ function playUploadedIntroAt(index){
   const item=uploadedIntroItems[index];
   gozarCanvas.style.display='none';
   gozarFinalLogo.classList.remove('show');
-  uploadedIntroVideo.classList.add('active');
+  clearTimeout(uploadedIntroTimer);
+  uploadedIntroVideo.classList.remove('active');
+  uploadedIntroPhoto.classList.remove('active');
   introVideoLoading.classList.add('show');
   uploadedIntroVideo.pause();
   uploadedIntroVideo.removeAttribute('src');
@@ -1149,8 +1157,28 @@ function playUploadedIntroAt(index){
     try{await uploadedIntroVideo.play();}
     catch(error){console.warn('Video playback blocked:',error);introSoundGate.hidden=false;}
   };
-  uploadedIntroVideo.src='/api/intro-video/'+encodeURIComponent(item.id);
-  uploadedIntroVideo.load();
+  const mediaUrl='/api/intro-video/'+encodeURIComponent(item.id);
+  if(item.media_type==='photo'){
+    uploadedIntroVideo.pause();
+    uploadedIntroPhoto.onload=()=>{
+      introVideoLoading.classList.remove('show');
+      uploadedIntroPhoto.classList.add('active');
+      uploadedIntroTimer=window.setTimeout(()=>{
+        if(advanced)return;
+        advanced=true;
+        playUploadedIntroAt(uploadedIntroIndex+1);
+      },5000);
+    };
+    uploadedIntroPhoto.onerror=()=>{
+      introVideoLoading.classList.remove('show');
+      if(!advanced){advanced=true;playUploadedIntroAt(uploadedIntroIndex+1);}
+    };
+    uploadedIntroPhoto.src=mediaUrl;
+  }else{
+    uploadedIntroVideo.classList.add('active');
+    uploadedIntroVideo.src=mediaUrl;
+    uploadedIntroVideo.load();
+  }
 }
 async function beginUploadedIntro(){
   uploadedIntroItems=await loadUploadedIntroVideos();
