@@ -57,7 +57,7 @@ async function ensureTable(env) {
 async function adminPanel(env, chatId) {
   await send(env, chatId, "👑 پنل مدیریت GOZAR GAMES\n\nبرای افزودن محتوا، کپشن را همراه عکس یا ویدیو بفرست تا همان نمایش داده شود؛ یا اول عنوان را به‌صورت پیام متنی بفرست و سپس عکس/ویدیو را ارسال کن.\n\nعکس‌ها به‌مدت ۵ ثانیه نمایش داده می‌شوند و ویدیوها تا پایان فایل پخش می‌شوند.\n\nبرای مدیریت محتوا از فهرست زیر استفاده کن.", {
     inline_keyboard: [
-      [{ text: "📂 فهرست ویدیوها", callback_data: "admin_list" }],
+      [{ text: "📂 فهرست محتوا", callback_data: "admin_list" }],
       [{ text: "⬅️ منوی اصلی", callback_data: "home" }]
     ]
   });
@@ -146,12 +146,12 @@ export async function onRequestPost({ request, env }) {
       } else if (data === "admin" && isAdmin) {
         await adminPanel(env, chatId);
       } else if (data === "admin_list" && isAdmin) {
-        const result = await env.DB.prepare("SELECT id, title, active, sort_order FROM intro_videos ORDER BY sort_order, id").all();
+        const result = await env.DB.prepare("SELECT id, title, active, sort_order, media_type FROM intro_videos ORDER BY sort_order, id").all();
         if (!result.results?.length) {
           await send(env, chatId, "هنوز ویدیویی آپلود نشده است.", { inline_keyboard: [[{ text: "⬅️ پنل مدیریت", callback_data: "admin" }]] });
         } else {
           for (const item of result.results) {
-            await send(env, chatId, `#${item.id} · ${item.title}\nوضعیت: ${item.active ? "فعال" : "غیرفعال"} · ترتیب: ${item.sort_order}`, {
+            await send(env, chatId, `#${item.id} · ${item.media_type === "photo" ? "🖼 عکس" : "🎬 ویدیو"} · ${item.title}\nوضعیت: ${item.active ? "فعال" : "غیرفعال"} · ترتیب: ${item.sort_order}`, {
               inline_keyboard: [
                 [{ text: item.active ? "⏸ غیرفعال‌کردن" : "▶️ فعال‌کردن", callback_data: `toggle:${item.id}` }],
                 [{ text: "✏️ تغییر عنوان", callback_data: `renametitle:${item.id}` }],
