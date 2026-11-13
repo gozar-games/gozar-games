@@ -24,7 +24,7 @@ async function verifyTelegram(initData, botToken) {
 
   const authDate = Number(authDateText);
   const now = Math.floor(Date.now() / 1000);
-  if (!Number.isSafeInteger(authDate) || authDate <= 0 || authDate > now + 30 || now - authDate > 300) return null;
+  if (!Number.isSafeInteger(authDate) || authDate <= 0 || authDate > now + 30 || now - authDate > 86400) return null;
 
   params.delete("hash");
   const dataCheckString = Array.from(params.entries())
@@ -209,7 +209,6 @@ export async function onRequestPost({ request, env }) {
     return Response.json({
       success: true,
       xp_awarded: xpAwarded,
-      coins_awarded: coinsAwarded,
       coins_awarded: coinsAwarded,
       coins_spent: spentCoins,
       wallet_coins: (currentWallet?.coins || 0) + netCoins,
