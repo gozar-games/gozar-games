@@ -378,15 +378,17 @@ const MAP_NAMES = {main:'جنگل سبز',red:'شهر سرخ',desert:'بیابا
 const randomMapSegments = new Map();
 let currentMapTheme = 'main';
 function mapThemeForScore(value) {
-  if(value < 80) return 'main';
-  if(value < 150) return 'red';
-  if(value < 230) return 'desert';
-  if(value < 300) return 'winter';
-  if(value < 380) return 'neon';
-  if(value < 460) return 'darkforest';
-  const segment = Math.floor((value - 460) / 80);
+  if(value < 50) return 'main';
+  if(value < 90) return 'red';
+  if(value < 140) return 'desert';
+  if(value < 175) return 'winter';
+  if(value < 230) return 'neon';
+  if(value < 330) return 'darkforest';
+  if(value < 400) return 'winter';
+  if(value < 500) return 'red';
+  const segment = Math.floor((value - 500) / 80);
   if(!randomMapSegments.has(segment)) {
-    const previous = segment === 0 ? 'winter' : randomMapSegments.get(segment - 1);
+    const previous = segment === 0 ? 'red' : randomMapSegments.get(segment - 1);
     const choices = MAP_THEMES.filter(name => name !== previous);
     randomMapSegments.set(segment, randomItem(choices));
   }
