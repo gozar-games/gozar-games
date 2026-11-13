@@ -68,7 +68,7 @@ h1{font-size:clamp(27px,7vw,42px);margin:0;font-weight:900}h1 span{color:var(--r
 const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
 const $=id=>document.getElementById(id);
 let W=0,H=0,dpr=1,running=false,last=0,player,enemies=[],bullets=[],enemyBullets=[],drops=[],particles=[];
-let wave=1,kills=0,coins=0,health=100,ammo=12,reloading=false,reloadEnd=0,shieldEnd=0,shieldReady=0,between=0,spawnLeft=0,fireHeld=false,move={x:0,y:0},aim={x:1,y:0},bannerTimer=0,bossIntroUntil=0,damageFlashUntil=0,chestReady=null,particles=[];
+let wave=1,kills=0,coins=0,health=100,ammo=12,reloading=false,reloadEnd=0,shieldEnd=0,shieldReady=0,between=0,spawnLeft=0,fireHeld=false,move={x:0,y:0},aim={x:1,y:0},bannerTimer=0,bossIntroUntil=0,damageFlashUntil=0,chestReady=null;
 const rand=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0)}
 addEventListener('resize',resize);resize();
