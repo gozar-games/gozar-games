@@ -1169,7 +1169,7 @@ function clearWorld() {
 function resetGame() {
   stopSpectating(false);
   clearBoss();
-  nextBossDistance=40;
+  nextBossDistance=55;
   aiAccumulator=0;aiBroadcastAccumulator=0;
   clearWorld();
   randomMapSegments.clear();
@@ -1309,7 +1309,7 @@ function updateCamera(dt) {
   cameraLookTarget.lerp(desiredLookTarget,follow);
   camera.lookAt(cameraLookTarget);
 }
-let nextBossDistance=40;
+let nextBossDistance=55;
 let activeBoss=null;
 function clearBoss(){
   if(activeBoss){world.remove(activeBoss.group);activeBoss.group.traverse(n=>{if(n.geometry)n.geometry.dispose();if(n.material&&!Array.isArray(n.material))n.material.dispose();});activeBoss=null;}
@@ -1336,7 +1336,7 @@ function updateBoss(dt){
   if(!activeBoss)return;
   activeBoss.time-=dt;
   const gap=activeBoss.group.position.z-player.position.z;
-  activeBoss.group.position.z-=2.65*dt;
+  activeBoss.group.position.z-=5*dt;
   const follow=1-Math.exp(-dt*5);
   activeBoss.group.position.x=THREE.MathUtils.lerp(activeBoss.group.position.x,player.position.x,follow);
   activeBoss.group.rotation.y=Math.sin(performance.now()*.006)*.08;
@@ -1351,7 +1351,7 @@ function updateScore() {
   scoreEl.textContent=String(score);
   const nextTheme=mapThemeForScore(score);
   if(nextTheme !== currentMapTheme) applyMapTheme(nextTheme,true);
-  if(maxForward>=nextBossDistance && !activeBoss && running){nextBossDistance+=40;spawnBoss();}
+  if(maxForward>=nextBossDistance && !activeBoss && running){nextBossDistance+=55;spawnBoss();}
 }
 function showToast(message) {
   toastEl.textContent=message;
