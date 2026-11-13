@@ -109,7 +109,7 @@ export async function onRequestPost({ request, env }) {
             await send(env, chatId, "لطفاً عنوان معتبر بفرست.");
           }
         } else {
-        const title = message.text.trim().replace(/^\\/title\\s*/i, "").slice(0, 100);
+        const title = message.text.trim().slice(0, 100);
         if (!title || title.startsWith("/")) {
           await send(env, chatId, "عنوان ویدیو را به‌صورت یک پیام متنی معمولی بفرست.");
         } else {
