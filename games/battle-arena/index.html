@@ -17,7 +17,7 @@
 .stats{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
 .bar{width:150px;height:9px;background:#343b42;border-radius:9px;overflow:hidden;margin-top:5px}.bar i{display:block;height:100%;background:#e6323c;width:100%}
 #banner{position:absolute;top:24%;left:50%;transform:translate(-50%,-50%);font-size:clamp(25px,6vw,54px);font-weight:900;letter-spacing:2px;text-shadow:0 3px 20px #000,0 0 20px #ed1725;opacity:0;transition:opacity .25s;white-space:nowrap}
-#controls{position:fixed;inset:auto 0 15px;display:flex;justify-content:space-between;align-items:end;padding:0 18px;pointer-events:none}#aimPad{position:fixed;right:24px;bottom:118px;width:112px;height:112px;border-radius:50%;border:2px solid #7fc8e877;background:#10202a99;z-index:4;touch-action:none;pointer-events:auto;box-shadow:0 5px 22px #0008}#aimNub{position:absolute;width:42px;height:42px;border-radius:50%;left:33px;top:33px;background:#7fc8e8bb;border:2px solid #d9f5ff;box-shadow:0 0 15px #42bce888}#aimHint{position:absolute;right:25px;bottom:234px;color:#d7efff;font:700 10px Vazirmatn;text-shadow:0 2px 4px #000;pointer-events:none}@media(max-width:430px){#aimPad{right:15px;bottom:111px;width:94px;height:94px}#aimNub{left:26px;top:26px;width:38px;height:38px}#aimHint{right:15px;bottom:211px}}
+#controls{position:fixed;inset:auto 0 15px;display:flex;justify-content:space-between;align-items:end;padding:0 18px;pointer-events:none}
 #stick{width:116px;height:116px;border-radius:50%;background:#ffffff18;border:2px solid #ffffff55;position:relative;pointer-events:auto;touch-action:none}
 #nub{position:absolute;width:48px;height:48px;border-radius:50%;background:#ffffff8a;left:32px;top:32px}
 .actions{display:flex;gap:12px;align-items:end;pointer-events:auto}
@@ -42,7 +42,7 @@ h1{font-size:clamp(27px,7vw,42px);margin:0;font-weight:900}h1 span{color:var(--r
 <div id="overlay"><div class="menu">
 <div class="brand">GOZAR <b>GAMES</b></div>
 <h1 style="margin-top:12px">BATTLE <span>ARENA</span></h1>
-<p>نبرد در شهر ویران‌شده؛ دشمن‌ها رفتارهای متفاوت دارند.<br>حرکت با جوی‌استیک یا WASD؛ برای نشانه‌گیری روی محیط بازی لمس کنید و سپس دکمه آتش را نگه دارید.</p>
+<p>نبرد در شهر ویران‌شده؛ دشمن‌ها رفتارهای متفاوت دارند.<br>حرکت با جوی‌استیک یا WASD؛ جهت حرکت با جوی‌استیک، جهت نشانه‌گیری و شلیک را هم تعیین می‌کند.</p>
 <button class="primary" id="start">شروع بقا</button>
 <p class="small">این نسخه آزمایشی است؛ ذخیره ابری، فروشگاه و آنلاین هنوز متصل نیستند.</p>
 </div></div>
@@ -160,13 +160,6 @@ function draw(){
  if(performance.now()<shieldEnd){ctx.strokeStyle='#52c9ff';ctx.lineWidth=4;ctx.beginPath();ctx.arc(W/2,H/2,33,0,Math.PI*2);ctx.stroke()}ctx.save();ctx.translate(W/2+aim.x*100,H/2+aim.y*100);ctx.strokeStyle='#bcecff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,9,0,Math.PI*2);ctx.moveTo(-15,0);ctx.lineTo(-5,0);ctx.moveTo(5,0);ctx.lineTo(15,0);ctx.moveTo(0,-15);ctx.lineTo(0,-5);ctx.moveTo(0,5);ctx.lineTo(0,15);ctx.stroke();ctx.restore();
 }
 $('start').addEventListener('click',start);
-// Aim independently from movement: tap/drag the arena toward the target, then hold FIRE.
-let aimPointer=null,aimPadId=null;const aimPad=$('aimPad'),aimNub=$('aimNub');function aimFromPad(e){const r=aimPad.getBoundingClientRect(),dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2),d=Math.hypot(dx,dy)||1;aim={x:dx/d,y:dy/d};player.angle=Math.atan2(aim.y,aim.x);const m=Math.min(d,34);aimNub.style.transform='translate('+dx/d*m+'px,'+dy/d*m+'px)'}aimPad.addEventListener('pointerdown',e=>{e.preventDefault();aimPadId=e.pointerId;aimPad.setPointerCapture(aimPadId);aimFromPad(e)});aimPad.addEventListener('pointermove',e=>{if(e.pointerId===aimPadId)aimFromPad(e)});function aimPadEnd(e){if(e.pointerId===aimPadId){aimPadId=null;aimNub.style.transform='translate(0,0)'}}aimPad.addEventListener('pointerup',aimPadEnd);aimPad.addEventListener('pointercancel',aimPadEnd);
-function pointAim(e){if(!running)return;const dx=e.clientX-W/2,dy=e.clientY-H/2,d=Math.hypot(dx,dy)||1;aim={x:dx/d,y:dy/d};player.angle=Math.atan2(aim.y,aim.x)}
-canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;aimPointer=e.pointerId;pointAim(e)});
-canvas.addEventListener('pointermove',e=>{if(aimPointer===e.pointerId)pointAim(e)});
-function endAim(e){if(aimPointer===e.pointerId)aimPointer=null}
-canvas.addEventListener('pointerup',endAim);canvas.addEventListener('pointercancel',endAim);
 $('fire').addEventListener('pointerdown',e=>{e.preventDefault();fireHeld=true;shoot()});['pointerup','pointercancel','pointerleave'].forEach(ev=>$('fire').addEventListener(ev,()=>fireHeld=false));
 $('shield').addEventListener('click',activateShield);$('reload').addEventListener('click',reload);$('chest').addEventListener('click',openChest);$('shop').addEventListener('click',openShop);$('closeShop').addEventListener('click',closeShop);$('shopContent').addEventListener('click',e=>{const w=e.target.dataset.weapon,u=e.target.dataset.upgrade;if(w){if(ownedWeapons.has(w)){equipWeapon(w)}else if(coins>=WEAPONS[w].cost){coins-=WEAPONS[w].cost;ownedWeapons.add(w);equipWeapon(w)}}if(u){const levels=weaponLevels[currentWeapon]||(weaponLevels[currentWeapon]={}),lv=levels[u]||0,cost=Math.round(180*(lv+1)*(lv+1));if(lv<5&&coins>=cost){coins-=cost;levels[u]=lv+1;if(u==='mag')ammo+=3;if(u==='damage')announce('WEAPON DAMAGE UPGRADED');else if(u==='rate')announce('FIRE RATE UPGRADED');else if(u==='reload')announce('RELOAD UPGRADED')}}renderShop()});
 let stick=$('stick'),nub=$('nub'),stickId=null;
