@@ -779,6 +779,22 @@ function laneGroup(z, type, index) {
   if (type === 'road') buildRoad(data);
   if (type === 'river') buildRiver(data);
   if (type === 'rail') buildRail(data);
+  // A few collectible gold coins appear on safe grassy rows.
+  if(type === 'grass' && index > 2 && Math.random() < .42) {
+    const lane=Math.floor(Math.random()*5)-2;
+    const coin=new THREE.Group();
+    const gold=makeMaterial(0xffc928,.22);
+    const shine=makeMaterial(0xfff2a0,.18);
+    const disk=new THREE.Mesh(new THREE.CylinderGeometry(.25,.25,.09,18),gold);
+    disk.rotation.x=Math.PI/2;
+    coin.add(disk);
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(.18,.035,8,18),shine);
+    ring.position.z=.055;
+    coin.add(ring);
+    coin.position.set(lane*LANE_WIDTH,.72,0);
+    group.add(coin);
+    data.coin={mesh:coin,lane,collected:false};
+  }
   // Distinctive scenery beside the playable lanes for each map.
   if(data.theme === 'red' && type !== 'road') {
     const stone=makeMaterial(0xb93632), trim=makeMaterial(0xf06b55);
@@ -1259,7 +1275,13 @@ function movePlayer(dx,dz) {
   if(dz !== 0) {
     playerRow = nextRow;
     maxForward = Math.max(maxForward, playerRow);
-    updateScore();
+    if(destinationRow?.coin && !destinationRow.coin.collected && destinationRow.coin.lane === Math.round(playerX)) {
+      destinationRow.coin.collected=true;
+      destinationRow.coin.mesh.visible=false;
+      score += 5;
+      updateScore();
+      showToast('🪙 سکه جمع شد! +۵ امتیاز');
+    } else updateScore();
     ensureRows();
   }
   const target = new THREE.Vector3(playerX * LANE_WIDTH, 0, -playerRow * 1.35);
@@ -1316,6 +1338,7 @@ function updateTraffic(dt) {
   const globalElapsed=shared?Math.max(0,(Date.now()-roomStartedAt)/1000):0;
   const elapsedSpeed=shared?1:(1+Math.min(score*.018,.9));
   for(const row of rows.values()) {
+    if(row.coin && !row.coin.collected) row.coin.mesh.rotation.y += dt*2.8;
     if(row.type==='road') {
       for(const obj of row.objects) {
         if(shared){const raw=obj.baseX+row.speed*elapsedSpeed*globalElapsed;obj.x=((raw+14)%28+28)%28-14;}
