@@ -45,6 +45,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .hint{flex:none;text-align:center;color:#999;font-size:10px;line-height:1.7}
 .toast{position:absolute;top:12px;left:50%;transform:translateX(-50%);padding:7px 12px;background:#151515dd;border:1px solid #555;border-radius:20px;font-size:11px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .2s}
 .toast.show{opacity:1}
+.boss-hud{position:absolute;top:48px;left:50%;transform:translateX(-50%);z-index:5;width:min(82%,310px);padding:7px 10px;border:1px solid #ff5965;border-radius:12px;background:#19090de8;box-shadow:0 0 18px #ff173755;text-align:center;pointer-events:none}.boss-hud.hidden{display:none}.boss-hud strong{display:block;font-size:12px;color:#ff7b83}.boss-hud small{font-size:11px;color:#fff}.boss-track{height:5px;margin-top:5px;border-radius:9px;background:#4a252a;overflow:hidden}.boss-track i{display:block;height:100%;width:100%;background:#ff394b;transition:width .1s linear}
 .spectator-bar{position:absolute;top:10px;left:10px;right:10px;z-index:4;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px;background:#111e;border:1px solid #ffffff35;border-radius:12px;backdrop-filter:blur(8px);font-size:11px}.spectator-bar.hidden{display:none}.spectator-bar strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.spectator-actions{display:flex;gap:5px;flex:none}.spectator-actions button{border:1px solid #555;border-radius:8px;background:#292929;padding:6px 8px;font-size:10px}
 .multiplayer-panel{border-top:1px solid #393939;margin-top:13px;padding-top:11px;display:grid;gap:7px;text-align:right}.mp-input{width:100%;border:1px solid #444;border-radius:10px;background:#0f0f0f;color:#fff;padding:9px 10px;font:inherit;font-size:12px;outline:none}.mp-row{display:grid;grid-template-columns:1fr 1fr;gap:7px}.mp-button{border:1px solid #484848;border-radius:10px;background:#242424;padding:9px 6px;font-size:11px;font-weight:800}.mp-button.primary-mp{background:#8e1720;border-color:#b62a35}.room-status{font-size:10px;color:#c9c9c9;line-height:1.8;white-space:pre-line}.room-code{direction:ltr;font-weight:900;font-size:18px;letter-spacing:3px;color:#ff7279}.room-hidden{display:none!important}
 @media(min-height:760px){.app{gap:11px}.control{height:56px}.hint{font-size:11px}}
@@ -85,6 +86,7 @@ button{font:inherit;color:inherit;cursor:pointer}
   <main class="stage" id="stage">
     <canvas id="game" aria-label="بازی سه بعدی Crossy Road"></canvas>
     <div class="toast" id="toast"></div>
+    <div class="boss-hud hidden" id="bossHud"><strong>👹 باس فایت!</strong><small id="bossTimer">۱۰ ثانیه برای فرار</small><div class="boss-track"><i id="bossProgress"></i></div></div>
     <div class="spectator-bar hidden" id="spectatorBar"><strong id="spectatorName">در حال تماشا</strong><div class="spectator-actions"><button id="spectatorPrev">قبلی</button><button id="spectatorNext">بعدی</button><button id="spectatorStop">پایان</button></div></div>
     <section class="overlay" id="startOverlay">
       <div class="dialog">
@@ -170,6 +172,9 @@ const startOverlay = document.getElementById('startOverlay');
 const gameOverOverlay = document.getElementById('gameOverOverlay');
 const finalText = document.getElementById('finalText');
 const toastEl = document.getElementById('toast');
+const bossHud = document.getElementById('bossHud');
+const bossTimerEl = document.getElementById('bossTimer');
+const bossProgressEl = document.getElementById('bossProgress');
 
 // Multiplayer is served by a Cloudflare Pages Function backed by a Durable Object.
 const ROOM_API = '/api/rooms';
@@ -1135,6 +1140,8 @@ function clearWorld() {
 }
 function resetGame() {
   stopSpectating(false);
+  clearBoss();
+  nextBossScore=50;
   aiAccumulator=0;aiBroadcastAccumulator=0;
   clearWorld();
   randomMapSegments.clear();
@@ -1274,11 +1281,49 @@ function updateCamera(dt) {
   cameraLookTarget.lerp(desiredLookTarget,follow);
   camera.lookAt(cameraLookTarget);
 }
+let nextBossScore=50;
+let activeBoss=null;
+function clearBoss(){
+  if(activeBoss){world.remove(activeBoss.group);activeBoss.group.traverse(n=>{if(n.geometry)n.geometry.dispose();if(n.material&&!Array.isArray(n.material))n.material.dispose();});activeBoss=null;}
+  bossHud.classList.add('hidden');
+}
+function spawnBoss(){
+  if(activeBoss||!running)return;
+  const group=new THREE.Group();
+  const armor=makeMaterial(0x5b1720,.45), dark=makeMaterial(0x17171b,.55);
+  const glow=new THREE.MeshStandardMaterial({color:0xff334b,emissive:0xff102e,emissiveIntensity:1.8});
+  box(group,0,.68,0,.92,1.12,.72,armor,true,true);
+  box(group,0,1.42,0,.78,.48,.68,dark,true,true);
+  box(group,-.22,1.48,.36,.13,.13,.05,glow,true,true);
+  box(group,.22,1.48,.36,.13,.13,.05,glow,true,true);
+  box(group,-.57,.42,0,.24,.76,.28,dark,true,true);
+  box(group,.57,.42,0,.24,.76,.28,dark,true,true);
+  group.position.set(playerX*LANE_WIDTH,0,player.position.z+9.45);
+  world.add(group);
+  activeBoss={group,time:10,start:10};
+  bossHud.classList.remove('hidden');bossTimerEl.textContent='۱۰ ثانیه برای فرار';bossProgressEl.style.width='100%';
+  showToast('🚨 باس فایت شروع شد! فرار کن!');
+}
+function updateBoss(dt){
+  if(!activeBoss)return;
+  activeBoss.time-=dt;
+  const gap=activeBoss.group.position.z-player.position.z;
+  activeBoss.group.position.z-=2.65*dt;
+  const follow=1-Math.exp(-dt*5);
+  activeBoss.group.position.x=THREE.MathUtils.lerp(activeBoss.group.position.x,player.position.x,follow);
+  activeBoss.group.rotation.y=Math.sin(performance.now()*.006)*.08;
+  const remaining=Math.max(0,activeBoss.time);
+  bossTimerEl.textContent=remaining.toFixed(1)+' ثانیه تا نجات';
+  bossProgressEl.style.width=(remaining/activeBoss.start*100)+'%';
+  if(gap<1.05 && Math.abs(activeBoss.group.position.x-player.position.x)<1.05){clearBoss();finishGame('باس بهت رسید!');return;}
+  if(activeBoss.time<=0){clearBoss();score+=10;scoreEl.textContent=String(score);showToast('🏆 باس رو جا گذاشتی! +۱۰ امتیاز');}
+}
 function updateScore() {
   score=Math.max(score,maxForward);
   scoreEl.textContent=String(score);
   const nextTheme=mapThemeForScore(score);
   if(nextTheme !== currentMapTheme) applyMapTheme(nextTheme,true);
+  if(score>=nextBossScore && !activeBoss && running){nextBossScore+=50;spawnBoss();}
 }
 function showToast(message) {
   toastEl.textContent=message;
@@ -1445,6 +1490,7 @@ function loop(now) {
     if(materials.water.map) materials.water.map.offset.x=(materials.water.map.offset.x+dt*.018)%1;
     if(running)animatePlayer(dt);
     updateTraffic(dt);
+    if(running)updateBoss(dt);
     if(aiActive)updateAIBots(dt);
     if(spectatorMode){const alive=getAliveSpectators();if(!alive.some(([id])=>id===spectatorTargetId)){if(alive.length)spectatorTargetId=alive[0][0];else stopSpectating(true);}}
     cleanupRows();
