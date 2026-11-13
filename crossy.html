@@ -1546,7 +1546,7 @@ function spawnBoss(){
   const entranceLight=new THREE.PointLight(0xff1838,0,5);
   entranceLight.position.set(0,1.1,.15);
   group.add(entranceLight);
-  group.position.set(playerX*LANE_WIDTH,0,player.position.z+5.0);
+  group.position.set(playerX*LANE_WIDTH,0,player.position.z+6.5);
   world.add(group);
   group.scale.setScalar(.015);
   activeBoss={group,time:20,start:20,intro:0,aura,entranceLight,impactDone:false};
