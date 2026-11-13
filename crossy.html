@@ -69,9 +69,32 @@ button{font:inherit;color:inherit;cursor:pointer}
 #startOverlay .room-code{display:block;padding:5px 0;font-size:20px;min-height:34px}
 #startOverlay .mp-row{gap:6px}
 @media(max-width:380px){#startOverlay{padding-inline:6px}#startOverlay .dialog{padding:11px 9px}#startOverlay .skin-option .skin-icon{font-size:22px}#startOverlay .skin-option strong{font-size:9px}}
+/* Cinematic Telegram Mini App intro */
+#gameIntro{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(ellipse at 50% 43%,#351017 0%,#10090d 43%,#030405 100%);color:#fff;opacity:1;transition:opacity .55s ease;touch-action:manipulation}
+#gameIntro::before,#gameIntro::after{content:"";position:absolute;width:62vmin;height:62vmin;border:1px solid #ff344455;border-radius:50%;box-shadow:0 0 35px #ff172933,inset 0 0 35px #ff172922;animation:introRing 2.2s ease-out both}
+#gameIntro::after{width:88vmin;height:88vmin;animation-delay:.12s;opacity:.55}
+#gameIntro.is-leaving{opacity:0;pointer-events:none}
+.intro-content{position:relative;z-index:1;text-align:center;animation:introReveal 1.15s cubic-bezier(.16,1,.3,1) both}
+.intro-mascot{font-size:clamp(76px,22vw,112px);line-height:1.15;filter:drop-shadow(0 0 22px #ff263b99);animation:introBounce 1.15s ease-out both}
+.intro-title{margin:14px 0 0;font-size:clamp(27px,8vw,38px);font-weight:900;letter-spacing:2px;text-shadow:0 0 22px #ff243d88}
+.intro-title span{color:#ff3448}
+.intro-subtitle{margin:8px 0 0;color:#c7aeb2;font-size:11px;letter-spacing:4px}
+.intro-skip{position:absolute;bottom:calc(28px + env(safe-area-inset-bottom));z-index:2;border:1px solid #ffffff38;border-radius:30px;background:#ffffff12;color:#eee;padding:9px 19px;font:600 11px Vazirmatn,sans-serif}
+@keyframes introReveal{from{opacity:0;transform:translateY(24px) scale(.82);filter:blur(8px)}to{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}
+@keyframes introBounce{0%{transform:scale(.35) rotate(-14deg)}65%{transform:scale(1.13) rotate(5deg)}82%{transform:scale(.94) rotate(-2deg)}100%{transform:scale(1) rotate(0)}}
+@keyframes introRing{from{transform:scale(.35);opacity:0}35%{opacity:.7}to{transform:scale(1.25);opacity:0}}
+@media(prefers-reduced-motion:reduce){#gameIntro::before,#gameIntro::after,.intro-content,.intro-mascot{animation:none!important}#gameIntro{transition:none}}
 </style>
 </head>
 <body>
+<div id="gameIntro" role="button" aria-label="رد کردن انیمیشن شروع">
+  <div class="intro-content">
+    <div class="intro-mascot">🐤</div>
+    <div class="intro-title">GOZAR <span>GAMES</span></div>
+    <div class="intro-subtitle">READY TO PLAY?</div>
+  </div>
+  <button class="intro-skip" id="introSkip" type="button">رد کردن ✕</button>
+</div>
 <div class="app">
   <header class="top">
     <button class="back" id="backButton">← بازگشت</button>
@@ -163,6 +186,20 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
 
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
+
+const gameIntro = document.getElementById('gameIntro');
+if (gameIntro) {
+  let introClosed = false;
+  const closeIntro = () => {
+    if (introClosed) return;
+    introClosed = true;
+    gameIntro.classList.add('is-leaving');
+    window.setTimeout(() => gameIntro.remove(), 600);
+  };
+  document.getElementById('introSkip')?.addEventListener('click', closeIntro);
+  gameIntro.addEventListener('click', closeIntro);
+  window.setTimeout(closeIntro, 2300);
+}
 
 const canvas = document.getElementById('game');
 const stage = document.getElementById('stage');
