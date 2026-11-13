@@ -53,7 +53,7 @@ async function ensureTable(env) {
 }
 
 async function adminPanel(env, chatId) {
-  await send(env, chatId, "👑 پنل مدیریت GOZAR GAMES\n\nویدیو را ارسال کن تا به فهرست اضافه شود؛ یا از دکمه‌های زیر برای مدیریت استفاده کن.", {
+  await send(env, chatId, "👑 پنل مدیریت GOZAR GAMES\n\nبرای افزودن ویدیو، اول عنوان دلخواهش را به‌صورت یک پیام متنی بفرست؛ بعد فایل ویدیویی را ارسال کن. همان عنوان پایین ویدیو نمایش داده می‌شود.\n\nبرای مدیریت ویدیوهای قبلی از دکمه زیر استفاده کن.", {
     inline_keyboard: [
       [{ text: "📂 فهرست ویدیوها", callback_data: "admin_list" }],
       [{ text: "⬅️ منوی اصلی", callback_data: "home" }]
