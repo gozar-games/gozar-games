@@ -454,7 +454,8 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 }
 .intro-video-stage{position:absolute;inset:0;z-index:2;display:none;background:#050505}
 .intro-video-stage.active{display:block}
-.intro-video-stage video{width:100%;height:100%;object-fit:cover;display:block}
+.intro-video-stage video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .28s ease}
+.intro-video-stage video.active{opacity:1}
 .intro-video-stage:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(0deg,#050505dc 0%,#05050525 45%,#05050545 100%)}
 .intro-video-caption{position:absolute;z-index:3;left:20px;right:20px;bottom:calc(62px + env(safe-area-inset-bottom));text-align:center;color:#fff;font-size:clamp(20px,5vw,29px);font-weight:900;text-shadow:0 3px 18px #000,0 0 20px #ed1725aa;animation:introCaption .65s ease both}
 .intro-video-brand{position:absolute;z-index:3;top:calc(28px + env(safe-area-inset-top));left:0;right:0;text-align:center;direction:ltr;font-weight:900;letter-spacing:2px;font-size:15px;color:#fff;text-shadow:0 2px 12px #000}
@@ -489,7 +490,8 @@ button{font-family:inherit;color:inherit;cursor:pointer}
     <div class="intro-line"></div>
   </div>
   <div class="intro-video-stage" id="introVideoStage">
-    <video id="introVideo" muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
+    <video id="introVideoA" muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
+    <video id="introVideoB" muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
     <div class="intro-video-brand">GOZAR <span>GAMES</span></div>
     <div class="intro-video-caption" id="introVideoCaption"></div>
     <div class="intro-video-progress"><i id="introVideoProgress"></i></div>
@@ -919,58 +921,96 @@ async function claimDailyReward(){
 
 
 const gozarIntroClips = [
-  {src:'https://videos.pexels.com/video-files/8064298/8064298-uhd_3840_2160_30fps.mp4',seconds:7,caption:'ورود به دنیایی تازه'},
-  {src:'https://videos.pexels.com/video-files/32525807/13870700_3840_2160_24fps.mp4',seconds:8,caption:'جهانی از نور و هیجان'},
-  {src:'https://videos.pexels.com/video-files/33074495/14098247_3840_2160_25fps.mp4',seconds:8,caption:'فراتر از یک بازی'},
-  {src:'https://videos.pexels.com/video-files/9071232/9071232-hd_1920_1080_25fps.mp4',seconds:8,caption:'رقابت، سرعت، هیجان'},
-  {src:'https://videos.pexels.com/video-files/7914851/7914851-hd_1920_1080_30fps.mp4',seconds:11,caption:'قدرت یک تیم؛ GOZAR'}
+  {src:'https://videos.pexels.com/video-files/32822471/13990568_3840_2160_24fps.mp4',seconds:8,caption:'به دنیای نئون خوش آمدی'},
+  {src:'https://videos.pexels.com/video-files/32336444/13794793_3840_2160_30fps.mp4',seconds:7,caption:'فراتر از واقعیت؛ وارد بازی شو'},
+  {src:'https://videos.pexels.com/video-files/33074495/14098247_3840_2160_25fps.mp4',seconds:8,caption:'قدرت، سرعت، هیجان'},
+  {src:'https://videos.pexels.com/video-files/34160292/14482688_3840_2160_25fps.mp4',seconds:8,caption:'تکنولوژی در اوج خودش'},
+  {src:'https://videos.pexels.com/video-files/33656654/14300931_3840_2160_30fps.mp4',seconds:12,caption:'قدرت پشت پرده؛ تیم سازنده GOZAR'}
 ];
 let gozarClipTimer=null;
 let gozarClipIndex=-1;
 let gozarIntroFinished=false;
+let gozarIntroStarted=false;
+let gozarActiveSlot=0;
+let gozarPreparedIndex=-1;
+const gozarVideoSlots=[
+  document.getElementById('introVideoA'),
+  document.getElementById('introVideoB')
+];
+
+function prepareGozarClip(index,slot){
+  if(index>=gozarIntroClips.length || gozarIntroFinished) return;
+  const video=gozarVideoSlots[slot];
+  video.pause();
+  video.classList.remove('active');
+  video.onended=null;
+  video.onerror=()=>handleGozarClipError(index);
+  video.oncanplay=()=>{
+    if(index===0 && gozarIntroStarted && gozarClipIndex<0) showGozarClip(index,slot);
+    if(index===gozarClipIndex+1) gozarPreparedIndex=index;
+  };
+  video.src=gozarIntroClips[index].src;
+  video.load();
+}
 
 function finishGozarIntro(){
   const intro=document.getElementById('gozarIntro');
   if(!intro || gozarIntroFinished) return;
   gozarIntroFinished=true;
   if(gozarClipTimer) clearTimeout(gozarClipTimer);
-  const video=document.getElementById('introVideo');
-  if(video){video.pause();video.removeAttribute('src');video.load();}
+  gozarVideoSlots.forEach(video=>{video.pause();video.removeAttribute('src');video.load();});
   intro.classList.add('intro-leaving');
   window.setTimeout(()=>intro.remove(),560);
+}
+
+function handleGozarClipError(index){
+  if(gozarIntroFinished || index!==gozarClipIndex) return;
+  if(gozarClipTimer) clearTimeout(gozarClipTimer);
+  playGozarIntroClip(index+1);
+}
+
+function showGozarClip(index,slot){
+  if(gozarIntroFinished || index<=gozarClipIndex) return;
+  if(index>=gozarIntroClips.length){finishGozarIntro();return;}
+  gozarClipIndex=index;
+  gozarActiveSlot=slot;
+  const video=gozarVideoSlots[slot];
+  const caption=document.getElementById('introVideoCaption');
+  const progress=document.getElementById('introVideoProgress');
+  caption.textContent=gozarIntroClips[index].caption;
+  caption.style.animation='none';
+  void caption.offsetWidth;
+  caption.style.animation='';
+  progress.style.width=(((index+1)/gozarIntroClips.length)*100)+'%';
+  gozarVideoSlots.forEach((item,i)=>item.classList.toggle('active',i===slot));
+  video.currentTime=0;
+  video.play().catch(()=>handleGozarClipError(index));
+  if(gozarClipTimer) clearTimeout(gozarClipTimer);
+  gozarClipTimer=window.setTimeout(()=>playGozarIntroClip(index+1),gozarIntroClips[index].seconds*1000);
+  prepareGozarClip(index+1,1-slot);
 }
 
 function playGozarIntroClip(index){
   if(gozarIntroFinished || index<=gozarClipIndex) return;
   if(index>=gozarIntroClips.length){finishGozarIntro();return;}
-  gozarClipIndex=index;
-  if(gozarClipTimer) clearTimeout(gozarClipTimer);
-  const clip=gozarIntroClips[index];
-  const video=document.getElementById('introVideo');
-  const caption=document.getElementById('introVideoCaption');
-  const progress=document.getElementById('introVideoProgress');
-  caption.textContent=clip.caption;
-  caption.style.animation='none';
-  void caption.offsetWidth;
-  caption.style.animation='';
-  progress.style.width=((index/gozarIntroClips.length)*100)+'%';
-  video.onended=()=>playGozarIntroClip(index+1);
-  video.onerror=()=>playGozarIntroClip(index+1);
-  video.src=clip.src;
-  video.load();
-  gozarClipTimer=window.setTimeout(()=>playGozarIntroClip(index+1),clip.seconds*1000);
-  const playback=video.play();
-  if(playback && typeof playback.catch==='function'){
-    playback.catch(()=>playGozarIntroClip(index+1));
+  const slot=1-gozarActiveSlot;
+  const next=gozarVideoSlots[slot];
+  if(next.readyState>=3 && next.src===gozarIntroClips[index].src){
+    showGozarClip(index,slot);
+  }else{
+    prepareGozarClip(index,slot);
+    next.oncanplay=()=>showGozarClip(index,slot);
   }
 }
 
 function startGozarIntroVideos(){
-  if(gozarIntroFinished) return;
+  if(gozarIntroFinished || gozarIntroStarted) return;
+  gozarIntroStarted=true;
   document.getElementById('introLogoStage').style.display='none';
   document.getElementById('introVideoStage').classList.add('active');
   playGozarIntroClip(0);
 }
+prepareGozarClip(0,0);
 window.setTimeout(startGozarIntroVideos,2700);
 
 if(tg){
