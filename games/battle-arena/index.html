@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#090909">
+<title>GOZAR BATTLE ARENA</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700;800;900&display=swap');
+:root{color-scheme:dark;--red:#ed1725;--panel:#111820;--line:#34404b}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#080b0e;color:#fff;font-family:Vazirmatn,sans-serif;touch-action:none}
+#game{display:block;width:100vw;height:100vh;background:#111820}
+#hud{position:fixed;inset:0;pointer-events:none;padding:12px;display:flex;flex-direction:column;justify-content:space-between}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.panel{background:#090d12d9;border:1px solid #56606a88;border-radius:12px;padding:8px 12px;backdrop-filter:blur(6px);font-size:12px}
+.brand{font-weight:900;letter-spacing:1px;color:#fff}.brand b{color:var(--red)}
+.stats{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.bar{width:150px;height:9px;background:#343b42;border-radius:9px;overflow:hidden;margin-top:5px}.bar i{display:block;height:100%;background:#e6323c;width:100%}
+#banner{position:absolute;top:24%;left:50%;transform:translate(-50%,-50%);font-size:clamp(25px,6vw,54px);font-weight:900;letter-spacing:2px;text-shadow:0 3px 20px #000,0 0 20px #ed1725;opacity:0;transition:opacity .25s;white-space:nowrap}
+#controls{position:fixed;inset:auto 0 15px;display:flex;justify-content:space-between;align-items:end;padding:0 18px;pointer-events:none}
+#stick{width:116px;height:116px;border-radius:50%;background:#ffffff18;border:2px solid #ffffff55;position:relative;pointer-events:auto;touch-action:none}
+#nub{position:absolute;width:48px;height:48px;border-radius:50%;background:#ffffff8a;left:32px;top:32px}
+.actions{display:flex;gap:12px;align-items:end;pointer-events:auto}
+.action{border:1px solid #ffffff70;background:#101820d9;color:#fff;border-radius:50%;width:72px;height:72px;font:800 12px Vazirmatn;box-shadow:0 4px 15px #0008;touch-action:none}
+#fire{background:#a91420e8;width:88px;height:88px;font-size:15px}
+.action:disabled{opacity:.35}
+#overlay{position:fixed;inset:0;background:radial-gradient(ellipse at center,#281116,#080b0e 70%);display:flex;align-items:center;justify-content:center;padding:20px}
+.menu{width:min(520px,100%);text-align:center;background:#0c1118eF;border:1px solid #6d2630;border-radius:22px;padding:25px;box-shadow:0 20px 70px #000b}
+h1{font-size:clamp(27px,7vw,42px);margin:0;font-weight:900}h1 span{color:var(--red)}p{color:#aeb6bf;font-size:13px;line-height:1.9}
+.primary{border:0;border-radius:12px;background:linear-gradient(120deg,#ed1725,#8e101a);color:white;font:900 16px Vazirmatn;padding:13px 28px;margin-top:10px}
+.small{font-size:11px;color:#77818b}
+@media(orientation:portrait){#overlay:after{content:"برای تجربه بهتر، گوشی را افقی کنید";position:absolute;top:12px;color:#ffb5b9;font-size:12px}}
+@media(min-width:800px){#controls{padding:0 5vw 24px}#stick{width:130px;height:130px}#nub{left:38px;top:38px}}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="overlay"><div class="menu">
+<div class="brand">GOZAR <b>GAMES</b></div>
+<h1 style="margin-top:12px">BATTLE <span>ARENA</span></h1>
+<p>نسخه آزمایشی اولیه — نبرد از شهر ویران‌شده آغاز می‌شود.<br>حرکت با جوی‌استیک یا WASD، شلیک با نگه‌داشتن دکمه آتش.</p>
+<button class="primary" id="start">شروع بقا</button>
+<p class="small">این نسخه آزمایشی است؛ ذخیره ابری، فروشگاه و آنلاین هنوز متصل نیستند.</p>
+</div></div>
+<div id="hud" hidden>
+ <div class="top">
+  <div class="panel"><div class="brand">GOZAR <b>ARENA</b></div><div id="wave">WAVE 1</div><div class="bar"><i id="health"></i></div><div id="hptext">سلامت 100%</div></div>
+  <div class="stats">
+   <div class="panel">🪙 <span id="coins">0</span></div>
+   <div class="panel">☠ <span id="kills">0</span></div>
+   <div class="panel">🔫 <span id="ammo">12 / ∞</span></div>
+  </div>
+ </div>
+ <div id="banner">WAVE 1</div>
+</div>
+<div id="controls" hidden>
+ <div id="stick"><div id="nub"></div></div>
+ <div class="actions">
+  <button class="action" id="shield">🛡<br>سپر</button>
+  <button class="action" id="reload">↻<br>خشاب</button>
+  <button class="action" id="fire">آتش</button>
+ </div>
+</div>
+<script>
+(()=>{
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const $=id=>document.getElementById(id);
+let W=0,H=0,dpr=1,running=false,last=0,player,enemies=[],bullets=[],drops=[],particles=[];
+let wave=1,kills=0,coins=0,health=100,ammo=12,reloading=false,reloadEnd=0,shieldEnd=0,shieldReady=0,between=0,spawnLeft=0,fireHeld=false,move={x:0,y:0},aim={x:1,y:0},bannerTimer=0;
+const rand=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0)}
+addEventListener('resize',resize);resize();
+function start(){ $('overlay').style.display='none';$('hud').hidden=false;$('controls').hidden=false;running=true;player={x:0,y:0,r:17,speed:255,angle:0};spawnWave();last=performance.now();requestAnimationFrame(loop)}
+function announce(t){$('banner').textContent=t;$('banner').style.opacity=1;bannerTimer=1.5}
+function spawnWave(){between=0;spawnLeft=Math.min(5+wave*2,32);$('wave').textContent='WAVE '+wave;announce('WAVE '+wave)}
+function spawnEnemy(){let a=rand(0,Math.PI*2),dist=rand(360,520);enemies.push({x:player.x+Math.cos(a)*dist,y:player.y+Math.sin(a)*dist,r:rand(14,19),hp:30+wave*5,speed:rand(48,70)+wave*2,hit:0})}
+function drop(x,y,type){drops.push({x,y,type,r:13,life:18})}
+function shoot(){if(!running||reloading||ammo<=0)return;ammo--;let a=player.angle;bullets.push({x:player.x+Math.cos(a)*23,y:player.y+Math.sin(a)*23,vx:Math.cos(a)*650,vy:Math.sin(a)*650,life:.8,damage:20});if(ammo===0)reload()}
+function reload(){if(reloading||ammo===12)return;reloading=true;reloadEnd=performance.now()+1250}
+function activateShield(){let now=performance.now();if(now<shieldReady)return;shieldEnd=now+6000;shieldReady=shieldEnd+20000;$('shield').disabled=true;setTimeout(()=>{$('shield').disabled=false},26000)}
+function loop(now){if(!running)return;let dt=Math.min((now-last)/1000,.033);last=now;update(dt,now);draw();requestAnimationFrame(loop)}
+function update(dt,now){
+ if(bannerTimer>0){bannerTimer-=dt;if(bannerTimer<=0)$('banner').style.opacity=0}
+ if(reloading&&now>=reloadEnd){ammo=12;reloading=false}
+ if(between>0){between-=dt;if(between<=0){wave++;spawnWave()}}
+ else if(spawnLeft>0&&enemies.length<Math.min(5+wave,10)){spawnEnemy();spawnLeft--}
+ const m=Math.hypot(move.x,move.y)||1;player.x+=move.x/m*player.speed*dt;player.y+=move.y/m*player.speed*dt;
+ if(enemies.length===0&&spawnLeft===0&&between===0){between=7;announce('WAVE CLEAR')}
+ for(const e of enemies){let dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;e.x+=dx/d*e.speed*dt;e.y+=dy/d*e.speed*dt;if(d<e.r+player.r&&now>e.hit){e.hit=now+650;if(now>shieldEnd)health=Math.max(0,health-8)}}
+ for(const b of bullets){b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;for(const e of enemies){if(e.hp>0&&Math.hypot(e.x-b.x,e.y-b.y)<e.r+5){e.hp-=b.damage;b.life=0;if(e.hp<=0){kills++;coins+=10;if(Math.random()<.25)drop(e.x,e.y,Math.random()<.5?'ammo':'med');}break}}}
+ bullets=bullets.filter(b=>b.life>0);enemies=enemies.filter(e=>e.hp>0);
+ for(const d of drops){d.life-=dt;if(Math.hypot(d.x-player.x,d.y-player.y)<d.r+player.r){if(d.type==='ammo'){ammo=12;reloading=false}else health=Math.min(100,health+30);d.life=0}}
+ drops=drops.filter(d=>d.life>0);
+ $('health').style.width=health+'%';$('hptext').textContent='سلامت '+Math.round(health)+'%';$('coins').textContent=coins;$('kills').textContent=kills;$('ammo').textContent=reloading?'در حال تعویض…':ammo+' / ∞';
+ if(health<=0){running=false;setTimeout(()=>{alert('پایان بازی! موج '+wave+' — کشتار '+kills+' — سکه '+coins);location.reload()},100)}
+}
+function draw(){
+ ctx.fillStyle='#151c22';ctx.fillRect(0,0,W,H);
+ const ox=W/2-player.x,oy=H/2-player.y,grid=80;
+ ctx.strokeStyle='#27313a';ctx.lineWidth=1;
+ let sx=((ox%grid)+grid)%grid,sy=((oy%grid)+grid)%grid;
+ for(let x=sx;x<W;x+=grid){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+ for(let y=sy;y<H;y+=grid){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+ // ruined-city cover blocks
+ for(let x=-2;x<Math.ceil(W/grid)+2;x++)for(let y=-2;y<Math.ceil(H/grid)+2;y++){let wx=(x*grid)-((ox%grid)+grid)%grid,wy=(y*grid)-((oy%grid)+grid)%grid;if((x*7+y*11)%9===0){ctx.fillStyle='#30363a';ctx.fillRect(wx+8,wy+9,27,19);ctx.fillStyle='#45403a';ctx.fillRect(wx+10,wy+11,23,4)}}
+ const sxp=x=>x+ox,syp=y=>y+oy;
+ for(const d of drops){ctx.fillStyle=d.type==='ammo'?'#e0b64c':'#4bd47a';ctx.beginPath();ctx.arc(sxp(d.x),syp(d.y),d.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#101010';ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText(d.type==='ammo'?'A':'+',sxp(d.x),syp(d.y)+5)}
+ for(const b of bullets){ctx.fillStyle='#ffd36b';ctx.beginPath();ctx.arc(sxp(b.x),syp(b.y),4,0,Math.PI*2);ctx.fill()}
+ for(const e of enemies){ctx.fillStyle='#9b3438';ctx.beginPath();ctx.arc(sxp(e.x),syp(e.y),e.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#e9a0a0';ctx.fillRect(sxp(e.x)-10,syp(e.y)-e.r-8,20,3)}
+ ctx.save();ctx.translate(W/2,H/2);ctx.rotate(player.angle);ctx.fillStyle='#17191b';ctx.fillRect(-13,-13,27,26);ctx.fillStyle='#8a7258';ctx.fillRect(-7,-17,15,9);ctx.fillStyle='#c7c9c9';ctx.fillRect(5,-4,22,7);ctx.restore();
+ if(performance.now()<shieldEnd){ctx.strokeStyle='#52c9ff';ctx.lineWidth=4;ctx.beginPath();ctx.arc(W/2,H/2,29,0,Math.PI*2);ctx.stroke()}
+}
+$('start').addEventListener('click',start);
+$('fire').addEventListener('pointerdown',e=>{e.preventDefault();fireHeld=true;shoot()});['pointerup','pointercancel','pointerleave'].forEach(ev=>$('fire').addEventListener(ev,()=>fireHeld=false));
+$('shield').addEventListener('click',activateShield);$('reload').addEventListener('click',reload);
+let stick=$('stick'),nub=$('nub'),stickId=null;
+stick.addEventListener('pointerdown',e=>{stickId=e.pointerId;stick.setPointerCapture(stickId);stickMove(e)});
+stick.addEventListener('pointermove',e=>{if(e.pointerId===stickId)stickMove(e)});
+function stickMove(e){let r=stick.getBoundingClientRect(),dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2),d=Math.hypot(dx,dy),max=39;if(d>max){dx=dx/d*max;dy=dy/d*max}move={x:dx/max,y:dy/max};nub.style.transform='translate('+dx+'px,'+dy+'px)';if(Math.hypot(move.x,move.y)>.2){player.angle=Math.atan2(move.y,move.x)}}
+function stickEnd(e){if(e.pointerId!==stickId)return;stickId=null;move={x:0,y:0};nub.style.transform='translate(0,0)'}
+stick.addEventListener('pointerup',stickEnd);stick.addEventListener('pointercancel',stickEnd);
+addEventListener('keydown',e=>{if(e.repeat)return;if(e.code==='Space')fireHeld=true;if(e.code==='KeyR')reload();if(e.code==='ShiftLeft')activateShield();});
+addEventListener('keyup',e=>{if(e.code==='Space')fireHeld=false});
+function keyboard(){let x=0,y=0;if(keys.has('KeyA')||keys.has('ArrowLeft'))x--;if(keys.has('KeyD')||keys.has('ArrowRight'))x++;if(keys.has('KeyW')||keys.has('ArrowUp'))y--;if(keys.has('KeyS')||keys.has('ArrowDown'))y++;if(x||y){move={x,y};player.angle=Math.atan2(y,x)}}
+const keys=new Set();addEventListener('keydown',e=>keys.add(e.code));addEventListener('keyup',e=>keys.delete(e.code));
+setInterval(()=>{if(running){keyboard();if(fireHeld)shoot()}},120);
+})();
+</script>
+</body>
+</html>
