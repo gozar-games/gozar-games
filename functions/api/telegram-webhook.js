@@ -99,7 +99,12 @@ export async function onRequestPost({ request, env }) {
           inline_keyboard: [[{ text: "📂 مدیریت ویدیوها", callback_data: "admin_list" }]]
         });
       } else if (isAdmin && message.photo?.length) {
-        const photo = message.photo[message.photo.length - 1];
+        // Prefer a reasonably sized Telegram variant instead of always storing the largest original.
+        const photo = [...message.photo]
+          .filter(p => p.file_size && p.file_size <= 700 * 1024 && p.width >= 480)
+          .sort((a, b) => (b.width || 0) - (a.width || 0))[0]
+          || [...message.photo].filter(p => p.file_size && p.file_size <= 700 * 1024).sort((a, b) => (b.file_size || 0) - (a.file_size || 0))[0]
+          || message.photo[0];
         const draft = await env.DB.prepare("SELECT title FROM intro_video_drafts WHERE user_id = ?").bind(userId).first();
         const caption = (message.caption || "").trim();
         const title = (caption || draft?.title || "GOZAR GAMES").slice(0, 100);
