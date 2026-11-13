@@ -17,9 +17,10 @@ export async function onRequest({ request, env, params }) {
   const room = env.ROOMS.get(roomId);
 
   const url = new URL(request.url);
-  url.pathname = "/ws";
+  const isWebSocket = request.headers.get("Upgrade")?.toLowerCase() === "websocket";
+  url.pathname = isWebSocket ? "/ws" : "/exists";
 
   return room.fetch(
-    new Request(url.toString(), request)
+    new Request(url.toString(), isWebSocket ? request : { method: "GET" })
   );
 }
