@@ -17,9 +17,9 @@
 .stats{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
 .bar{width:150px;height:9px;background:#343b42;border-radius:9px;overflow:hidden;margin-top:5px}.bar i{display:block;height:100%;background:#e6323c;width:100%}
 #banner{position:absolute;top:24%;left:50%;transform:translate(-50%,-50%);font-size:clamp(25px,6vw,54px);font-weight:900;letter-spacing:2px;text-shadow:0 3px 20px #000,0 0 20px #ed1725;opacity:0;transition:opacity .25s;white-space:nowrap}
-#controls{position:fixed;inset:auto 0 15px;display:flex;justify-content:space-between;align-items:end;padding:0 18px;pointer-events:none}
-#stick{width:116px;height:116px;border-radius:50%;background:#ffffff18;border:2px solid #ffffff55;position:relative;pointer-events:auto;touch-action:none}
-#nub{position:absolute;width:48px;height:48px;border-radius:50%;background:#ffffff8a;left:32px;top:32px}
+#controls{position:fixed;inset:auto 0 18px;display:flex;justify-content:center;align-items:center;padding:0 12px;pointer-events:none}
+#stick{width:124px;height:124px;border-radius:50%;background:#ffffff20;border:2px solid #ffffff77;position:relative;pointer-events:auto;touch-action:none;box-shadow:0 5px 24px #0009}
+#nub{position:absolute;width:50px;height:50px;border-radius:50%;background:#ffffffa8;left:35px;top:35px;box-shadow:0 2px 10px #0009}
 .actions{display:flex;gap:12px;align-items:end;pointer-events:auto}
 .action{border:1px solid #ffffff70;background:#101820d9;color:#fff;border-radius:50%;width:72px;height:72px;font:800 12px Vazirmatn;box-shadow:0 4px 15px #0008;touch-action:none}
 #fire{background:#a91420e8;width:88px;height:88px;font-size:15px}
@@ -33,8 +33,8 @@
 h1{font-size:clamp(27px,7vw,42px);margin:0;font-weight:900}h1 span{color:var(--red)}p{color:#aeb6bf;font-size:13px;line-height:1.9}
 .primary{border:0;border-radius:12px;background:linear-gradient(120deg,#ed1725,#8e101a);color:white;font:900 16px Vazirmatn;padding:13px 28px;margin-top:10px}
 .small{font-size:11px;color:#77818b}
-@media(orientation:portrait){#overlay:after{content:"برای تجربه بهتر، گوشی را افقی کنید";position:absolute;top:12px;color:#ffb5b9;font-size:12px}}
-@media(min-width:800px){#controls{padding:0 5vw 24px}#stick{width:130px;height:130px}#nub{left:38px;top:38px}}
+@media(orientation:landscape){#overlay:after{content:"برای تجربه بهتر، گوشی را عمودی کنید";position:absolute;top:12px;color:#ffb5b9;font-size:12px}}
+@media(min-width:800px){#stick{width:140px;height:140px}#nub{left:43px;top:43px}}
 </style>
 </head>
 <body>
@@ -42,7 +42,7 @@ h1{font-size:clamp(27px,7vw,42px);margin:0;font-weight:900}h1 span{color:var(--r
 <div id="overlay"><div class="menu">
 <div class="brand">GOZAR <b>GAMES</b></div>
 <h1 style="margin-top:12px">BATTLE <span>ARENA</span></h1>
-<p>نبرد در شهر ویران‌شده؛ دشمن‌ها رفتارهای متفاوت دارند.<br>حرکت با جوی‌استیک یا WASD؛ جهت حرکت با جوی‌استیک، جهت نشانه‌گیری و شلیک را هم تعیین می‌کند.</p>
+<p>نبرد در شهر ویران‌شده؛ دشمن‌ها رفتارهای متفاوت دارند.<br>فقط با جوی‌استیک حرکت کن و جهت نشانه‌گیری را مشخص کن؛ وقتی دشمن در مسیر نشانه‌گیری قرار بگیرد، شلیک خودکار انجام می‌شود.</p>
 <button class="primary" id="start">شروع بقا</button>
 <p class="small">این نسخه آزمایشی است؛ ذخیره ابری، فروشگاه و آنلاین هنوز متصل نیستند.</p>
 </div></div>
@@ -61,13 +61,6 @@ h1{font-size:clamp(27px,7vw,42px);margin:0;font-weight:900}h1 span{color:var(--r
 <div id="shopPanel"><div class="shopBox"><div class="shopHead"><strong>فروشگاه سلاح و ارتقا</strong><button class="shopBtn" id="closeShop">بستن ✕</button></div><div id="shopContent"></div></div></div>
 <div id="controls" hidden>
  <div id="stick"><div id="nub"></div></div></div>
- <div class="actions">
-  <button class="action" id="shop" style="border-radius:14px;width:65px;height:55px">🛒<br>فروشگاه</button>
-  <button class="action" id="chest">🎁<br>صندوق</button>
-  <button class="action" id="shield">🛡<br>سپر</button>
-  <button class="action" id="reload">↻<br>خشاب</button>
-  <button class="action" id="fire">آتش</button>
- </div>
 </div>
 <script>
 (()=>{
@@ -98,13 +91,13 @@ function circleHitsWall(x,y,r){let gx0=Math.floor((x-r-100)/CELL),gx1=Math.floor
 function moveCircle(o,dx,dy){let nx=clamp(o.x+dx,o.r,WORLD_W-o.r),ny=clamp(o.y+dy,o.r,WORLD_H-o.r);if(!circleHitsWall(nx,o.y,o.r))o.x=nx;if(!circleHitsWall(o.x,ny,o.r))o.y=ny}
 function burst(x,y,color,n=8){for(let i=0;i<n;i++){let a=rand(0,Math.PI*2),v=rand(45,190);particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:rand(.18,.5),max:.5,color})}}
 function showChest(x,y,legendary){chestReady={x,y,legendary};$('chest').style.display='block';announce('🎁 CHEST UNLOCKED')}
-function openChest(){if(!chestReady)return;let roll=Math.random(),rarity=chestReady.legendary&&roll<.08?'افسانه‌ای':roll<.32?'کمیاب':'معمولی';let reward=rarity==='افسانه‌ای'?1000:rarity==='کمیاب'?400:180;coins+=reward;if(rarity==='افسانه‌ای'){player.speed+=18;announce('LEGENDARY SPEED BOOST')}else if(rarity==='کمیاب'){ammo=weaponStat('mag');health=Math.min(100,health+35);announce('RARE SUPPLY CHEST')}else{health=Math.min(100,health+20);ammo=12;announce('COMMON SUPPLY CHEST')}$('chest').style.display='none';chestReady=null;alert('صندوق '+rarity+' باز شد!\nپاداش: '+reward+' سکه'+(rarity==='افسانه‌ای'?' + افزایش دائمی سرعت در این مسابقه':''));}
+function openChest(){if(!chestReady)return;let roll=Math.random(),rarity=chestReady.legendary&&roll<.08?'افسانه‌ای':roll<.32?'کمیاب':'معمولی';let reward=rarity==='افسانه‌ای'?1000:rarity==='کمیاب'?400:180;coins+=reward;if(rarity==='افسانه‌ای'){player.speed+=18;announce('LEGENDARY SPEED BOOST')}else if(rarity==='کمیاب'){ammo=weaponStat('mag');health=Math.min(100,health+35);announce('RARE SUPPLY CHEST')}else{health=Math.min(100,health+20);ammo=weaponStat('mag');announce('COMMON SUPPLY CHEST')}$('chest').style.display='none';chestReady=null;alert('صندوق '+rarity+' باز شد!\nپاداش: '+reward+' سکه'+(rarity==='افسانه‌ای'?' + افزایش دائمی سرعت در این مسابقه':''));}
 function shoot(){const now=performance.now();if(!running||$('shopPanel').style.display==='flex'||reloading||ammo<=0||now<nextShotAt)return;nextShotAt=now+weaponStat('rate');ammo--;let a=Math.atan2(aim.y,aim.x);player.angle=a;const damage=weaponStat('damage');if(currentWeapon==='shotgun'){for(let i=-2;i<=2;i++){let q=a+i*.105;bullets.push({x:player.x+Math.cos(q)*23,y:player.y+Math.sin(q)*23,vx:Math.cos(q)*570,vy:Math.sin(q)*570,life:.55,damage:damage/2.4})}}else bullets.push({x:player.x+Math.cos(a)*23,y:player.y+Math.sin(a)*23,vx:Math.cos(a)*(currentWeapon==='sniper'?900:650),vy:Math.sin(a)*(currentWeapon==='sniper'?900:650),life:currentWeapon==='sniper'?1.1:.8,damage});if(ammo===0)reload()}
 function reload(){if(reloading||ammo>=weaponStat('mag'))return;reloading=true;reloadEnd=performance.now()+weaponStat('reload')}
 function activateShield(){let now=performance.now();if(now<shieldReady)return;shieldEnd=now+6000;shieldReady=shieldEnd+20000;$('shield').disabled=true;setTimeout(()=>{$('shield').disabled=false},26000)}
 function loop(now){if(!running)return;let dt=Math.min((now-last)/1000,.033);last=now;update(dt,now);draw();requestAnimationFrame(loop)}
 function update(dt,now){
- // Aim and fire in the same direction as the movement joystick; retain the last direction when released.
+ // Portrait controls: the single joystick drives movement and aim; aim direction persists on release.
  const moveLen=Math.hypot(move.x,move.y);if(moveLen>0.12){aim={x:move.x/moveLen,y:move.y/moveLen};player.angle=Math.atan2(aim.y,aim.x);}
  const oldX=player.x,oldY=player.y;
  if(bannerTimer>0){bannerTimer-=dt;if(bannerTimer<=0)$('banner').style.opacity=0}
@@ -119,6 +112,18 @@ function update(dt,now){
   else if(e.type==='runner'){const sway=Math.sin(now/180+e.phase)*.65;moveCircle(e,(nx-sway*ny)*e.speed*dt,(ny+sway*nx)*e.speed*dt)}
   else {moveCircle(e,nx*e.speed*dt,ny*e.speed*dt)}
   if(d<e.r+player.r&&now>e.hit){e.hit=now+(e.type==='boss'?1000:e.type==='heavy'?900:650);if(now>shieldEnd){health=Math.max(0,health-(e.type==='boss'?22:e.type==='heavy'?15:8));damageFlashUntil=now+140;burst(player.x,player.y,'#ed1725',5)}}
+ }
+ // Automatic fire only when an enemy is already inside the joystick's aiming lane.
+ if(!reloading&&ammo>0&&now>=nextShotAt&&$('shopPanel').style.display!=='flex'){
+  let target=null,best=Infinity;
+  for(const e of enemies){const dx=e.x-player.x,dy=e.y-player.y,dist=Math.hypot(dx,dy);if(dist>720||dist<1)continue;
+   const dot=(dx*aim.x+dy*aim.y)/dist;
+   if(dot<Math.cos(0.16))continue;
+   const steps=Math.ceil(dist/24);let blocked=false;
+   for(let k=1;k<steps;k++){const t=k/steps;if(circleHitsWall(player.x+dx*t,player.y+dy*t,3)){blocked=true;break}}
+   if(!blocked&&dist<best){best=dist;target=e}
+  }
+  if(target)shoot();
  }
  for(const b of bullets){b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;if(circleHitsWall(b.x,b.y,3)){b.life=0;burst(b.x,b.y,'#d4c5a0',3)}for(const e of enemies){if(e.hp>0&&Math.hypot(e.x-b.x,e.y-b.y)<e.r+5){e.hp-=b.damage;b.life=0;if(e.hp<=0){kills++;coins+=e.type==='boss'?500:e.type==='heavy'?18:e.type==='shooter'?14:10;burst(e.x,e.y,e.type==='boss'?'#ff4655':'#ffb45c',e.type==='boss'?30:10);if(e.type==='boss'){drop(e.x,e.y,'ammo');drop(e.x+28,e.y,'med');showChest(e.x,e.y,wave>=10);announce('BOSS DEFEATED')}else if(Math.random()<(e.type==='heavy'?.4:.25))drop(e.x,e.y,Math.random()<.5?'ammo':'med');}break}}}
  for(const b of enemyBullets){b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;if(circleHitsWall(b.x,b.y,4)){b.life=0;burst(b.x,b.y,'#a9a9a9',3)}else if(Math.hypot(b.x-player.x,b.y-player.y)<player.r+5){if(now>shieldEnd){health=Math.max(0,health-b.damage);damageFlashUntil=now+140;burst(player.x,player.y,'#ed1725',5)}b.life=0}}
@@ -161,19 +166,18 @@ function draw(){
  if(performance.now()<shieldEnd){ctx.strokeStyle='#52c9ff';ctx.lineWidth=4;ctx.beginPath();ctx.arc(W/2,H/2,33,0,Math.PI*2);ctx.stroke()}ctx.save();ctx.translate(W/2+aim.x*100,H/2+aim.y*100);ctx.strokeStyle='#bcecff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,9,0,Math.PI*2);ctx.moveTo(-15,0);ctx.lineTo(-5,0);ctx.moveTo(5,0);ctx.lineTo(15,0);ctx.moveTo(0,-15);ctx.lineTo(0,-5);ctx.moveTo(0,5);ctx.lineTo(0,15);ctx.stroke();ctx.restore();
 }
 $('start').addEventListener('click',start);
-$('fire').addEventListener('pointerdown',e=>{e.preventDefault();fireHeld=true;shoot()});['pointerup','pointercancel','pointerleave'].forEach(ev=>$('fire').addEventListener(ev,()=>fireHeld=false));
-$('shield').addEventListener('click',activateShield);$('reload').addEventListener('click',reload);$('chest').addEventListener('click',openChest);$('shop').addEventListener('click',openShop);$('closeShop').addEventListener('click',closeShop);$('shopContent').addEventListener('click',e=>{const w=e.target.dataset.weapon,u=e.target.dataset.upgrade;if(w){if(ownedWeapons.has(w)){equipWeapon(w)}else if(coins>=WEAPONS[w].cost){coins-=WEAPONS[w].cost;ownedWeapons.add(w);equipWeapon(w)}}if(u){const levels=weaponLevels[currentWeapon]||(weaponLevels[currentWeapon]={}),lv=levels[u]||0,cost=Math.round(180*(lv+1)*(lv+1));if(lv<5&&coins>=cost){coins-=cost;levels[u]=lv+1;if(u==='mag')ammo+=3;if(u==='damage')announce('WEAPON DAMAGE UPGRADED');else if(u==='rate')announce('FIRE RATE UPGRADED');else if(u==='reload')announce('RELOAD UPGRADED')}}renderShop()});
+$('closeShop').addEventListener('click',closeShop);$('shopContent').addEventListener('click',e=>{const w=e.target.dataset.weapon,u=e.target.dataset.upgrade;if(w){if(ownedWeapons.has(w)){equipWeapon(w)}else if(coins>=WEAPONS[w].cost){coins-=WEAPONS[w].cost;ownedWeapons.add(w);equipWeapon(w)}}if(u){const levels=weaponLevels[currentWeapon]||(weaponLevels[currentWeapon]={}),lv=levels[u]||0,cost=Math.round(180*(lv+1)*(lv+1));if(lv<5&&coins>=cost){coins-=cost;levels[u]=lv+1;if(u==='mag')ammo+=3;if(u==='damage')announce('WEAPON DAMAGE UPGRADED');else if(u==='rate')announce('FIRE RATE UPGRADED');else if(u==='reload')announce('RELOAD UPGRADED')}}renderShop()});
 let stick=$('stick'),nub=$('nub'),stickId=null;
 stick.addEventListener('pointerdown',e=>{stickId=e.pointerId;stick.setPointerCapture(stickId);stickMove(e)});
 stick.addEventListener('pointermove',e=>{if(e.pointerId===stickId)stickMove(e)});
 function stickMove(e){let r=stick.getBoundingClientRect(),dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2),d=Math.hypot(dx,dy),max=39;if(d>max){dx=dx/d*max;dy=dy/d*max}move={x:dx/max,y:dy/max};nub.style.transform='translate('+dx+'px,'+dy+'px)'}
 function stickEnd(e){if(e.pointerId!==stickId)return;stickId=null;move={x:0,y:0};nub.style.transform='translate(0,0)'}
 stick.addEventListener('pointerup',stickEnd);stick.addEventListener('pointercancel',stickEnd);
-addEventListener('keydown',e=>{if(e.repeat)return;if(e.code==='Space')fireHeld=true;if(e.code==='KeyR')reload();if(e.code==='ShiftLeft')activateShield();});
-addEventListener('keyup',e=>{if(e.code==='Space')fireHeld=false});
+addEventListener('keydown',e=>{if(e.repeat)return;});
+addEventListener('keyup',e=>{});
 function keyboard(){let x=0,y=0;if(keys.has('KeyA')||keys.has('ArrowLeft'))x--;if(keys.has('KeyD')||keys.has('ArrowRight'))x++;if(keys.has('KeyW')||keys.has('ArrowUp'))y--;if(keys.has('KeyS')||keys.has('ArrowDown'))y++;if(x||y){move={x,y}}}
 const keys=new Set();addEventListener('keydown',e=>keys.add(e.code));addEventListener('keyup',e=>keys.delete(e.code));
-setInterval(()=>{if(running){keyboard();if(fireHeld)shoot()}},120);
+setInterval(()=>{if(running)keyboard()},120);
 })();
 </script>
 </body>
