@@ -1169,6 +1169,7 @@ function clearWorld() {
 function resetGame() {
   stopSpectating(false);
   clearBoss();
+  clearMeteorShower();
   nextBossDistance=55;
   aiAccumulator=0;aiBroadcastAccumulator=0;
   clearWorld();
@@ -1311,6 +1312,86 @@ function updateCamera(dt) {
 }
 let nextBossDistance=55;
 let activeBoss=null;
+let meteorShower=null;
+function clearMeteorShower(){
+  if(!meteorShower)return;
+  for(const meteor of meteorShower.meteors){
+    world.remove(meteor.group);
+    world.remove(meteor.marker);
+    meteor.group.traverse(n=>{if(n.geometry)n.geometry.dispose();if(n.material&&!Array.isArray(n.material))n.material.dispose();});
+    if(meteor.marker.geometry)meteor.marker.geometry.dispose();
+    if(meteor.marker.material)meteor.marker.material.dispose();
+  }
+  meteorShower=null;
+}
+function startMeteorShower(){
+  clearMeteorShower();
+  nextBossDistance=Infinity;
+  meteorShower={time:10,spawnTimer:0,meteors:[]};
+  showToast('☄️ بارش شهاب‌سنگ! جاخالی بده!');
+}
+function spawnMeteor(){
+  const lane=Math.floor(Math.random()*5)-2;
+  const x=lane*LANE_WIDTH;
+  const z=player.position.z+(Math.random()*10-5);
+  const group=new THREE.Group();
+  const core=new THREE.Mesh(
+    new THREE.SphereGeometry(.22,8,8),
+    new THREE.MeshStandardMaterial({color:0xffd18a,emissive:0xff5a12,emissiveIntensity:2.2,roughness:.45})
+  );
+  const tail=new THREE.Mesh(
+    new THREE.ConeGeometry(.16,.85,7),
+    new THREE.MeshStandardMaterial({color:0xff4b16,emissive:0xc92708,emissiveIntensity:1.5,roughness:.6})
+  );
+  tail.position.y=.48;
+  group.add(core,tail);
+  group.position.set(x,9+Math.random()*3,z);
+  group.rotation.z=(Math.random()-.5)*.45;
+  world.add(group);
+  const marker=new THREE.Mesh(
+    new THREE.RingGeometry(.34,.58,16),
+    new THREE.MeshBasicMaterial({color:0xff4a24,transparent:true,opacity:.58,side:THREE.DoubleSide})
+  );
+  marker.rotation.x=-Math.PI/2;
+  marker.position.set(x,.035,z);
+  world.add(marker);
+  meteorShower.meteors.push({group,marker,speed:9+Math.random()*3});
+}
+function updateMeteorShower(dt){
+  if(!meteorShower)return;
+  meteorShower.time-=dt;
+  meteorShower.spawnTimer+=dt;
+  while(meteorShower.spawnTimer>=.28){
+    meteorShower.spawnTimer-=.28;
+    spawnMeteor();
+  }
+  for(let i=meteorShower.meteors.length-1;i>=0;i--){
+    const meteor=meteorShower.meteors[i];
+    meteor.group.position.y-=meteor.speed*dt;
+    meteor.group.rotation.y+=dt*2.8;
+    meteor.marker.material.opacity=.35+Math.sin(performance.now()*.012+i)*.22;
+    const dx=Math.abs(meteor.group.position.x-player.position.x);
+    const dz=Math.abs(meteor.group.position.z-player.position.z);
+    if(meteor.group.position.y<=.78 && dx<.88 && dz<.92){
+      clearMeteorShower();
+      finishGame('شهاب‌سنگ بهت برخورد کرد!');
+      return;
+    }
+    if(meteor.group.position.y<=.12){
+      world.remove(meteor.group);
+      world.remove(meteor.marker);
+      meteor.group.traverse(n=>{if(n.geometry)n.geometry.dispose();if(n.material&&!Array.isArray(n.material))n.material.dispose();});
+      meteor.marker.geometry.dispose();
+      meteor.marker.material.dispose();
+      meteorShower.meteors.splice(i,1);
+    }
+  }
+  if(meteorShower && meteorShower.time<=0){
+    clearMeteorShower();
+    nextBossDistance=maxForward+10;
+    showToast('✅ بارش تموم شد! ۱۰ مسافت تا باس بعدی');
+  }
+}
 function clearBoss(){
   if(activeBoss){world.remove(activeBoss.group);activeBoss.group.traverse(n=>{if(n.geometry)n.geometry.dispose();if(n.material&&!Array.isArray(n.material))n.material.dispose();});activeBoss=null;}
   bossHud.classList.add('hidden');
@@ -1344,14 +1425,14 @@ function updateBoss(dt){
   bossTimerEl.textContent=remaining.toFixed(1)+' ثانیه تا نجات';
   bossProgressEl.style.width=(remaining/activeBoss.start*100)+'%';
   if(gap<1.05 && Math.abs(activeBoss.group.position.x-player.position.x)<1.05){clearBoss();finishGame('باس بهت رسید!');return;}
-  if(activeBoss.time<=0){clearBoss();score+=10;scoreEl.textContent=String(score);showToast('🏆 باس رو جا گذاشتی! +۱۰ امتیاز');}
+  if(activeBoss.time<=0){clearBoss();score+=10;scoreEl.textContent=String(score);showToast('🏆 باس رو جا گذاشتی! +۱۰ امتیاز');startMeteorShower();}
 }
 function updateScore() {
   score=Math.max(score,maxForward);
   scoreEl.textContent=String(score);
   const nextTheme=mapThemeForScore(score);
   if(nextTheme !== currentMapTheme) applyMapTheme(nextTheme,true);
-  if(maxForward>=nextBossDistance && !activeBoss && running){nextBossDistance+=55;spawnBoss();}
+  if(maxForward>=nextBossDistance && !activeBoss && !meteorShower && running){nextBossDistance=Infinity;spawnBoss();}
 }
 function showToast(message) {
   toastEl.textContent=message;
@@ -1519,6 +1600,7 @@ function loop(now) {
     if(running)animatePlayer(dt);
     updateTraffic(dt);
     if(running)updateBoss(dt);
+    if(running)updateMeteorShower(dt);
     if(aiActive)updateAIBots(dt);
     if(spectatorMode){const alive=getAliveSpectators();if(!alive.some(([id])=>id===spectatorTargetId)){if(alive.length)spectatorTargetId=alive[0][0];else stopSpectating(true);}}
     cleanupRows();
