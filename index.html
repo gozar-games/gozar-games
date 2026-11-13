@@ -1116,6 +1116,23 @@ async function loadUploadedIntroVideos(){
     return [];
   }
 }
+
+const preloadedIntroPhotos=new Map();
+function preloadUpcomingIntroPhotos(fromIndex){
+  let count=0;
+  for(let i=fromIndex;i<uploadedIntroItems.length && count<2;i++){
+    const item=uploadedIntroItems[i];
+    if(item.media_type!=='photo')continue;
+    const url='/api/intro-video/'+encodeURIComponent(item.id);
+    if(preloadedIntroPhotos.has(url))continue;
+    const image=new Image();
+    image.decoding='async';
+    image.loading='eager';
+    image.src=url;
+    preloadedIntroPhotos.set(url,image);
+    count++;
+  }
+}
 function playUploadedIntroAt(index){
   if(index>=uploadedIntroItems.length){
     uploadedIntroVideo.classList.remove('active');
@@ -1159,6 +1176,7 @@ function playUploadedIntroAt(index){
   };
   const mediaUrl='/api/intro-video/'+encodeURIComponent(item.id);
   if(item.media_type==='photo'){
+    preloadUpcomingIntroPhotos(index+1);
     uploadedIntroVideo.pause();
     uploadedIntroPhoto.onload=()=>{
       introVideoLoading.classList.remove('show');
@@ -1182,6 +1200,7 @@ function playUploadedIntroAt(index){
 }
 async function beginUploadedIntro(){
   uploadedIntroItems=await loadUploadedIntroVideos();
+  preloadUpcomingIntroPhotos(0);
   if(!uploadedIntroItems.length){
     gozarSceneIndex=0;
     gozarSceneStarted=performance.now();
