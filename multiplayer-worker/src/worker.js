@@ -105,6 +105,7 @@ export class Room {
         finished: this.finished,
         results: this.finalResults,
         hostId: this.hostId,
+        serverNow: Date.now(),
         event: this.roomEvent,
         nextBossRow: this.nextBossRow,
         players
