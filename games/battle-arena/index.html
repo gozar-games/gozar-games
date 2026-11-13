@@ -24,6 +24,9 @@
 .action{border:1px solid #ffffff70;background:#101820d9;color:#fff;border-radius:50%;width:72px;height:72px;font:800 12px Vazirmatn;box-shadow:0 4px 15px #0008;touch-action:none}
 #fire{background:#a91420e8;width:88px;height:88px;font-size:15px}#chest{display:none;background:#9a6b19e8;border-color:#ffd36b}#damageFlash{position:fixed;inset:0;background:#ed172533;pointer-events:none;opacity:0;transition:opacity .12s}
 .action:disabled{opacity:.35}
+#shopPanel{display:none;position:fixed;z-index:10;inset:0;background:#000c;align-items:center;justify-content:center;padding:14px;touch-action:auto}
+.shopBox{width:min(620px,100%);max-height:88vh;overflow:auto;background:#0c1118;border:1px solid #8b3038;border-radius:18px;padding:16px;box-shadow:0 18px 60px #000}
+.shopHead{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}.shopGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px}.weaponCard{background:#151d26;border:1px solid #394652;border-radius:12px;padding:10px;text-align:right}.weaponCard strong{display:block;color:#fff}.weaponCard small{display:block;color:#aab4be;line-height:1.8;margin:5px 0}.shopBtn{background:#a71925;color:white;border:0;border-radius:8px;padding:8px 10px;font:700 12px Vazirmatn;margin:3px}.shopBtn:disabled{opacity:.35}
 #overlay{position:fixed;inset:0;background:radial-gradient(ellipse at center,#281116,#080b0e 70%);display:flex;align-items:center;justify-content:center;padding:20px}
 .menu{width:min(520px,100%);text-align:center;background:#0c1118eF;border:1px solid #6d2630;border-radius:22px;padding:25px;box-shadow:0 20px 70px #000b}
 h1{font-size:clamp(27px,7vw,42px);margin:0;font-weight:900}h1 span{color:var(--red)}p{color:#aeb6bf;font-size:13px;line-height:1.9}
@@ -54,9 +57,11 @@ h1{font-size:clamp(27px,7vw,42px);margin:0;font-weight:900}h1 span{color:var(--r
  <div id="banner">WAVE 1</div>
 </div>
 <div id="damageFlash"></div>
+<div id="shopPanel"><div class="shopBox"><div class="shopHead"><strong>فروشگاه سلاح و ارتقا</strong><button class="shopBtn" id="closeShop">بستن ✕</button></div><div id="shopContent"></div></div></div>
 <div id="controls" hidden>
  <div id="stick"><div id="nub"></div></div>
  <div class="actions">
+  <button class="action" id="shop" style="border-radius:14px;width:65px;height:55px">🛒<br>فروشگاه</button>
   <button class="action" id="chest">🎁<br>صندوق</button>
   <button class="action" id="shield">🛡<br>سپر</button>
   <button class="action" id="reload">↻<br>خشاب</button>
@@ -68,11 +73,18 @@ h1{font-size:clamp(27px,7vw,42px);margin:0;font-weight:900}h1 span{color:var(--r
 const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
 const $=id=>document.getElementById(id);
 let W=0,H=0,dpr=1,running=false,last=0,player,enemies=[],bullets=[],enemyBullets=[],drops=[],particles=[];
-let wave=1,kills=0,coins=0,health=100,ammo=12,reloading=false,reloadEnd=0,shieldEnd=0,shieldReady=0,between=0,spawnLeft=0,fireHeld=false,move={x:0,y:0},aim={x:1,y:0},bannerTimer=0,bossIntroUntil=0,damageFlashUntil=0,chestReady=null;
+let wave=1,kills=0,coins=0,health=100,ammo=12,reloading=false,reloadEnd=0,shieldEnd=0,shieldReady=0,between=0,spawnLeft=0,fireHeld=false,move={x:0,y:0},aim={x:1,y:0},bannerTimer=0,bossIntroUntil=0,damageFlashUntil=0,chestReady=null,nextShotAt=0,currentWeapon='pistol',ownedWeapons=new Set(['pistol']),weaponLevels={};
 const rand=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const WEAPONS={pistol:{name:'تپانچه',cost:0,damage:20,rate:320,mag:12,reload:1250},smg:{name:'مسلسل سبک',cost:450,damage:13,rate:105,mag:32,reload:1500},shotgun:{name:'شاتگان',cost:700,damage:58,rate:720,mag:6,reload:1750},rifle:{name:'تفنگ تهاجمی',cost:900,damage:25,rate:190,mag:24,reload:1650},sniper:{name:'تک‌تیرانداز',cost:1200,damage:105,rate:950,mag:5,reload:1900}};
+const UPGRADE_NAMES={damage:'قدرت آسیب',rate:'سرعت شلیک',mag:'ظرفیت خشاب',reload:'سرعت تعویض خشاب'};
+function weaponStat(key){const w=WEAPONS[currentWeapon],lv=(weaponLevels[currentWeapon]||{})[key]||0;return key==='rate'?Math.max(65,w.rate*(1-lv*.09)):key==='reload'?Math.max(500,w.reload*(1-lv*.1)):key==='mag'?w.mag+lv*3:w.damage*(1+lv*.16)}
+function equipWeapon(id){currentWeapon=id;ammo=weaponStat('mag');reloading=false;nextShotAt=0}
+function renderShop(){const content=$('shopContent');let html='<div class="panel" style="margin-bottom:10px">موجودی: 🪙 '+coins+' | سلاح فعال: '+WEAPONS[currentWeapon].name+'</div><h3>سلاح‌ها</h3><div class="shopGrid">';for(const [id,w] of Object.entries(WEAPONS)){const owned=ownedWeapons.has(id);html+='<div class="weaponCard"><strong>'+w.name+'</strong><small>آسیب پایه: '+w.damage+'<br>خشاب: '+w.mag+'<br>سرعت شلیک: '+(1000/w.rate).toFixed(1)+' تیر/ثانیه</small><button class="shopBtn" data-weapon="'+id+'" '+(!owned&&coins<w.cost?'disabled':'')+'>'+(owned?(currentWeapon===id?'فعال':'انتخاب'):('خرید '+w.cost+' سکه'))+'</button></div>'}html+='</div><h3>ارتقای سلاح فعال: '+WEAPONS[currentWeapon].name+'</h3><div class="shopGrid">';for(const key of Object.keys(UPGRADE_NAMES)){const lv=((weaponLevels[currentWeapon]||{})[key]||0),cost=Math.round(180*(lv+1)*(lv+1));html+='<div class="weaponCard"><strong>'+UPGRADE_NAMES[key]+'</strong><small>سطح '+lv+'/5<br>هزینه مرحله بعد: '+(lv>=5?'حداکثر':cost+' سکه')+'</small><button class="shopBtn" data-upgrade="'+key+'" '+(lv>=5||coins<cost?'disabled':'')+'>ارتقا</button></div>'}html+='</div>';content.innerHTML=html}
+function openShop(){if(!running)return;fireHeld=false;renderShop();$('shopPanel').style.display='flex'}
+function closeShop(){$('shopPanel').style.display='none'}
 function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0)}
 addEventListener('resize',resize);resize();
-function start(){ $('overlay').style.display='none';$('hud').hidden=false;$('controls').hidden=false;running=true;player={x:0,y:0,r:17,speed:255,angle:0};aim={x:1,y:0};spawnWave();last=performance.now();requestAnimationFrame(loop)}
+function start(){ $('overlay').style.display='none';$('hud').hidden=false;$('controls').hidden=false;running=true;player={x:0,y:0,r:17,speed:255,angle:0};aim={x:1,y:0};equipWeapon('pistol');spawnWave();last=performance.now();requestAnimationFrame(loop)}
 function announce(t){$('banner').textContent=t;$('banner').style.opacity=1;bannerTimer=1.5}
 function spawnWave(){between=0;$('wave').textContent='WAVE '+wave;if(wave%5===0){spawnLeft=0;spawnBoss()}else{spawnLeft=Math.min(5+wave*2,32);announce('WAVE '+wave)}}
 function spawnBoss(){const a=rand(0,Math.PI*2);const boss={x:player.x+Math.cos(a)*470,y:player.y+Math.sin(a)*470,type:'boss',r:34,hp:900+wave*90,maxHp:900+wave*90,speed:42+wave,color:'#a8323b',hit:0,shotAt:performance.now()+500,phase:0};enemies.push(boss);bossIntroUntil=performance.now()+5000;announce('⚠ BOSS INCOMING');}
@@ -85,14 +97,14 @@ function moveCircle(o,dx,dy){if(!circleHitsWall(o.x+dx,o.y,o.r))o.x+=dx;if(!circ
 function burst(x,y,color,n=8){for(let i=0;i<n;i++){let a=rand(0,Math.PI*2),v=rand(45,190);particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:rand(.18,.5),max:.5,color})}}
 function showChest(x,y,legendary){chestReady={x,y,legendary};$('chest').style.display='block';announce('🎁 CHEST UNLOCKED')}
 function openChest(){if(!chestReady)return;let roll=Math.random(),rarity=chestReady.legendary&&roll<.08?'افسانه‌ای':roll<.32?'کمیاب':'معمولی';let reward=rarity==='افسانه‌ای'?1000:rarity==='کمیاب'?400:180;coins+=reward;if(rarity==='افسانه‌ای'){player.speed+=18;announce('LEGENDARY SPEED BOOST')}else if(rarity==='کمیاب'){ammo=12;health=Math.min(100,health+35);announce('RARE SUPPLY CHEST')}else{health=Math.min(100,health+20);ammo=12;announce('COMMON SUPPLY CHEST')}$('chest').style.display='none';chestReady=null;alert('صندوق '+rarity+' باز شد!\nپاداش: '+reward+' سکه'+(rarity==='افسانه‌ای'?' + افزایش دائمی سرعت در این مسابقه':''));}
-function shoot(){if(!running||reloading||ammo<=0)return;ammo--;let a=Math.atan2(aim.y,aim.x);player.angle=a;bullets.push({x:player.x+Math.cos(a)*23,y:player.y+Math.sin(a)*23,vx:Math.cos(a)*650,vy:Math.sin(a)*650,life:.8,damage:20});if(ammo===0)reload()}
-function reload(){if(reloading||ammo===12)return;reloading=true;reloadEnd=performance.now()+1250}
+function shoot(){const now=performance.now();if(!running||$('shopPanel').style.display==='flex'||reloading||ammo<=0||now<nextShotAt)return;nextShotAt=now+weaponStat('rate');ammo--;let a=Math.atan2(aim.y,aim.x);player.angle=a;const damage=weaponStat('damage');if(currentWeapon==='shotgun'){for(let i=-2;i<=2;i++){let q=a+i*.105;bullets.push({x:player.x+Math.cos(q)*23,y:player.y+Math.sin(q)*23,vx:Math.cos(q)*570,vy:Math.sin(q)*570,life:.55,damage:damage/2.4})}}else bullets.push({x:player.x+Math.cos(a)*23,y:player.y+Math.sin(a)*23,vx:Math.cos(a)*(currentWeapon==='sniper'?900:650),vy:Math.sin(a)*(currentWeapon==='sniper'?900:650),life:currentWeapon==='sniper'?1.1:.8,damage});if(ammo===0)reload()}
+function reload(){if(reloading||ammo>=weaponStat('mag'))return;reloading=true;reloadEnd=performance.now()+weaponStat('reload')}
 function activateShield(){let now=performance.now();if(now<shieldReady)return;shieldEnd=now+6000;shieldReady=shieldEnd+20000;$('shield').disabled=true;setTimeout(()=>{$('shield').disabled=false},26000)}
 function loop(now){if(!running)return;let dt=Math.min((now-last)/1000,.033);last=now;update(dt,now);draw();requestAnimationFrame(loop)}
 function update(dt,now){
  const oldX=player.x,oldY=player.y;
  if(bannerTimer>0){bannerTimer-=dt;if(bannerTimer<=0)$('banner').style.opacity=0}
- if(reloading&&now>=reloadEnd){ammo=12;reloading=false}
+ if(reloading&&now>=reloadEnd){ammo=weaponStat('mag');reloading=false}
  if(between>0){between-=dt;if(between<=0){wave++;spawnWave()}}
  else if(spawnLeft>0&&enemies.length<Math.min(5+wave,10)){spawnEnemy();spawnLeft--}
  const m=Math.hypot(move.x,move.y)||1;moveCircle(player,move.x/m*player.speed*dt,move.y/m*player.speed*dt);
@@ -110,7 +122,7 @@ function update(dt,now){
  for(const d of drops){d.life-=dt;if(Math.hypot(d.x-player.x,d.y-player.y)<d.r+player.r){if(d.type==='ammo'){ammo=12;reloading=false}else health=Math.min(100,health+30);d.life=0}}
  drops=drops.filter(d=>d.life>0);
  for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;p.vx*=.94;p.vy*=.94}particles=particles.filter(p=>p.life>0);
- $('health').style.width=health+'%';$('hptext').textContent='سلامت '+Math.round(health)+'%';$('coins').textContent=coins;$('kills').textContent=kills;$('ammo').textContent=reloading?'در حال تعویض…':ammo+' / ∞';
+ $('health').style.width=health+'%';$('hptext').textContent='سلامت '+Math.round(health)+'%';$('coins').textContent=coins;$('kills').textContent=kills;$('ammo').textContent=reloading?'در حال تعویض…':ammo+' / '+weaponStat('mag')+' · '+WEAPONS[currentWeapon].name;
  $('damageFlash').style.opacity=now<damageFlashUntil?'1':'0';
  if(health<=0){running=false;setTimeout(()=>{alert('پایان بازی! موج '+wave+' — کشتار '+kills+' — سکه '+coins);location.reload()},100)}
 }
@@ -141,7 +153,7 @@ canvas.addEventListener('pointermove',e=>{if(aimPointer===e.pointerId)pointAim(e
 function endAim(e){if(aimPointer===e.pointerId)aimPointer=null}
 canvas.addEventListener('pointerup',endAim);canvas.addEventListener('pointercancel',endAim);
 $('fire').addEventListener('pointerdown',e=>{e.preventDefault();fireHeld=true;shoot()});['pointerup','pointercancel','pointerleave'].forEach(ev=>$('fire').addEventListener(ev,()=>fireHeld=false));
-$('shield').addEventListener('click',activateShield);$('reload').addEventListener('click',reload);$('chest').addEventListener('click',openChest);
+$('shield').addEventListener('click',activateShield);$('reload').addEventListener('click',reload);$('chest').addEventListener('click',openChest);$('shop').addEventListener('click',openShop);$('closeShop').addEventListener('click',closeShop);$('shopContent').addEventListener('click',e=>{const w=e.target.dataset.weapon,u=e.target.dataset.upgrade;if(w){if(ownedWeapons.has(w)){equipWeapon(w)}else if(coins>=WEAPONS[w].cost){coins-=WEAPONS[w].cost;ownedWeapons.add(w);equipWeapon(w)}}if(u){const levels=weaponLevels[currentWeapon]||(weaponLevels[currentWeapon]={}),lv=levels[u]||0,cost=Math.round(180*(lv+1)*(lv+1));if(lv<5&&coins>=cost){coins-=cost;levels[u]=lv+1;if(u==='mag')ammo+=3;if(u==='damage')announce('WEAPON DAMAGE UPGRADED');else if(u==='rate')announce('FIRE RATE UPGRADED');else if(u==='reload')announce('RELOAD UPGRADED')}}renderShop()});
 let stick=$('stick'),nub=$('nub'),stickId=null;
 stick.addEventListener('pointerdown',e=>{stickId=e.pointerId;stick.setPointerCapture(stickId);stickMove(e)});
 stick.addEventListener('pointermove',e=>{if(e.pointerId===stickId)stickMove(e)});
