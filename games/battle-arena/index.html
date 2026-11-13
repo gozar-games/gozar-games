@@ -61,6 +61,7 @@ h1{font-size:clamp(27px,7vw,42px);margin:0;font-weight:900}h1 span{color:var(--r
 <div id="shopPanel"><div class="shopBox"><div class="shopHead"><strong>فروشگاه سلاح و ارتقا</strong><button class="shopBtn" id="closeShop">بستن ✕</button></div><div id="shopContent"></div></div></div>
 <div id="controls" hidden>
  <div id="stick"><div id="nub"></div></div>
+ <button id="chest" class="action" type="button">🎁 صندوق جایزه</button>
 </div>
 <script>
 (()=>{
@@ -82,15 +83,35 @@ addEventListener('resize',resize);resize();
 function start(){ $('overlay').style.display='none';$('hud').hidden=false;$('controls').hidden=false;running=true;player={x:WORLD_W/2,y:WORLD_H/2,r:17,speed:255,angle:0};aim={x:1,y:0};equipWeapon('pistol');spawnWave();last=performance.now();requestAnimationFrame(loop)}
 function announce(t){$('banner').textContent=t;$('banner').style.opacity=1;bannerTimer=1.5}
 function spawnWave(){between=0;spawnTimer=.45;$('wave').textContent='WAVE '+wave;if(wave%5===0){spawnLeft=0;spawnBoss()}else{spawnLeft=Math.min(5+wave*2,32);announce('WAVE '+wave)}}
-function spawnBoss(){const a=rand(0,Math.PI*2);const boss={x:player.x+Math.cos(a)*470,y:player.y+Math.sin(a)*470,type:'boss',r:34,hp:900+wave*90,maxHp:900+wave*90,speed:42+wave,color:'#a8323b',hit:0,shotAt:performance.now()+500,phase:0};enemies.push(boss);bossIntroUntil=performance.now()+5000;announce('⚠ BOSS INCOMING');}
+function spawnBoss(){const a=rand(0,Math.PI*2);const boss={x:clamp(player.x+Math.cos(a)*470,80,WORLD_W-80),y:clamp(player.y+Math.sin(a)*470,80,WORLD_H-80),type:'boss',r:34,hp:900+wave*90,maxHp:900+wave*90,speed:42+wave,color:'#a8323b',hit:0,shotAt:performance.now()+500,phase:0};enemies.push(boss);bossIntroUntil=performance.now()+5000;announce('⚠ BOSS INCOMING');}
 function spawnEnemy(){let a=rand(0,Math.PI*2),dist=rand(360,520),roll=Math.random(),type=wave>=3&&roll>.78?'shooter':roll>.58?'runner':roll>.35?'heavy':'grunt';const cfg={grunt:{r:16,hp:32+wave*5,speed:76+wave*2,color:'#a83b40'},runner:{r:12,hp:22+wave*4,speed:125+wave*2,color:'#e08b36'},heavy:{r:23,hp:95+wave*12,speed:39+wave,color:'#666f79'},shooter:{r:17,hp:42+wave*6,speed:48+wave,color:'#8b65bd'}}[type];enemies.push({x:clamp(player.x+Math.cos(a)*dist,80,WORLD_W-80),y:clamp(player.y+Math.sin(a)*dist,80,WORLD_H-80),type,...cfg,hit:0,shotAt:performance.now()+rand(700,1500),phase:rand(0,6.28)})}
 function drop(x,y,type){drops.push({x,y,type,r:13,life:18})}
 const CELL=160;
 function wallRect(gx,gy){let h=Math.abs((Math.imul(gx,73856093)^Math.imul(gy,19349663))|0);if(h%11>2)return null;return{x:gx*CELL+48,y:gy*CELL+52,w:48,h:42}}
 function circleHitsWall(x,y,r){let gx0=Math.floor((x-r-100)/CELL),gx1=Math.floor((x+r+100)/CELL),gy0=Math.floor((y-r-100)/CELL),gy1=Math.floor((y+r+100)/CELL);for(let gx=gx0;gx<=gx1;gx++)for(let gy=gy0;gy<=gy1;gy++){let q=wallRect(gx,gy);if(!q)continue;let px=clamp(x,q.x,q.x+q.w),py=clamp(y,q.y,q.y+q.h);if((x-px)**2+(y-py)**2<r*r)return true}return false}
 function moveCircle(o,dx,dy){let nx=clamp(o.x+dx,o.r,WORLD_W-o.r),ny=clamp(o.y+dy,o.r,WORLD_H-o.r);if(!circleHitsWall(nx,o.y,o.r))o.x=nx;if(!circleHitsWall(o.x,ny,o.r))o.y=ny}
+function moveEnemy(e,vx,vy,dt,targetX,targetY){
+ const speed=Math.hypot(vx,vy);if(speed<.001)return;
+ const base=Math.atan2(vy,vx),step=speed*dt;
+ const options=[0,.65,-.65,1.25,-1.25,2.1,-2.1,Math.PI];
+ let best=null,bestScore=Infinity;
+ for(const offset of options){
+  const a=base+offset,nx=clamp(e.x+Math.cos(a)*step,e.r,WORLD_W-e.r),ny=clamp(e.y+Math.sin(a)*step,e.r,WORLD_H-e.r);
+  if(Math.hypot(nx-e.x,ny-e.y)<.01||circleHitsWall(nx,ny,e.r))continue;
+  const score=Math.hypot(targetX-nx,targetY-ny)+Math.abs(offset)*7;
+  if(score<bestScore){bestScore=score;best={x:nx,y:ny}}
+  if(offset===0)break;
+ }
+ if(best){e.x=best.x;e.y=best.y;e.stuckTime=0;return}
+ e.stuckTime=(e.stuckTime||0)+dt;
+ // Nudge a blocked enemy sideways so it can escape corners and wall edges.
+ const side=(Math.floor((e.phase||0)*10)%2)?1:-1;
+ const a=base+side*(e.stuckTime>1?2.35:1.55);
+ const nx=clamp(e.x+Math.cos(a)*step,e.r,WORLD_W-e.r),ny=clamp(e.y+Math.sin(a)*step,e.r,WORLD_H-e.r);
+ if(!circleHitsWall(nx,ny,e.r)){e.x=nx;e.y=ny}
+}
 function burst(x,y,color,n=8){for(let i=0;i<n;i++){let a=rand(0,Math.PI*2),v=rand(45,190);particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:rand(.18,.5),max:.5,color})}}
-function showChest(x,y,legendary){chestReady={x,y,legendary};$('chest').style.display='block';announce('🎁 CHEST UNLOCKED')}
+function showChest(x,y,legendary){chestReady={x,y,legendary};const chest=$('chest');if(chest)chest.style.display='block';announce('🎁 CHEST UNLOCKED')}
 function openChest(){if(!chestReady)return;let roll=Math.random(),rarity=chestReady.legendary&&roll<.08?'افسانه‌ای':roll<.32?'کمیاب':'معمولی';let reward=rarity==='افسانه‌ای'?1000:rarity==='کمیاب'?400:180;coins+=reward;if(rarity==='افسانه‌ای'){player.speed+=18;announce('LEGENDARY SPEED BOOST')}else if(rarity==='کمیاب'){ammo=weaponStat('mag');health=Math.min(100,health+35);announce('RARE SUPPLY CHEST')}else{health=Math.min(100,health+20);ammo=weaponStat('mag');announce('COMMON SUPPLY CHEST')}$('chest').style.display='none';chestReady=null;alert('صندوق '+rarity+' باز شد!\nپاداش: '+reward+' سکه'+(rarity==='افسانه‌ای'?' + افزایش دائمی سرعت در این مسابقه':''));}
 function shoot(){const now=performance.now();if(!running||$('shopPanel').style.display==='flex'||reloading||ammo<=0||now<nextShotAt)return;nextShotAt=now+weaponStat('rate');ammo--;let a=Math.atan2(aim.y,aim.x);player.angle=a;const damage=weaponStat('damage');if(currentWeapon==='shotgun'){for(let i=-2;i<=2;i++){let q=a+i*.105;bullets.push({x:player.x+Math.cos(q)*23,y:player.y+Math.sin(q)*23,vx:Math.cos(q)*570,vy:Math.sin(q)*570,life:.55,damage:damage/2.4})}}else bullets.push({x:player.x+Math.cos(a)*23,y:player.y+Math.sin(a)*23,vx:Math.cos(a)*(currentWeapon==='sniper'?900:650),vy:Math.sin(a)*(currentWeapon==='sniper'?900:650),life:currentWeapon==='sniper'?1.1:.8,damage});if(ammo===0)reload()}
 function reload(){if(reloading||ammo>=weaponStat('mag'))return;reloading=true;reloadEnd=performance.now()+weaponStat('reload')}
@@ -106,17 +127,17 @@ function update(dt,now){
  const m=Math.hypot(move.x,move.y)||1;moveCircle(player,move.x/m*player.speed*dt,move.y/m*player.speed*dt);
  if(enemies.length===0&&spawnLeft===0&&between===0){between=7;announce('WAVE CLEAR')}
  for(const e of enemies){let dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1,nx=dx/d,ny=dy/d;
-  if(e.type==='boss'){const enraged=e.hp<=e.maxHp*.5;e.speed=enraged?82+wave*2:42+wave;if(d>155){moveCircle(e,nx*e.speed*dt,ny*e.speed*dt)}if(now>e.shotAt&&now>bossIntroUntil){const base=Math.atan2(dy,dx),spread=enraged?[-.42,-.21,0,.21,.42]:[-.25,0,.25];for(const off of spread){const a=base+off;enemyBullets.push({x:e.x+Math.cos(a)*e.r,y:e.y+Math.sin(a)*e.r,vx:Math.cos(a)*(enraged?320:255),vy:Math.sin(a)*(enraged?320:255),life:3,damage:enraged?10:7})}e.shotAt=now-(enraged?0:0)+ (enraged?850:1350)} }
-  else if(e.type==='shooter'){if(d>260){moveCircle(e,nx*e.speed*dt,ny*e.speed*dt)}else if(d<185){moveCircle(e,-nx*e.speed*.7*dt,-ny*e.speed*.7*dt)}if(now>e.shotAt&&d<520){enemyBullets.push({x:e.x+nx*e.r,y:e.y+ny*e.r,vx:nx*260,vy:ny*260,life:2.4,damage:7});e.shotAt=now+rand(1500,2200)}}
-  else if(e.type==='runner'){const sway=Math.sin(now/180+e.phase)*.65;moveCircle(e,(nx-sway*ny)*e.speed*dt,(ny+sway*nx)*e.speed*dt)}
-  else {moveCircle(e,nx*e.speed*dt,ny*e.speed*dt)}
+  if(e.type==='boss'){const enraged=e.hp<=e.maxHp*.5;e.speed=enraged?82+wave*2:42+wave;if(d>155){moveEnemy(e,nx*e.speed,ny*e.speed,dt,player.x,player.y)}if(now>e.shotAt&&now>bossIntroUntil){const base=Math.atan2(dy,dx),spread=enraged?[-.42,-.21,0,.21,.42]:[-.25,0,.25];for(const off of spread){const a=base+off;enemyBullets.push({x:e.x+Math.cos(a)*e.r,y:e.y+Math.sin(a)*e.r,vx:Math.cos(a)*(enraged?320:255),vy:Math.sin(a)*(enraged?320:255),life:3,damage:enraged?10:7})}e.shotAt=now-(enraged?0:0)+ (enraged?850:1350)} }
+  else if(e.type==='shooter'){if(d>260){moveEnemy(e,nx*e.speed,ny*e.speed,dt,player.x,player.y)}else if(d<185){moveEnemy(e,-nx*e.speed*.7,-ny*e.speed*.7,dt,e.x-nx*80,e.y-ny*80)}if(now>e.shotAt&&d<520){enemyBullets.push({x:e.x+nx*e.r,y:e.y+ny*e.r,vx:nx*260,vy:ny*260,life:2.4,damage:7});e.shotAt=now+rand(1500,2200)}}
+  else if(e.type==='runner'){const sway=Math.sin(now/180+e.phase)*.65;moveEnemy(e,(nx-sway*ny)*e.speed,(ny+sway*nx)*e.speed,dt,player.x,player.y)}
+  else {moveEnemy(e,nx*e.speed,ny*e.speed,dt,player.x,player.y)}
   if(d<e.r+player.r&&now>e.hit){e.hit=now+(e.type==='boss'?1000:e.type==='heavy'?900:650);if(now>shieldEnd){health=Math.max(0,health-(e.type==='boss'?22:e.type==='heavy'?15:8));damageFlashUntil=now+140;burst(player.x,player.y,'#ed1725',5)}}
  }
  // Automatically aim at the nearest enemy with a clear line of sight, independent of joystick direction.
  let autoTarget=null,bestTargetDistance=Infinity;
  for(const e of enemies){
   const dx=e.x-player.x,dy=e.y-player.y,dist=Math.hypot(dx,dy);
-  if(dist>760||dist<1||dist>=bestTargetDistance)continue;
+  if(dist>430||dist<1||dist>=bestTargetDistance)continue;
   const steps=Math.ceil(dist/24);let blocked=false;
   for(let k=1;k<steps;k++){const t=k/steps;if(circleHitsWall(player.x+dx*t,player.y+dy*t,3)){blocked=true;break}}
   if(!blocked){autoTarget=e;bestTargetDistance=dist}
@@ -168,6 +189,7 @@ function draw(){
  if(performance.now()<shieldEnd){ctx.strokeStyle='#52c9ff';ctx.lineWidth=4;ctx.beginPath();ctx.arc(playerScreenX,playerScreenY,33,0,Math.PI*2);ctx.stroke()}ctx.save();ctx.translate(playerScreenX+aim.x*100,playerScreenY+aim.y*100);ctx.strokeStyle='#bcecff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,9,0,Math.PI*2);ctx.moveTo(-15,0);ctx.lineTo(-5,0);ctx.moveTo(5,0);ctx.lineTo(15,0);ctx.moveTo(0,-15);ctx.lineTo(0,-5);ctx.moveTo(0,5);ctx.lineTo(0,15);ctx.stroke();ctx.restore();
 }
 $('start').addEventListener('click',start);
+$('chest').addEventListener('click',openChest);
 $('closeShop').addEventListener('click',closeShop);$('shopContent').addEventListener('click',e=>{const w=e.target.dataset.weapon,u=e.target.dataset.upgrade;if(w){if(ownedWeapons.has(w)){equipWeapon(w)}else if(coins>=WEAPONS[w].cost){coins-=WEAPONS[w].cost;ownedWeapons.add(w);equipWeapon(w)}}if(u){const levels=weaponLevels[currentWeapon]||(weaponLevels[currentWeapon]={}),lv=levels[u]||0,cost=Math.round(180*(lv+1)*(lv+1));if(lv<5&&coins>=cost){coins-=cost;levels[u]=lv+1;if(u==='mag')ammo+=3;if(u==='damage')announce('WEAPON DAMAGE UPGRADED');else if(u==='rate')announce('FIRE RATE UPGRADED');else if(u==='reload')announce('RELOAD UPGRADED')}}renderShop()});
 let stick=$('stick'),nub=$('nub'),stickId=null;
 stick.addEventListener('pointerdown',e=>{stickId=e.pointerId;stick.setPointerCapture(stickId);stickMove(e)});
