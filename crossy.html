@@ -343,7 +343,8 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.15;
 
-scene.add(new THREE.HemisphereLight(0xffffff, 0x68805b, 2.0));
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0x68805b, 2.0);
+scene.add(hemiLight);
 const sun = new THREE.DirectionalLight(0xffffff, 2.4);
 sun.position.set(-5, 12, 7);
 sun.castShadow = true;
@@ -372,16 +373,18 @@ const materials = {
 
 // Map progression: the first four environments unlock at fixed scores.
 // After 380 points, a new random environment is selected every 80 points.
-const MAP_THEMES = ['main','red','desert','winter'];
-const MAP_NAMES = {main:'جنگل سبز',red:'شهر سرخ',desert:'بیابان و ریل قطار',winter:'زمستان برفی'};
+const MAP_THEMES = ['main','red','desert','winter','neon','darkforest'];
+const MAP_NAMES = {main:'جنگل سبز',red:'شهر سرخ',desert:'بیابان و ریل قطار',winter:'زمستان برفی',neon:'شهر نئونی',darkforest:'جنگل تاریک'};
 const randomMapSegments = new Map();
 let currentMapTheme = 'main';
 function mapThemeForScore(value) {
   if(value < 80) return 'main';
   if(value < 150) return 'red';
   if(value < 230) return 'desert';
-  if(value < 380) return 'winter';
-  const segment = Math.floor((value - 380) / 80);
+  if(value < 300) return 'winter';
+  if(value < 380) return 'neon';
+  if(value < 460) return 'darkforest';
+  const segment = Math.floor((value - 460) / 80);
   if(!randomMapSegments.has(segment)) {
     const previous = segment === 0 ? 'winter' : randomMapSegments.get(segment - 1);
     const choices = MAP_THEMES.filter(name => name !== previous);
@@ -397,7 +400,9 @@ function applyMapTheme(theme, announce=false) {
     main:{grass:0x64b94f,grassAlt:0x70c75a,road:0x42464c,line:0xf4e7a4,water:0x2798cf,rail:0x777d85,sleeper:0x79563d,log:0x95602f,sky:0x9bdcff,fog:0x9bdcff},
     red:{grass:0xf07855,grassAlt:0xff8a60,road:0x824d50,line:0xffc3a5,water:0x39b9b0,rail:0x9a7770,sleeper:0x8d4036,log:0x9b4d38,sky:0xff987f,fog:0xff987f},
     desert:{grass:0xe8ad62,grassAlt:0xf4c078,road:0x454b59,line:0xf1d7a1,water:0x3b9fc4,rail:0x777d85,sleeper:0x76513c,log:0x98643a,sky:0xf3c27c,fog:0xf3c27c},
-    winter:{grass:0xb9d8ee,grassAlt:0xd9efff,road:0x657b9d,line:0xeaf8ff,water:0x9fe8f5,rail:0x9baec8,sleeper:0x8b8fa7,log:0xc4d9e8,sky:0x9fc9f4,fog:0xb9d7f5}
+    winter:{grass:0xb9d8ee,grassAlt:0xd9efff,road:0x657b9d,line:0xeaf8ff,water:0x9fe8f5,rail:0x9baec8,sleeper:0x8b8fa7,log:0xc4d9e8,sky:0x9fc9f4,fog:0xb9d7f5},
+    neon:{grass:0x17172e,grassAlt:0x202044,road:0x171923,line:0x20e8ff,water:0x172d55,rail:0x55557c,sleeper:0x383052,log:0x685080,sky:0x100d2b,fog:0x171334},
+    darkforest:{grass:0x17251b,grassAlt:0x203324,road:0x252b28,line:0xb6a879,water:0x142d34,rail:0x4b5550,sleeper:0x40372c,log:0x51412d,sky:0x07130e,fog:0x102017}
   }[theme];
   for(const key of ['grass','grassAlt','road','water','rail','sleeper','log']) {
     if(materials[key]) materials[key].color.setHex(palettes[key]);
@@ -409,6 +414,10 @@ function applyMapTheme(theme, announce=false) {
   materials.grassAlt.needsUpdate = true;
   scene.background = new THREE.Color(palettes.sky);
   scene.fog.color.setHex(palettes.fog);
+  scene.fog.near = (theme==='neon'||theme==='darkforest') ? 12 : 22;
+  scene.fog.far = (theme==='neon'||theme==='darkforest') ? 34 : 48;
+  hemiLight.intensity = theme==='darkforest' ? .72 : (theme==='neon' ? 1.05 : 2.0);
+  sun.intensity = (theme==='darkforest'||theme==='neon') ? .55 : 2.4;
   if(changed && announce) showToast('🗺️ مپ جدید: ' + MAP_NAMES[theme]);
 }
 
@@ -865,6 +874,18 @@ function laneGroup(z, type, index) {
       box(group,x,.12,.42,.72,.22,.72,ice,true,true);
     }
   }
+  if(data.theme === 'neon' && type !== 'road') {
+    const shell=makeMaterial(0x17172d);
+    const pink=new THREE.MeshStandardMaterial({color:0xff28c8,emissive:0xff149d,emissiveIntensity:1.7,roughness:.35});
+    const cyan=new THREE.MeshStandardMaterial({color:0x20dfff,emissive:0x00bfff,emissiveIntensity:1.8,roughness:.3});
+    for(const side of [-1,1]) { const x=side*7.0; box(group,x,1.45,0,1.15,2.9,1.15,shell,true,true); box(group,x,.7,.59,.88,.12,.035,side===1?pink:cyan,true,true); box(group,x,2.35,.59,.88,.1,.035,side===1?cyan:pink,true,true); }
+  } else if(data.theme === 'darkforest' && type === 'grass') {
+    const bark=makeMaterial(0x30251d), leaves=makeMaterial(0x102218);
+    for(const side of [-1,1]) { const x=side*6.8; box(group,x,.95,0,.38,1.9,.38,bark,true,true); const crown=new THREE.Mesh(new THREE.ConeGeometry(.95,2.25,5),leaves); crown.position.set(x,2.15,0); crown.castShadow=true; group.add(crown);
+      const lamp=new THREE.Group(); lamp.position.set(x-side*.9,0,.12); box(lamp,0,.82,0,.09,1.64,.09,makeMaterial(0x292d2a),true,true); box(lamp,0,1.68,0,.34,.12,.34,new THREE.MeshStandardMaterial({color:0xffd879,emissive:0xffb52e,emissiveIntensity:2.1}),true,true); group.add(lamp);
+      if(index%4===0){const glow=new THREE.PointLight(0xffc96b,1.1,5.5,2);glow.position.set(x-side*.9,1.65,.12);group.add(glow);}
+    }
+  }
   return data;
 }
 function buildGrass(row) {
@@ -903,6 +924,11 @@ function buildGrass(row) {
         const cone=new THREE.Mesh(new THREE.ConeGeometry(size*.62,.78,4),snowMat);
         cone.position.set(0,y,0); cone.rotation.y=Math.PI/4; cone.castShadow=true; tree.add(cone);
       }
+    } else if(row.theme === 'neon') {
+      const body=makeMaterial(0x18182d), trim=new THREE.MeshStandardMaterial({color:0xff35c9,emissive:0xe9009d,emissiveIntensity:1.6});
+      box(tree,0,.75,0,.82,1.5,.82,body,true,true);box(tree,0,1.1,.43,.62,.12,.035,trim,true,true);
+    } else if(row.theme === 'darkforest') {
+      const bark=makeMaterial(0x30251d), leaves=makeMaterial(0x102218);box(tree,0,.48,0,.28,.96,.28,bark,true,true);const crown=new THREE.Mesh(new THREE.ConeGeometry(.58,1.35,5),leaves);crown.position.y=1.25;crown.castShadow=true;tree.add(crown);
     } else if(row.theme === 'red') {
       const redStone = makeMaterial(0xb93632);
       const coral = makeMaterial(0xf06450);
