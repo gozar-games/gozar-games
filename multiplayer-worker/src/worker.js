@@ -279,7 +279,7 @@ export class Room {
           this.started = true;
           this.startAt = Date.now() + 1500;
           const realPlayers = this.getRealPlayers();
-          this.botCount = realPlayers.length <= 2 ? realPlayers.length : 0;
+          this.botCount = realPlayers.length < MAX_PLAYERS ? 1 : 0;
           this.bots = Array.from({ length: this.botCount }, (_, index) => ({
             id: `ai-${index + 1}`,
             name: `هوش مصنوعی ${index + 1}`,
