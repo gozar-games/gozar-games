@@ -926,6 +926,7 @@ const gozarIntroClips = [
   {src:'https://videos.pexels.com/video-files/7914851/7914851-hd_1920_1080_30fps.mp4',seconds:11,caption:'قدرت یک تیم؛ GOZAR'}
 ];
 let gozarClipTimer=null;
+let gozarClipIndex=-1;
 let gozarIntroFinished=false;
 
 function finishGozarIntro(){
@@ -940,8 +941,9 @@ function finishGozarIntro(){
 }
 
 function playGozarIntroClip(index){
-  if(gozarIntroFinished) return;
+  if(gozarIntroFinished || index<=gozarClipIndex) return;
   if(index>=gozarIntroClips.length){finishGozarIntro();return;}
+  gozarClipIndex=index;
   if(gozarClipTimer) clearTimeout(gozarClipTimer);
   const clip=gozarIntroClips[index];
   const video=document.getElementById('introVideo');
