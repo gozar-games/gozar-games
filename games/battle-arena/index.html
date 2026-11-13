@@ -70,12 +70,12 @@ let wave=1,kills=0,coins=0,health=100,ammo=12,reloading=false,reloadEnd=0,shield
 const rand=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0)}
 addEventListener('resize',resize);resize();
-function start(){ $('overlay').style.display='none';$('hud').hidden=false;$('controls').hidden=false;running=true;player={x:0,y:0,r:17,speed:255,angle:0};spawnWave();last=performance.now();requestAnimationFrame(loop)}
+function start(){ $('overlay').style.display='none';$('hud').hidden=false;$('controls').hidden=false;running=true;player={x:0,y:0,r:17,speed:255,angle:0};aim={x:1,y:0};spawnWave();last=performance.now();requestAnimationFrame(loop)}
 function announce(t){$('banner').textContent=t;$('banner').style.opacity=1;bannerTimer=1.5}
 function spawnWave(){between=0;spawnLeft=Math.min(5+wave*2,32);$('wave').textContent='WAVE '+wave;announce('WAVE '+wave)}
 function spawnEnemy(){let a=rand(0,Math.PI*2),dist=rand(360,520);enemies.push({x:player.x+Math.cos(a)*dist,y:player.y+Math.sin(a)*dist,r:rand(14,19),hp:30+wave*5,speed:rand(48,70)+wave*2,hit:0})}
 function drop(x,y,type){drops.push({x,y,type,r:13,life:18})}
-function shoot(){if(!running||reloading||ammo<=0)return;ammo--;let a=player.angle;bullets.push({x:player.x+Math.cos(a)*23,y:player.y+Math.sin(a)*23,vx:Math.cos(a)*650,vy:Math.sin(a)*650,life:.8,damage:20});if(ammo===0)reload()}
+function shoot(){if(!running||reloading||ammo<=0)return;ammo--;let a=Math.atan2(aim.y,aim.x);player.angle=a;bullets.push({x:player.x+Math.cos(a)*23,y:player.y+Math.sin(a)*23,vx:Math.cos(a)*650,vy:Math.sin(a)*650,life:.8,damage:20});if(ammo===0)reload()}
 function reload(){if(reloading||ammo===12)return;reloading=true;reloadEnd=performance.now()+1250}
 function activateShield(){let now=performance.now();if(now<shieldReady)return;shieldEnd=now+6000;shieldReady=shieldEnd+20000;$('shield').disabled=true;setTimeout(()=>{$('shield').disabled=false},26000)}
 function loop(now){if(!running)return;let dt=Math.min((now-last)/1000,.033);last=now;update(dt,now);draw();requestAnimationFrame(loop)}
@@ -111,17 +111,24 @@ function draw(){
  if(performance.now()<shieldEnd){ctx.strokeStyle='#52c9ff';ctx.lineWidth=4;ctx.beginPath();ctx.arc(W/2,H/2,29,0,Math.PI*2);ctx.stroke()}
 }
 $('start').addEventListener('click',start);
+// Aim independently from movement: tap/drag the arena toward the target, then hold FIRE.
+let aimPointer=null;
+function pointAim(e){if(!running)return;const dx=e.clientX-W/2,dy=e.clientY-H/2,d=Math.hypot(dx,dy)||1;aim={x:dx/d,y:dy/d};player.angle=Math.atan2(aim.y,aim.x)}
+canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;aimPointer=e.pointerId;pointAim(e)});
+canvas.addEventListener('pointermove',e=>{if(aimPointer===e.pointerId)pointAim(e)});
+function endAim(e){if(aimPointer===e.pointerId)aimPointer=null}
+canvas.addEventListener('pointerup',endAim);canvas.addEventListener('pointercancel',endAim);
 $('fire').addEventListener('pointerdown',e=>{e.preventDefault();fireHeld=true;shoot()});['pointerup','pointercancel','pointerleave'].forEach(ev=>$('fire').addEventListener(ev,()=>fireHeld=false));
 $('shield').addEventListener('click',activateShield);$('reload').addEventListener('click',reload);
 let stick=$('stick'),nub=$('nub'),stickId=null;
 stick.addEventListener('pointerdown',e=>{stickId=e.pointerId;stick.setPointerCapture(stickId);stickMove(e)});
 stick.addEventListener('pointermove',e=>{if(e.pointerId===stickId)stickMove(e)});
-function stickMove(e){let r=stick.getBoundingClientRect(),dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2),d=Math.hypot(dx,dy),max=39;if(d>max){dx=dx/d*max;dy=dy/d*max}move={x:dx/max,y:dy/max};nub.style.transform='translate('+dx+'px,'+dy+'px)';if(Math.hypot(move.x,move.y)>.2){player.angle=Math.atan2(move.y,move.x)}}
+function stickMove(e){let r=stick.getBoundingClientRect(),dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2),d=Math.hypot(dx,dy),max=39;if(d>max){dx=dx/d*max;dy=dy/d*max}move={x:dx/max,y:dy/max};nub.style.transform='translate('+dx+'px,'+dy+'px)'}
 function stickEnd(e){if(e.pointerId!==stickId)return;stickId=null;move={x:0,y:0};nub.style.transform='translate(0,0)'}
 stick.addEventListener('pointerup',stickEnd);stick.addEventListener('pointercancel',stickEnd);
 addEventListener('keydown',e=>{if(e.repeat)return;if(e.code==='Space')fireHeld=true;if(e.code==='KeyR')reload();if(e.code==='ShiftLeft')activateShield();});
 addEventListener('keyup',e=>{if(e.code==='Space')fireHeld=false});
-function keyboard(){let x=0,y=0;if(keys.has('KeyA')||keys.has('ArrowLeft'))x--;if(keys.has('KeyD')||keys.has('ArrowRight'))x++;if(keys.has('KeyW')||keys.has('ArrowUp'))y--;if(keys.has('KeyS')||keys.has('ArrowDown'))y++;if(x||y){move={x,y};player.angle=Math.atan2(y,x)}}
+function keyboard(){let x=0,y=0;if(keys.has('KeyA')||keys.has('ArrowLeft'))x--;if(keys.has('KeyD')||keys.has('ArrowRight'))x++;if(keys.has('KeyW')||keys.has('ArrowUp'))y--;if(keys.has('KeyS')||keys.has('ArrowDown'))y++;if(x||y){move={x,y}}}
 const keys=new Set();addEventListener('keydown',e=>keys.add(e.code));addEventListener('keyup',e=>keys.delete(e.code));
 setInterval(()=>{if(running){keyboard();if(fireHeld)shoot()}},120);
 })();
