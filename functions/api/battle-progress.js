@@ -127,10 +127,12 @@ export async function onRequestPost({ request, env }) {
     const kills = Number(body.kills);
     const wave = Number(body.wave);
     const requestedSpend = Number(body.spent_coins || 0);
+    const requestedCoins = Number(body.earned_coins || 0);
     if (!/^[a-zA-Z0-9-]{12,64}$/.test(matchId) ||
         !Number.isSafeInteger(kills) || kills < 0 || kills > 500 ||
         !Number.isSafeInteger(wave) || wave < 1 || wave > 100 ||
-        !Number.isSafeInteger(requestedSpend) || requestedSpend < 0 || requestedSpend > 2500) {
+        !Number.isSafeInteger(requestedSpend) || requestedSpend < 0 || requestedSpend > 2500 ||
+        !Number.isSafeInteger(requestedCoins) || requestedCoins < 0 || requestedCoins > 500) {
       return Response.json({ success: false, error: "Invalid match result" }, { status: 400, headers });
     }
 
@@ -149,7 +151,7 @@ export async function onRequestPost({ request, env }) {
       FROM battle_match_rewards
       WHERE telegram_id = ? AND date(created_at) = date('now')
     `).bind(telegramId).first();
-    const coinsAwarded = Math.max(0, Math.min(500, kills * 10 + wave * 25, 2500 - (dailyCoins?.coins || 0)));
+    const coinsAwarded = Math.max(0, Math.min(requestedCoins, 2500 - (dailyCoins?.coins || 0)));
     const username = user.username || null;
     const currentWallet = await env.DB.prepare(
       "SELECT coins FROM players WHERE telegram_id = ?"
