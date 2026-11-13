@@ -2054,9 +2054,14 @@ document.getElementById('leftButton').addEventListener('pointerdown',e=>{e.preve
 document.getElementById('rightButton').addEventListener('pointerdown',e=>{e.preventDefault();handleMove('right');});
 document.getElementById('forwardButton').addEventListener('pointerdown',e=>{e.preventDefault();handleMove('forward');});
 document.getElementById('backButton').addEventListener('click',()=>{
-  if(tg && tg.close) tg.close();
-  else if(history.length>1) history.back();
-  else location.href='/';
+  if(running) {
+    running=false;
+    if(typeof cancelAnimationFrame==='function' && animationFrameId) cancelAnimationFrame(animationFrameId);
+  }
+  if(roomSocket) leaveRoom();
+  gameOverOverlay.classList.add('hidden');
+  startOverlay.classList.remove('hidden');
+  if(typeof resetGame==='function') resetGame();
 });
 let pointerStart=null;
 stage.addEventListener('pointerdown',e=>{
