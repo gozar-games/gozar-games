@@ -5,7 +5,7 @@ export async function onRequestGet({ request, env, params }) {
 
   try {
     const item = await env.DB.prepare(
-      "SELECT file_id FROM intro_videos WHERE id = ? AND active = 1"
+      "SELECT file_id, media_type FROM intro_videos WHERE id = ? AND active = 1"
     ).bind(id).first();
     if (!item?.file_id) return new Response("Not found", { status: 404 });
 
@@ -25,7 +25,7 @@ export async function onRequestGet({ request, env, params }) {
     if (!media.ok && media.status !== 206) return new Response("Could not fetch video", { status: 502 });
 
     const responseHeaders = new Headers({
-      "Content-Type": media.headers.get("Content-Type") || "video/mp4",
+      "Content-Type": item.media_type === "photo" ? (media.headers.get("Content-Type") || "image/jpeg") : (media.headers.get("Content-Type") || "video/mp4"),
       "Cache-Control": "public, max-age=3600",
       "Accept-Ranges": "bytes",
       "Access-Control-Allow-Origin": "*"
