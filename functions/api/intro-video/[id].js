@@ -4,16 +4,17 @@ export async function onRequestGet({ request, env, params }) {
   if (!Number.isSafeInteger(id) || id < 1) return new Response("Not found", { status: 404 });
 
   try {
-    // Edge-cache photo responses so repeat visitors do not re-download them from Telegram.
-    const cache = caches.default;
-    const cacheKey = new Request(new URL(request.url).toString(), { method: "GET" });
-    const cached = await cache.match(cacheKey);
-    if (cached) return cached;
-
     const item = await env.DB.prepare(
       "SELECT file_id, media_type FROM intro_videos WHERE id = ? AND active = 1"
     ).bind(id).first();
     if (!item?.file_id) return new Response("Not found", { status: 404 });
+
+    if (item.media_type === "photo") {
+      const cache = caches.default;
+      const cacheKey = new Request(new URL(request.url).toString(), { method: "GET" });
+      const cached = await cache.match(cacheKey);
+      if (cached) return cached;
+    }
 
     const fileResponse = await fetch(
       `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getFile?file_id=${encodeURIComponent(item.file_id)}`
