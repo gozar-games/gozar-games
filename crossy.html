@@ -335,13 +335,16 @@ try {
   document.getElementById('startButton').disabled = true;
   throw err;
 }
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.85));
+// High-resolution rendering with a mobile-friendly cap to avoid overheating and frame drops.
+const mobileGPU = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobileGPU ? 1.75 : 2.25));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.shadowMap.autoUpdate = true;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.15;
+renderer.toneMappingExposure = 1.2;
+renderer.setClearColor(0x9bdcff, 1);
 
 const hemiLight = new THREE.HemisphereLight(0xffffff, 0x68805b, 2.0);
 scene.add(hemiLight);
@@ -1313,6 +1316,38 @@ function updateCamera(dt) {
 let nextBossDistance=55;
 let activeBoss=null;
 let meteorShower=null;
+let visualEffects=[];
+function spawnBurst(x,y,z,color=0xffc45c,count=14){
+  for(let i=0;i<count;i++){
+    const mesh=new THREE.Mesh(
+      new THREE.SphereGeometry(.045+Math.random()*.045,6,6),
+      new THREE.MeshBasicMaterial({color,transparent:true,opacity:1})
+    );
+    mesh.position.set(x,y,z);
+    world.add(mesh);
+    const angle=Math.random()*Math.PI*2;
+    const speed=1.2+Math.random()*3.2;
+    visualEffects.push({mesh,vx:Math.cos(angle)*speed,vy:.8+Math.random()*3.2,vz:Math.sin(angle)*speed,life:.45+Math.random()*.35,maxLife:.8});
+  }
+}
+function updateVisualEffects(dt){
+  for(let i=visualEffects.length-1;i>=0;i--){
+    const p=visualEffects[i];
+    p.life-=dt;
+    p.mesh.position.x+=p.vx*dt;
+    p.mesh.position.y+=p.vy*dt;
+    p.mesh.position.z+=p.vz*dt;
+    p.vy-=7*dt;
+    p.mesh.scale.multiplyScalar(Math.max(.01,1-dt*2.2));
+    p.mesh.material.opacity=Math.max(0,p.life/p.maxLife);
+    if(p.life<=0){
+      world.remove(p.mesh);
+      p.mesh.geometry.dispose();
+      p.mesh.material.dispose();
+      visualEffects.splice(i,1);
+    }
+  }
+}
 function clearMeteorShower(){
   if(!meteorShower)return;
   for(const meteor of meteorShower.meteors){
@@ -1373,6 +1408,7 @@ function updateMeteorShower(dt){
     const dx=Math.abs(meteor.group.position.x-player.position.x);
     const dz=Math.abs(meteor.group.position.z-player.position.z);
     if(meteor.group.position.y<=.78 && dx<.88 && dz<.92){
+      spawnBurst(meteor.group.position.x,.45,meteor.group.position.z,0xff5a24,28);
       clearMeteorShower();
       finishGame('شهاب‌سنگ بهت برخورد کرد!');
       return;
@@ -1409,13 +1445,17 @@ function spawnBoss(){
   box(group,.57,.42,0,.24,.76,.28,dark,true,true);
   group.position.set(playerX*LANE_WIDTH,0,player.position.z+9.45);
   world.add(group);
-  activeBoss={group,time:20,start:20};
+  group.scale.setScalar(.06);
+  activeBoss={group,time:20,start:20,intro:0};
   bossHud.classList.remove('hidden');bossTimerEl.textContent='۲۰ ثانیه برای فرار';bossProgressEl.style.width='100%';
   showToast('🚨 باس فایت شروع شد! فرار کن!');
 }
 function updateBoss(dt){
   if(!activeBoss)return;
   activeBoss.time-=dt;
+  activeBoss.intro=Math.min(1,activeBoss.intro+dt*2.6);
+  const introEase=1-Math.pow(1-activeBoss.intro,3);
+  activeBoss.group.scale.setScalar(.06+introEase*.94);
   const gap=activeBoss.group.position.z-player.position.z;
   activeBoss.group.position.z-=3.6*dt;
   const follow=1-Math.exp(-dt*5);
@@ -1476,6 +1516,7 @@ function movePlayer(dx,dz) {
      landedRow.coin.lane === Math.round(playerX)) {
     landedRow.coin.collected=true;
     landedRow.coin.mesh.visible=false;
+    spawnBurst(player.position.x,.55,player.position.z,0xffd447,18);
     score += 5;
     updateScore();
     showToast('🪙 سکه جمع شد! +۵ امتیاز');
@@ -1595,7 +1636,8 @@ function loop(now) {
   const dt=Math.min((now-lastTime)/1000,.05);
   lastTime=now;
   const aiActive=!!(roomSocket&&roomStarted&&myPlayerId===roomHostId&&aiBots.some(bot=>bot.alive));
-  if(running || spectatorMode || aiActive) {
+  if(running || spectatorMode || aiActive || visualEffects.length) {
+    updateVisualEffects(dt);
     if(materials.water.map) materials.water.map.offset.x=(materials.water.map.offset.x+dt*.018)%1;
     if(running)animatePlayer(dt);
     updateTraffic(dt);
@@ -1607,7 +1649,7 @@ function loop(now) {
     if(spectatorMode)updateSpectatorCamera(dt);else if(running)updateCamera(dt);
   }
   render();
-  if(running || spectatorMode || aiActive) animationId=requestAnimationFrame(loop);
+  if(running || spectatorMode || aiActive || visualEffects.length) animationId=requestAnimationFrame(loop);
 }
 let renderWidth=0, renderHeight=0;
 function render() {
