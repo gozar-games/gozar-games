@@ -126,9 +126,11 @@ export async function onRequestPost({ request, env }) {
     const matchId = typeof body.match_id === "string" ? body.match_id : "";
     const kills = Number(body.kills);
     const wave = Number(body.wave);
+    const requestedSpend = Number(body.spent_coins || 0);
     if (!/^[a-zA-Z0-9-]{12,64}$/.test(matchId) ||
         !Number.isSafeInteger(kills) || kills < 0 || kills > 500 ||
-        !Number.isSafeInteger(wave) || wave < 1 || wave > 100) {
+        !Number.isSafeInteger(wave) || wave < 1 || wave > 100 ||
+        !Number.isSafeInteger(requestedSpend) || requestedSpend < 0 || requestedSpend > 2500) {
       return Response.json({ success: false, error: "Invalid match result" }, { status: 400, headers });
     }
 
@@ -149,6 +151,11 @@ export async function onRequestPost({ request, env }) {
     `).bind(telegramId).first();
     const coinsAwarded = Math.max(0, Math.min(500, kills * 10 + wave * 25, 2500 - (dailyCoins?.coins || 0)));
     const username = user.username || null;
+    const currentWallet = await env.DB.prepare(
+      "SELECT coins FROM players WHERE telegram_id = ?"
+    ).bind(telegramId).first();
+    const spentCoins = Math.min(requestedSpend, (currentWallet?.coins || 0) + coinsAwarded);
+    const netCoins = coinsAwarded - spentCoins;
 
     const results = await env.DB.batch([
       env.DB.prepare(`
@@ -172,7 +179,7 @@ export async function onRequestPost({ request, env }) {
           username = COALESCE(excluded.username, players.username),
           coins = players.coins + excluded.coins,
           updated_at = CURRENT_TIMESTAMP
-      `).bind(telegramId, username, coinsAwarded),
+      `).bind(telegramId, username, netCoins),
       env.DB.prepare(`
         INSERT INTO battle_progress
           (telegram_id, xp, level, best_wave, total_kills, updated_at)
@@ -203,6 +210,9 @@ export async function onRequestPost({ request, env }) {
       success: true,
       xp_awarded: xpAwarded,
       coins_awarded: coinsAwarded,
+      coins_awarded: coinsAwarded,
+      coins_spent: spentCoins,
+      wallet_coins: (currentWallet?.coins || 0) + netCoins,
       progress: {
         xp,
         level,
