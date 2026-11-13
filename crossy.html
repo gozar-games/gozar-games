@@ -1173,7 +1173,7 @@ function resetGame() {
   stopSpectating(false);
   clearBoss();
   clearMeteorShower();
-  nextBossDistance=55;
+  nextBossScore=55;
   aiAccumulator=0;aiBroadcastAccumulator=0;
   clearWorld();
   randomMapSegments.clear();
@@ -1329,7 +1329,7 @@ function updateCamera(dt) {
   camera.updateProjectionMatrix();
   camera.lookAt(cameraLookTarget);
 }
-let nextBossDistance=55;
+let nextBossScore=55;
 let activeBoss=null;
 let meteorShower=null;
 let visualEffects=[];
@@ -1377,7 +1377,7 @@ function clearMeteorShower(){
 }
 function startMeteorShower(){
   clearMeteorShower();
-  nextBossDistance=Infinity;
+  nextBossScore=Infinity;
   meteorShower={time:10,spawnTimer:0,meteors:[]};
   showToast('☄️ بارش شهاب‌سنگ! جاخالی بده!');
 }
@@ -1440,7 +1440,7 @@ function updateMeteorShower(dt){
   }
   if(meteorShower && meteorShower.time<=0){
     clearMeteorShower();
-    nextBossDistance=maxForward+10;
+    nextBossScore=score+10;
     showToast('✅ بارش تموم شد! ۱۰ مسافت تا باس بعدی');
   }
 }
@@ -1554,7 +1554,7 @@ function updateScore() {
   scoreEl.textContent=String(score);
   const nextTheme=mapThemeForScore(score);
   if(nextTheme !== currentMapTheme) applyMapTheme(nextTheme,true);
-  if(maxForward>=nextBossDistance && !activeBoss && !meteorShower && running){nextBossDistance=Infinity;spawnBoss();}
+  if(score>=nextBossScore && !activeBoss && !meteorShower && running){nextBossScore=Infinity;spawnBoss();}
 }
 function showToast(message) {
   toastEl.textContent=message;
