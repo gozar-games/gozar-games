@@ -290,7 +290,7 @@ function handleRoomMessage(msg) {
   if(roomSeed && roomSeed!==previousRoomSeed) resetGame();
   const players=msg.players||[]; const realPlayers=players.filter(p=>!p.isAI); const me=players.find(p=>p.id===myPlayerId);
   if(roomStarted && myPlayerId===roomHostId){
-    const desiredBots=realPlayers.length<=2?realPlayers.length:0;
+    const desiredBots=realPlayers.length<4?1:0;
     if(aiBots.length!==desiredBots){
       const existingBots=players.filter(p=>p.isAI).slice(0,desiredBots);
       aiBots=Array.from({length:desiredBots},(_,index)=>{
@@ -1270,14 +1270,14 @@ function updateAIBots(dt) {
     } else bot.ridingLog=null;
     if(current?.type==='rail' && current.train && Math.abs(current.train.position.x-bot.x*LANE_WIDTH)<2.05){bot.alive=false;bot.finishedAt=Date.now();botStateDirty=true;continue;}
   }
-  while(aiAccumulator>=.52){
-    aiAccumulator-=.52;
+  while(aiAccumulator>=.38){
+    aiAccumulator-=.38;
     for(const bot of aiBots){
       if(!bot.alive) continue;
-      bot.cooldown-=.52;if(bot.cooldown>0)continue;
+      bot.cooldown-=.38;if(bot.cooldown>0)continue;
       const botIndex=aiBots.indexOf(bot);
-      // Stagger the opponents so they do not advance in synchronized lockstep.
-      bot.cooldown=.24+(botIndex===1?.42:0)+((bot.row+botIndex)%3)*.07;
+      // A single high-skill rival reacts quickly while still obeying the same hazards.
+      bot.cooldown=.10+((bot.row+botIndex)%2)*.025;
       const nextRow=bot.row+1;ensureRowsThrough(nextRow);
       const lane=rows.get(nextRow);if(!lane)continue;
       let choices=[];
@@ -1302,10 +1302,10 @@ function updateAIBots(dt) {
       else if(otherBots.length) continue;
 
       // Give each opponent a different lane route, not just a different spawn point.
-      const route=botIndex===0?[-2,-1,0,-1][bot.row%4]:[2,1,0,1][bot.row%4];
+      const route=[-1,0,1,0][bot.row%4];
       const preferred=choices.filter(choice=>{
         const x=typeof choice==='number'?choice:choice.x;
-        return botIndex===0?x<=0:x>=0;
+        return Math.abs(x-route)<=1;
       });
       if(preferred.length) choices=preferred;
       choices.sort((a,b)=>{
