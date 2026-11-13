@@ -107,6 +107,9 @@ button{font:inherit;color:inherit;cursor:pointer}
           <button class="skin-option" id="groguSkin" type="button" aria-pressed="false">
             <span class="skin-icon">👽</span><strong>گروگو</strong><small>بیبی یودا</small>
           </button>
+          <button class="skin-option" id="tinkerbellSkin" type="button" aria-pressed="false">
+            <span class="skin-icon">🧚‍♀️</span><strong>تینکربل</strong><small>پری جنگل</small>
+          </button>
         </div>
         <button class="primary" id="startButton">بازی تک‌نفره</button>
         <div class="multiplayer-panel">
@@ -470,7 +473,7 @@ const bellyMat = makeMaterial(0xfff0ce,.92);
 const beakMat = makeMaterial(0xf18a27,.72);
 const eyeMat = makeMaterial(0x171717, .22);
 const SKIN_KEY = 'gozar_crossy_skin_v1';
-const validSkins = ['chicken','suit','spider','batman','grogu'];
+const validSkins = ['chicken','suit','spider','batman','grogu','tinkerbell'];
 let savedSkin = localStorage.getItem(SKIN_KEY);
 let selectedSkin = validSkins.includes(savedSkin) ? savedSkin : 'chicken';
 
@@ -628,6 +631,60 @@ function buildGroguSkin(target=playerBody) {
   addVoxel(target,-.57,.47,-.02,.20,.18,.22,green);
   addVoxel(target,.57,.47,-.02,.20,.18,.22,green);
 }
+function buildTinkerbellSkin(target=playerBody) {
+  // Voxel fairy: blonde bun, bright green leaf dress, blue eyes and translucent wings.
+  const skin=makeMaterial(0xf0c69e,.9), skinLight=makeMaterial(0xffd9b7,.88);
+  const hair=makeMaterial(0xf2ca45,.82), hairLight=makeMaterial(0xffdf69,.78);
+  const green=makeMaterial(0x78c934,.72), greenLight=makeMaterial(0xa2e64d,.68);
+  const greenDark=makeMaterial(0x438d25,.82), blue=makeMaterial(0x287fc5,.3);
+  const white=makeMaterial(0xf7fbff,.28), shoe=makeMaterial(0x4e9b28,.7);
+  // Legs and tiny green shoes.
+  addVoxel(target,-.13,.25,0,.13,.48,.15,skin);
+  addVoxel(target,.13,.25,0,.13,.48,.15,skin);
+  addVoxel(target,-.13,.055,-.055,.22,.12,.28,shoe);
+  addVoxel(target,.13,.055,-.055,.22,.12,.28,shoe);
+  // Leaf-shaped dress, bodice and pointed skirt.
+  addVoxel(target,0,.91,0,.48,.55,.34,green);
+  addVoxel(target,0,.57,-.015,.70,.28,.40,greenLight);
+  addVoxel(target,-.25,.43,-.015,.22,.20,.36,green);
+  addVoxel(target,.25,.43,-.015,.22,.20,.36,green);
+  addVoxel(target,0,.38,-.205,.18,.20,.035,greenDark);
+  // Neck, head and face.
+  addVoxel(target,0,1.24,-.01,.18,.20,.18,skin);
+  addVoxel(target,0,1.57,-.015,.52,.56,.46,skinLight);
+  // Blonde side-swept hair and signature top bun.
+  addVoxel(target,0,1.87,-.015,.55,.18,.48,hair);
+  addVoxel(target,-.18,1.70,-.22,.18,.28,.10,hairLight);
+  addVoxel(target,.08,2.00,.005,.28,.23,.28,hair);
+  addVoxel(target,.08,2.13,.005,.20,.12,.20,hairLight);
+  // Bright blue eyes, small nose and smile.
+  addVoxel(target,-.13,1.61,-.253,.095,.12,.035,blue);
+  addVoxel(target,.13,1.61,-.253,.095,.12,.035,blue);
+  addVoxel(target,-.13,1.64,-.276,.035,.045,.018,white);
+  addVoxel(target,.13,1.64,-.276,.035,.045,.018,white);
+  addVoxel(target,0,1.51,-.255,.065,.055,.045,skin);
+  addVoxel(target,0,1.43,-.254,.13,.025,.018,makeMaterial(0xb96861,.8));
+  // Arms stretched gently to each side.
+  addVoxel(target,-.39,.94,-.005,.28,.12,.14,skin);
+  addVoxel(target,.39,.94,-.005,.28,.12,.14,skin);
+  addVoxel(target,-.55,.91,-.005,.12,.10,.12,skin);
+  addVoxel(target,.55,.91,-.005,.12,.10,.12,skin);
+  // Two pairs of delicate translucent wings, visible from front and back.
+  const wingMat=new THREE.MeshStandardMaterial({color:0xdff8ff,roughness:.28,metalness:.05,transparent:true,opacity:.52,side:THREE.DoubleSide,depthWrite:false});
+  const wingPairs=[
+    {x:-.40,y:1.28,z:.20,w:.48,h:.72,rot:-.42},
+    {x:.40,y:1.28,z:.20,w:.48,h:.72,rot:.42},
+    {x:-.32,y:1.05,z:.22,w:.38,h:.48,rot:.55},
+    {x:.32,y:1.05,z:.22,w:.38,h:.48,rot:-.55}
+  ];
+  for(const wing of wingPairs){
+    const mesh=new THREE.Mesh(new THREE.PlaneGeometry(wing.w,wing.h),wingMat);
+    mesh.position.set(wing.x,wing.y,wing.z);
+    mesh.rotation.z=wing.rot;
+    mesh.castShadow=false;
+    target.add(mesh);
+  }
+}
 function buildSkinModel(skinName, target) {
   const safeSkin = validSkins.includes(skinName) ? skinName : 'chicken';
   target.clear();
@@ -635,12 +692,13 @@ function buildSkinModel(skinName, target) {
   else if(safeSkin === 'spider') buildSpiderSkin(target);
   else if(safeSkin === 'batman') buildBatmanSkin(target);
   else if(safeSkin === 'grogu') buildGroguSkin(target);
+  else if(safeSkin === 'tinkerbell') buildTinkerbellSkin(target);
   else buildChickenSkin(target);
   return safeSkin;
 }
 function applySkin(skinName, persist=true) {
   selectedSkin = buildSkinModel(skinName, playerBody);
-  const skinButtons = {chicken:'chickenSkin',suit:'suitSkin',spider:'spiderSkin',batman:'batmanSkin',grogu:'groguSkin'};
+  const skinButtons = {chicken:'chickenSkin',suit:'suitSkin',spider:'spiderSkin',batman:'batmanSkin',grogu:'groguSkin',tinkerbell:'tinkerbellSkin'};
   for(const [skin,id] of Object.entries(skinButtons)) {
     const button=document.getElementById(id);
     if(button) {
@@ -1250,6 +1308,7 @@ document.getElementById('suitSkin').addEventListener('click',()=>applySkin('suit
 document.getElementById('spiderSkin').addEventListener('click',()=>applySkin('spider'));
 document.getElementById('batmanSkin').addEventListener('click',()=>applySkin('batman'));
 document.getElementById('groguSkin').addEventListener('click',()=>applySkin('grogu'));
+document.getElementById('tinkerbellSkin').addEventListener('click',()=>applySkin('tinkerbell'));
 document.getElementById('startButton').addEventListener('click',()=>startGame());
 document.getElementById('createRoomButton').addEventListener('click',createRoom);
 document.getElementById('joinRoomButton').addEventListener('click',joinRoom);
