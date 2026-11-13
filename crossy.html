@@ -113,6 +113,9 @@ button{font:inherit;color:inherit;cursor:pointer}
           <button class="skin-option" id="duckSkin" type="button" aria-pressed="false">
             <span class="skin-icon">🦆</span><strong>اردک سبز</strong><small>اردک مکعبی</small>
           </button>
+          <button class="skin-option" id="grootSkin" type="button" aria-pressed="false">
+            <span class="skin-icon">🌳</span><strong>گروت</strong><small>نگهبان کوچک جنگل</small>
+          </button>
         </div>
         <button class="primary" id="startButton">بازی تک‌نفره</button>
         <div class="multiplayer-panel">
@@ -476,7 +479,7 @@ const bellyMat = makeMaterial(0xfff0ce,.92);
 const beakMat = makeMaterial(0xf18a27,.72);
 const eyeMat = makeMaterial(0x171717, .22);
 const SKIN_KEY = 'gozar_crossy_skin_v1';
-const validSkins = ['chicken','suit','spider','batman','grogu','tinkerbell','duck'];
+const validSkins = ['chicken','suit','spider','batman','grogu','tinkerbell','duck','groot'];
 let savedSkin = localStorage.getItem(SKIN_KEY);
 let selectedSkin = validSkins.includes(savedSkin) ? savedSkin : 'chicken';
 
@@ -718,6 +721,40 @@ function buildDuckSkin(target=playerBody) {
   addVoxel(target,0,1.23,-.59,.62,.34,.48,yellow);
   addVoxel(target,0,1.13,-.57,.58,.10,.42,yellowSide);
 }
+function buildGrootSkin(target=playerBody) {
+  // A compact voxel tree creature inspired by the supplied Groot reference.
+  const bark=makeMaterial(0x79502f,.94), barkLight=makeMaterial(0x9b6940,.9);
+  const barkDark=makeMaterial(0x49301f,.96), leaf=makeMaterial(0x547b32,.9);
+  const eye=makeMaterial(0x090b0c,.18), eyeShine=makeMaterial(0xffffff,.12);
+  addVoxel(target,-.19,.12,-.015,.25,.22,.25,barkDark);
+  addVoxel(target,.19,.12,-.015,.25,.22,.25,barkDark);
+  addVoxel(target,-.19,.34,0,.17,.30,.18,bark);
+  addVoxel(target,.19,.34,0,.17,.30,.18,bark);
+  addVoxel(target,0,.72,0,.66,.68,.48,bark);
+  addVoxel(target,0,.82,-.255,.48,.48,.055,barkLight);
+  addVoxel(target,-.20,.70,-.29,.10,.52,.045,barkDark);
+  addVoxel(target,.18,.68,-.29,.09,.48,.045,barkDark);
+  addVoxel(target,-.05,.55,-.30,.08,.34,.04,barkLight);
+  addVoxel(target,-.43,.77,0,.18,.48,.20,barkDark);
+  addVoxel(target,-.51,.52,-.03,.18,.30,.18,bark);
+  addVoxel(target,.43,.77,0,.18,.48,.20,barkDark);
+  addVoxel(target,.51,.52,-.03,.18,.30,.18,bark);
+  addVoxel(target,-.55,.39,-.08,.22,.13,.14,barkLight);
+  addVoxel(target,.55,.39,-.08,.22,.13,.14,barkLight);
+  addVoxel(target,0,1.43,-.015,.78,.88,.66,bark);
+  addVoxel(target,-.20,1.89,-.005,.24,.22,.28,barkLight);
+  addVoxel(target,.03,1.99,0,.23,.30,.25,bark);
+  addVoxel(target,.25,1.88,.015,.22,.24,.24,barkDark);
+  addVoxel(target,-.36,1.70,0,.17,.28,.23,barkDark);
+  addVoxel(target,.36,1.69,0,.16,.27,.22,barkLight);
+  addVoxel(target,-.19,1.48,-.35,.20,.22,.075,eye);
+  addVoxel(target,.19,1.48,-.35,.20,.22,.075,eye);
+  addVoxel(target,-.23,1.54,-.395,.045,.05,.018,eyeShine);
+  addVoxel(target,.15,1.54,-.395,.045,.05,.018,eyeShine);
+  addVoxel(target,0,1.22,-.355,.20,.045,.035,barkDark);
+  addVoxel(target,-.34,1.94,-.015,.12,.09,.12,leaf);
+  addVoxel(target,.31,1.97,.015,.11,.08,.11,leaf);
+}
 function buildSkinModel(skinName, target) {
   const safeSkin = validSkins.includes(skinName) ? skinName : 'chicken';
   target.clear();
@@ -727,12 +764,13 @@ function buildSkinModel(skinName, target) {
   else if(safeSkin === 'grogu') buildGroguSkin(target);
   else if(safeSkin === 'tinkerbell') buildTinkerbellSkin(target);
   else if(safeSkin === 'duck') buildDuckSkin(target);
+  else if(safeSkin === 'groot') buildGrootSkin(target);
   else buildChickenSkin(target);
   return safeSkin;
 }
 function applySkin(skinName, persist=true) {
   selectedSkin = buildSkinModel(skinName, playerBody);
-  const skinButtons = {chicken:'chickenSkin',suit:'suitSkin',spider:'spiderSkin',batman:'batmanSkin',grogu:'groguSkin',tinkerbell:'tinkerbellSkin',duck:'duckSkin'};
+  const skinButtons = {chicken:'chickenSkin',suit:'suitSkin',spider:'spiderSkin',batman:'batmanSkin',grogu:'groguSkin',tinkerbell:'tinkerbellSkin',duck:'duckSkin',groot:'grootSkin'};
   for(const [skin,id] of Object.entries(skinButtons)) {
     const button=document.getElementById(id);
     if(button) {
@@ -1436,6 +1474,7 @@ document.getElementById('batmanSkin').addEventListener('click',()=>applySkin('ba
 document.getElementById('groguSkin').addEventListener('click',()=>applySkin('grogu'));
 document.getElementById('tinkerbellSkin').addEventListener('click',()=>applySkin('tinkerbell'));
 document.getElementById('duckSkin').addEventListener('click',()=>applySkin('duck'));
+document.getElementById('grootSkin').addEventListener('click',()=>applySkin('groot'));
 document.getElementById('startButton').addEventListener('click',()=>startGame());
 document.getElementById('createRoomButton').addEventListener('click',createRoom);
 document.getElementById('joinRoomButton').addEventListener('click',joinRoom);
