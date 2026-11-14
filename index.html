@@ -824,31 +824,39 @@ function setDailyReward(data){
 async function loadWallet(){
   const coinElement = document.getElementById('coinCount');
   const userElement = document.getElementById('userName');
+  const nativeSession = !!(
+    window.GOZAR_PLATFORM?.isNative &&
+    localStorage.getItem('gozar_native_session')
+  );
 
-  if(!tg || !tg.initData){
+  // Native Android uses the verified session exchanged with the Telegram bot.
+  // Do not treat the bridge's placeholder Telegram WebApp user as the real player.
+  if(!nativeSession && (!tg || !tg.initData)){
     userElement.textContent = 'بازیکن مهمان';
     coinElement.textContent = '—';
-
     showToast('برای مشاهده کیف پول، از تلگرام وارد شو');
     return;
   }
 
-  tg.ready();
-  tg.expand();
-
-  if(tg.initDataUnsafe && tg.initDataUnsafe.user){
-    setUserInfo(tg.initDataUnsafe.user);
+  if(!nativeSession){
+    tg.ready();
+    tg.expand();
+    if(tg.initDataUnsafe && tg.initDataUnsafe.user){
+      setUserInfo(tg.initDataUnsafe.user);
+    }
   }
 
   try{
-    const response = await fetch('/api/wallet', {
+    const requestOptions = {
       method: 'GET',
-      headers: {
-        'X-Telegram-Init-Data': tg.initData
-      },
+      headers: {},
       cache: 'no-store'
-    });
+    };
+    if(!nativeSession){
+      requestOptions.headers['X-Telegram-Init-Data'] = tg.initData;
+    }
 
+    const response = await fetch('/api/wallet', requestOptions);
     const data = await response.json();
 
     if(!response.ok || !data.success){
@@ -856,17 +864,23 @@ async function loadWallet(){
     }
 
     const wallet = data.wallet;
-
     if(!wallet){
       throw new Error('Wallet data missing');
     }
 
+    if(nativeSession){
+      userElement.textContent = wallet.username
+        ? '@' + wallet.username
+        : 'حساب تلگرام متصل';
+    }
     coinElement.textContent = formatCoins(wallet.coins);
 
   }catch(error){
     console.error('Wallet error:', error);
-
     coinElement.textContent = '—';
+    if(nativeSession){
+      userElement.textContent = 'خطا در دریافت حساب';
+    }
     showToast('دریافت موجودی ناموفق بود');
   }
 }
