@@ -97,6 +97,28 @@
     }
   };
 
+  function addNativeAccountControls() {
+    if (location.pathname !== '/' && location.pathname !== '/index.html') return;
+    if (!getSessionToken() || document.getElementById('gozarNativeAccount')) return;
+    const header = document.querySelector('.header');
+    if (!header) return;
+    const control = document.createElement('button');
+    control.id = 'gozarNativeAccount';
+    control.type = 'button';
+    control.textContent = 'اتصال فعال · خروج';
+    control.style.cssText = 'border:1px solid #5a3035;border-radius:10px;background:#211316;color:#ffb2b7;padding:8px 10px;font:700 10px Vazirmatn,sans-serif;max-width:125px';
+    control.addEventListener('click', async () => {
+      control.disabled = true;
+      control.textContent = 'در حال خروج...';
+      try {
+        await window.fetch('/api/native-auth/revoke', { method: 'POST' });
+      } catch {}
+      try { localStorage.removeItem('gozar_native_session'); } catch {}
+      location.reload();
+    });
+    header.appendChild(control);
+  }
+
   function showNativeLogin() {
     if (location.pathname !== '/' && location.pathname !== '/index.html') return;
     if (getSessionToken() || document.getElementById('gozarNativeLogin')) return;
@@ -162,9 +184,14 @@
     });
   }
 
+  function initializeNativeHome() {
+    if (getSessionToken()) addNativeAccountControls();
+    else showNativeLogin();
+  }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', showNativeLogin, { once: true });
+    document.addEventListener('DOMContentLoaded', initializeNativeHome, { once: true });
   } else {
-    showNativeLogin();
+    initializeNativeHome();
   }
 })();
