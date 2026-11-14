@@ -25,6 +25,8 @@ export async function onRequest(context) {
   const response = await context.next();
   if (!allowed) return response;
 
+  if (response.status === 101) return response;
+
   const headers = new Headers(response.headers);
   for (const [name, value] of Object.entries(corsHeaders(origin))) {
     headers.set(name, value);
