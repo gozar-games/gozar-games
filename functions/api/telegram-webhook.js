@@ -88,7 +88,7 @@ export async function onRequestPost({ request, env }) {
 
       if (message.text?.startsWith("/start")) {
         await send(env, chatId, "🎮 به GOZAR GAMES خوش اومدی!\n\nاز منوی زیر استفاده کن.\nبرای اتصال اپ اندروید، دستور /link را بفرست.", menu(isAdmin));
-      } else if (message.text?.trim().split(/\\s+/)[0].split("@")[0] === "/link") {
+      } else if (message.text?.trim().split(/\s+/)[0].split("@")[0] === "/link") {
         if (message.chat?.type !== "private") {
           await send(env, chatId, "برای امنیت، دستور /link را فقط در گفت‌وگوی خصوصی ربات بفرست.");
         } else if (!userId) {
