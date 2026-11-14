@@ -1,0 +1,22 @@
+{
+  "name": "gozar-games-android",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Capacitor Android wrapper for GOZAR GAMES",
+  "scripts": {
+    "build:web": "node android-app/scripts/build-web.mjs",
+    "check:android-web": "node android-app/scripts/smoke-check.mjs",
+    "android:sync": "npm run build:web && cap sync android",
+    "android:open": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/core": "^7.4.3",
+    "three": "0.160.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.3",
+    "typescript": "^5.8.3"
+  },
+  "type": "module"
+}

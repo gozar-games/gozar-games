@@ -1,3 +1,5 @@
+import { createNativeLinkCode } from "../_shared/auth.js";
+
 const ADMIN_ID = "7634869996";
 
 async function telegram(env, method, body) {
@@ -15,7 +17,8 @@ function menu(isAdmin) {
   const rows = [
     [{ text: "🎮 اجرای بازی", web_app: { url: "https://gozar-games.pages.dev" } }],
     [{ text: "👤 پروفایل من", callback_data: "profile" }, { text: "🏆 رتبه‌بندی", callback_data: "ranking" }],
-    [{ text: "🎬 تماشای ویدیوها", callback_data: "videos" }]
+    [{ text: "🎬 تماشای ویدیوها", callback_data: "videos" }],
+    [{ text: "📱 اتصال اپ اندروید", callback_data: "native_link" }]
   ];
   if (isAdmin) rows.push([{ text: "👑 پنل مدیریت", callback_data: "admin" }]);
   return { inline_keyboard: rows };
@@ -85,7 +88,16 @@ export async function onRequestPost({ request, env }) {
       const isAdmin = userId === ADMIN_ID;
 
       if (message.text?.startsWith("/start")) {
-        await send(env, chatId, "🎮 به GOZAR GAMES خوش اومدی!\n\nاز منوی زیر استفاده کن.", menu(isAdmin));
+        await send(env, chatId, "🎮 به GOZAR GAMES خوش اومدی!\n\nاز منوی زیر استفاده کن.\nبرای اتصال اپ اندروید، دستور /link را بفرست.", menu(isAdmin));
+      } else if (message.text?.trim().split(/\s+/)[0].split("@")[0] === "/link") {
+        if (message.chat?.type !== "private") {
+          await send(env, chatId, "برای امنیت، دستور /link را فقط در گفت‌وگوی خصوصی ربات بفرست.");
+        } else if (!userId) {
+          await send(env, chatId, "حساب تلگرام شناسایی نشد. دوباره تلاش کن.");
+        } else {
+          const link = await createNativeLinkCode(env.DB, userId);
+          await send(env, chatId, "🔐 کد اتصال یک‌بارمصرف اپ GOZAR GAMES:\n\n" + link.code + "\n\nاین کد فقط ۵ دقیقه معتبر است و فقط یک بار استفاده می‌شود. آن را فقط داخل اپ رسمی GOZAR وارد کن؛ برای هیچ‌کس نفرست.");
+        }
       } else if (isAdmin && message.video) {
         const video = message.video;
         const draft = await env.DB.prepare("SELECT title FROM intro_video_drafts WHERE user_id = ?").bind(userId).first();
@@ -133,7 +145,7 @@ export async function onRequestPost({ request, env }) {
           await send(env, chatId, "عنوان ویدیو را به‌صورت یک پیام متنی معمولی بفرست.");
         } else {
           await env.DB.prepare("INSERT INTO intro_video_drafts (user_id, title) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET title = excluded.title, updated_at = CURRENT_TIMESTAMP").bind(userId, title).run();
-          await send(env, chatId, `✅ عنوان ذخیره شد: «${title}»\\nحالا ویدیوی مربوط به همین عنوان را ارسال کن.`);
+          await send(env, chatId, `✅ عنوان ذخیره شد: «${title}»\nحالا ویدیوی مربوط به همین عنوان را ارسال کن.`);
         }
         }
       }
@@ -148,6 +160,15 @@ export async function onRequestPost({ request, env }) {
 
       if (data === "home") {
         await send(env, chatId, "منوی اصلی GOZAR GAMES", menu(isAdmin));
+      } else if (data === "native_link") {
+        if (callback.message.chat?.type !== "private") {
+          await send(env, chatId, "برای امنیت، اتصال اپ را فقط در گفت‌وگوی خصوصی ربات انجام بده.");
+        } else if (!userId) {
+          await send(env, chatId, "حساب تلگرام شناسایی نشد. دوباره تلاش کن.");
+        } else {
+          const link = await createNativeLinkCode(env.DB, userId);
+          await send(env, chatId, "🔐 کد اتصال یک‌بارمصرف اپ GOZAR GAMES:\n\n" + link.code + "\n\nاین کد فقط ۵ دقیقه معتبر است و فقط یک بار استفاده می‌شود. آن را فقط داخل اپ رسمی GOZAR وارد کن؛ برای هیچ‌کس نفرست.");
+        }
       } else if (data === "admin" && isAdmin) {
         await adminPanel(env, chatId);
       } else if (data === "admin_list" && isAdmin) {

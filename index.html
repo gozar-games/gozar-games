@@ -559,8 +559,8 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 
     <div>
       <div class="user-name" id="userName">در حال دریافت اطلاعات...</div>
-      <div class="level">Level 1</div>
-      <div class="progress"><div></div></div>
+      <div class="level">Level <span id="playerLevel">1</span> · <span id="playerXp">0</span> XP</div>
+      <div class="progress"><div id="xpProgress" style="width:0%"></div></div>
     </div>
   </div>
 
@@ -868,6 +868,33 @@ async function loadWallet(){
 
     coinElement.textContent = '—';
     showToast('دریافت موجودی ناموفق بود');
+  }
+}
+
+async function loadBattleProgress(){
+  if(!tg || !tg.initData) return;
+
+  try{
+    const response = await fetch('/api/battle-progress', {
+      method: 'GET',
+      headers: { 'X-Telegram-Init-Data': tg.initData },
+      cache: 'no-store'
+    });
+    const data = await response.json();
+    if(!response.ok || !data.success || !data.progress) return;
+
+    const level = Math.max(1, Number(data.progress.level) || 1);
+    const xp = Math.max(0, Number(data.progress.xp) || 0);
+    const nextLevelXp = Math.max(level * level * 100, Number(data.progress.next_level_xp) || 0);
+    const previousLevelXp = (level - 1) * (level - 1) * 100;
+    const range = Math.max(1, nextLevelXp - previousLevelXp);
+    const percent = Math.max(0, Math.min(100, ((xp - previousLevelXp) / range) * 100));
+
+    document.getElementById('playerLevel').textContent = String(level);
+    document.getElementById('playerXp').textContent = formatCoins(xp);
+    document.getElementById('xpProgress').style.width = percent.toFixed(1) + '%';
+  }catch(error){
+    console.warn('Battle progress load failed:', error);
   }
 }
 
@@ -1249,6 +1276,7 @@ if(tg){
 
 loadWallet();
 loadDailyReward();
+loadBattleProgress();
 </script>
 
 </body>
