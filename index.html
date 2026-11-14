@@ -857,11 +857,19 @@ async function loadWallet(){
       headers: {},
       cache: 'no-store'
     };
-    if(!nativeSession){
+    if(nativeSession){
+      // Send the verified Android session explicitly with the wallet request.
+      // The native bridge also adds this header for other API calls, but the
+      // profile must not depend on bridge interception to authenticate.
+      requestOptions.headers['X-Gozar-Native-Session'] = localStorage.getItem('gozar_native_session') || '';
+    }else{
       requestOptions.headers['X-Telegram-Init-Data'] = tg.initData;
     }
 
-    const response = await fetch('/api/wallet', requestOptions);
+    const walletUrl = nativeSession
+      ? 'https://gozar-games.pages.dev/api/wallet'
+      : '/api/wallet';
+    const response = await fetch(walletUrl, requestOptions);
     const data = await response.json();
 
     if(!response.ok || !data.success){
