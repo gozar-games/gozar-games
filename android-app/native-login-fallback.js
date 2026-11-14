@@ -25,6 +25,17 @@
     const wrap = document.createElement('div');
     wrap.id = 'gozarLoginFallbackDialog';
     wrap.style.cssText = 'position:fixed;inset:0;z-index:2147483001;display:flex;align-items:center;justify-content:center;padding:20px;background:#050505ed;color:white;font-family:Arial,sans-serif';
+    if (hasSession()) {
+      wrap.innerHTML = '<div style="width:min(100%,390px);padding:24px 20px;border:1px solid #2d8d57;border-radius:20px;background:linear-gradient(145deg,#102117,#0c0e12);text-align:center"><div style="font-size:42px">✅</div><h2>حساب تلگرام متصل است</h2><p style="font-size:13px;line-height:2;color:#ddd">نشست حساب روی این دستگاه ذخیره شده است.</p><button id="gozarFallbackLogout" style="width:100%;padding:14px;border:0;border-radius:12px;background:#ed1725;color:white;font-weight:900">خروج از حساب</button><button id="gozarFallbackClose" style="width:100%;margin-top:10px;padding:10px;border:1px solid #555;border-radius:10px;background:#171717;color:#ddd">بستن</button></div>';
+      document.body.appendChild(wrap);
+      wrap.querySelector('#gozarFallbackClose').addEventListener('click', () => wrap.remove());
+      wrap.querySelector('#gozarFallbackLogout').addEventListener('click', async () => {
+        try { await fetch(API + '/api/native-auth/revoke', { method: 'POST' }); } catch {}
+        try { localStorage.removeItem('gozar_native_session'); } catch {}
+        location.reload();
+      });
+      return;
+    }
     wrap.innerHTML = '<div style="width:min(100%,390px);padding:24px 20px;border:1px solid #ed3342;border-radius:20px;background:linear-gradient(145deg,#211014,#0c0e12);text-align:center;box-shadow:0 20px 65px #000b"><div style="font-size:42px">🎮</div><h2 style="margin:8px 0">اتصال حساب تلگرام</h2><p style="font-size:13px;line-height:2;color:#ddd">در ربات @GozarGamesBot روی «اتصال اپ اندروید» بزن یا دستور /link را ارسال کن؛ سپس کد ۸ کاراکتری را اینجا وارد کن.</p><input id="gozarFallbackCode" maxlength="8" autocomplete="one-time-code" placeholder="کد ۸ کاراکتری" style="box-sizing:border-box;width:100%;margin:12px 0;padding:14px;border:1px solid #666;border-radius:12px;background:#090909;color:white;text-align:center;direction:ltr;font-size:22px;letter-spacing:5px;text-transform:uppercase"><button id="gozarFallbackSubmit" style="width:100%;padding:14px;border:0;border-radius:12px;background:#ed1725;color:white;font-weight:900">اتصال حساب</button><p id="gozarFallbackStatus" style="min-height:22px;color:#ff9da4;font-size:12px"></p><button id="gozarFallbackClose" style="width:100%;padding:10px;border:1px solid #555;border-radius:10px;background:#171717;color:#ddd">بستن</button><p style="font-size:11px;color:#999">کد یک‌بارمصرف ۵ دقیقه اعتبار دارد.</p></div>';
     document.body.appendChild(wrap);
     const input = wrap.querySelector('#gozarFallbackCode');
@@ -50,6 +61,8 @@
         if (!response.ok || !data.success || !data.token) throw new Error(data.error || 'اتصال انجام نشد.');
         localStorage.setItem('gozar_native_session', data.token);
         status.textContent = 'حساب متصل شد؛ در حال بارگذاری...';
+        submit.textContent = 'متصل شد ✓';
+        wrap.remove();
         location.reload();
       } catch (error) {
         status.textContent = error.message || 'ارتباط با سرور برقرار نشد.';
