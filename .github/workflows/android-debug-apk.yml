@@ -79,6 +79,24 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      - name: Set increasing Android app version
+        working-directory: android
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          python3 - <<'PY'
+          import os, re
+          from pathlib import Path
+          p = Path('app/build.gradle')
+          s = p.read_text()
+          s, count = re.subn(r'versionCode\\s+\\d+', f"versionCode {os.environ['BUILD_NUMBER']}", s, count=1)
+          if count != 1:
+              raise SystemExit('Could not find versionCode in app/build.gradle')
+          s = re.sub(r'versionName\\s+[\"\\'][^\"\\']+[\"\\']', f'versionName "1.0.{os.environ["BUILD_NUMBER"]}"', s, count=1)
+          p.write_text(s)
+          print(f"Configured versionCode {os.environ['BUILD_NUMBER']}")
+          PY
+
       - name: Configure persistent debug signing key
         env:
           GOZAR_ANDROID_KEYSTORE_BASE64: ${{ secrets.GOZAR_ANDROID_KEYSTORE_BASE64 }}
