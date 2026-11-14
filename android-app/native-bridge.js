@@ -15,24 +15,6 @@
     return url.toString();
   }
 
-  window.fetch = function(input, init) {
-    try {
-      if (typeof input === 'string' || input instanceof URL) {
-        const resolved = resolveApiUrl(String(input));
-        return originalFetch(resolved, init);
-      }
-      if (input instanceof Request) {
-        const resolved = resolveApiUrl(input.url);
-        if (resolved !== input.url) {
-          return originalFetch(new Request(resolved, input), init);
-        }
-      }
-    } catch (error) {
-      return Promise.reject(error);
-    }
-    return originalFetch(input, init);
-  };
-
   const NativeWebSocket = window.WebSocket;
   function GozarWebSocket(url, protocols) {
     const resolved = new URL(url, window.location.href);
@@ -92,14 +74,24 @@
     return { resolved, init: { ...(init || {}), headers } };
   }
 
-  window.fetch = function(input, init) {
+  window.fetch = async function(input, init) {
     try {
       const prepared = addNativeSession(input, init);
-      if (input instanceof Request) {
-        const request = new Request(prepared.resolved, input);
-        return originalFetch(new Request(request, prepared.init));
+      const request = input instanceof Request
+        ? new Request(prepared.resolved, input)
+        : prepared.resolved;
+      const response = await originalFetch(
+        input instanceof Request ? new Request(request, prepared.init) : prepared.resolved,
+        input instanceof Request ? undefined : prepared.init
+      );
+      if (response.status === 401 && getSessionToken()) {
+        const path = new URL(prepared.resolved).pathname;
+        if (path.startsWith('/api/') && path !== '/api/native-auth/exchange') {
+          try { localStorage.removeItem('gozar_native_session'); } catch {}
+          showNativeLogin();
+        }
       }
-      return originalFetch(prepared.resolved, prepared.init);
+      return response;
     } catch (error) {
       return Promise.reject(error);
     }
@@ -107,7 +99,7 @@
 
   function showNativeLogin() {
     if (location.pathname !== '/' && location.pathname !== '/index.html') return;
-    if (getSessionToken()) return;
+    if (getSessionToken() || document.getElementById('gozarNativeLogin')) return;
 
     const root = document.createElement('div');
     root.id = 'gozarNativeLogin';
