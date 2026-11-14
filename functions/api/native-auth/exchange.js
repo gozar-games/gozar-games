@@ -13,8 +13,30 @@ export async function onRequestPost({ request, env }) {
     }
 
     await ensureNativeAuthTables(env.DB);
-    const codeHash = await sha256Hex(code);
     const now = Math.floor(Date.now() / 1000);
+    const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+    const ipHash = await sha256Hex(ip);
+    await env.DB.prepare(`
+      INSERT INTO native_link_attempts (ip_hash, window_start, attempts)
+      VALUES (?, ?, 1)
+      ON CONFLICT(ip_hash) DO UPDATE SET
+        attempts = CASE
+          WHEN native_link_attempts.window_start <= ? THEN 1
+          ELSE native_link_attempts.attempts + 1
+        END,
+        window_start = CASE
+          WHEN native_link_attempts.window_start <= ? THEN excluded.window_start
+          ELSE native_link_attempts.window_start
+        END
+    `).bind(ipHash, now, now - 900, now - 900).run();
+    const attempt = await env.DB.prepare(
+      "SELECT attempts FROM native_link_attempts WHERE ip_hash = ?"
+    ).bind(ipHash).first();
+    if ((attempt?.attempts || 0) > 10) {
+      return Response.json({ success: false, error: "تعداد تلاش‌ها زیاد است؛ ۱۵ دقیقه دیگر دوباره امتحان کن." }, { status: 429, headers });
+    }
+
+    const codeHash = await sha256Hex(code);
     const link = await env.DB.prepare(`
       SELECT telegram_id FROM native_link_codes
       WHERE code_hash = ? AND used_at IS NULL AND expires_at > ?
