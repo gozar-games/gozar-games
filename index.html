@@ -824,10 +824,15 @@ function setDailyReward(data){
 async function loadWallet(){
   const coinElement = document.getElementById('coinCount');
   const userElement = document.getElementById('userName');
-  const nativeSession = !!(
-    window.GOZAR_PLATFORM?.isNative &&
-    localStorage.getItem('gozar_native_session')
-  );
+  // The saved native session is the source of truth inside the Android WebView.
+  // Do not depend on the platform bridge flag: the bridge may initialize after
+  // this page's wallet loader on some WebView startup paths.
+  let nativeSession = false;
+  try {
+    nativeSession = !!localStorage.getItem('gozar_native_session');
+  } catch(error) {
+    console.warn('Native session storage unavailable:', error);
+  }
 
   // Native Android uses the verified session exchanged with the Telegram bot.
   // Do not treat the bridge's placeholder Telegram WebApp user as the real player.
