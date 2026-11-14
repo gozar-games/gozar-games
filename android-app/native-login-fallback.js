@@ -1,7 +1,7 @@
 (() => {
   'use strict';
   const API = 'https://gozar-games.pages.dev';
-  const isHome = () => location.pathname === '/' || location.pathname.endsWith('/index.html');
+  const isHome = () => location.pathname === '/' || location.pathname === '/index.html';
   const hasSession = () => {
     try { return !!localStorage.getItem('gozar_native_session'); } catch { return false; }
   };
