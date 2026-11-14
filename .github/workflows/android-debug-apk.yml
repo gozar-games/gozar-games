@@ -89,10 +89,10 @@ jobs:
           from pathlib import Path
           p = Path('app/build.gradle')
           s = p.read_text()
-          s, count = re.subn(r'versionCode\\s+\\d+', f"versionCode {os.environ['BUILD_NUMBER']}", s, count=1)
+          s, count = re.subn(r'versionCode[ ]+[0-9]+', f"versionCode {os.environ['BUILD_NUMBER']}", s, count=1)
           if count != 1:
               raise SystemExit('Could not find versionCode in app/build.gradle')
-          s = re.sub(r'versionName\\s+[\"\\'][^\"\\']+[\"\\']', f'versionName "1.0.{os.environ["BUILD_NUMBER"]}"', s, count=1)
+          s = re.sub(r'versionName[ ]+\"[^\"]+\"', f'versionName "1.0.{os.environ["BUILD_NUMBER"]}"', s, count=1)
           p.write_text(s)
           print(f"Configured versionCode {os.environ['BUILD_NUMBER']}")
           PY
