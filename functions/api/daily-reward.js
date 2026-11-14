@@ -235,7 +235,7 @@ export async function onRequestPost({ request, env }) {
       return Response.json(
         {
           success: false,
-          error: "Telegram authentication required"
+          error: "Authentication required"
         },
         { status: 401, headers }
       );
