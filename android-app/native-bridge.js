@@ -15,6 +15,28 @@
     return url.toString();
   }
 
+  function patchMediaSource(proto) {
+    const descriptor = Object.getOwnPropertyDescriptor(proto, 'src');
+    if (!descriptor?.get || !descriptor?.set) return;
+    Object.defineProperty(proto, 'src', {
+      configurable: descriptor.configurable,
+      enumerable: descriptor.enumerable,
+      get() { return descriptor.get.call(this); },
+      set(value) { descriptor.set.call(this, resolveApiUrl(String(value))); }
+    });
+  }
+
+  if (window.HTMLImageElement) patchMediaSource(HTMLImageElement.prototype);
+  if (window.HTMLMediaElement) patchMediaSource(HTMLMediaElement.prototype);
+
+  const originalSetAttribute = Element.prototype.setAttribute;
+  Element.prototype.setAttribute = function(name, value) {
+    if (String(name).toLowerCase() === 'src') {
+      value = resolveApiUrl(String(value));
+    }
+    return originalSetAttribute.call(this, name, value);
+  };
+
   const NativeWebSocket = window.WebSocket;
   function GozarWebSocket(url, protocols) {
     const resolved = new URL(url, window.location.href);
