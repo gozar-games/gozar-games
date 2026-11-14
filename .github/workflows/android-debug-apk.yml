@@ -14,6 +14,7 @@ on:
       - 'snake.html'
       - 'crossy.html'
       - 'games/battle-arena/**'
+      - 'functions/**'
   push:
     branches:
       - feat/android-capacitor-shell
