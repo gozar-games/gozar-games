@@ -2,6 +2,18 @@ name: Android debug APK
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'android-app/**'
+      - 'package.json'
+      - 'capacitor.config.ts'
+      - 'functions/**'
+      - 'index.html'
+      - 'snake.html'
+      - 'crossy.html'
+      - 'games/battle-arena/**'
   push:
     branches:
       - feat/android-capacitor-shell
