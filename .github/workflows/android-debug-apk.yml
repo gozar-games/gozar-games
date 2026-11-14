@@ -14,6 +14,7 @@ on:
       - 'crossy.html'
       - 'games/battle-arena/**'
       - 'functions/**'
+      - '.github/workflows/**'
   push:
     branches:
       - feat/android-capacitor-shell
@@ -52,6 +53,8 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
 
       - name: Install dependencies
         run: npm install
