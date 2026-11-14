@@ -43,6 +43,13 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Check JavaScript syntax
+        run: |
+          node --check android-app/native-bridge.js
+          node --check android-app/scripts/build-web.mjs
+          node --check android-app/scripts/smoke-check.mjs
+          find functions -name '*.js' -print0 | xargs -0 -n1 node --check
+
       - name: Build local game bundle
         run: npm run build:web
 
