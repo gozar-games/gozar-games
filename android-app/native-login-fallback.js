@@ -7,12 +7,12 @@
   };
 
   function mount() {
-    if (!isHome() || hasSession() || !document.body) return;
+    if (!isHome() || !document.body) return;
     if (!document.getElementById('gozarLoginFallbackButton')) {
       const button = document.createElement('button');
       button.id = 'gozarLoginFallbackButton';
       button.type = 'button';
-      button.textContent = 'اتصال حساب تلگرام';
+      button.textContent = hasSession() ? 'مدیریت / تغییر حساب تلگرام' : 'اتصال حساب تلگرام';
       button.setAttribute('aria-label', 'اتصال حساب تلگرام');
       button.style.cssText = 'position:fixed;z-index:2147483000;bottom:calc(18px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:min(88vw,360px);min-height:52px;border:2px solid #ff5964;border-radius:15px;background:#c91425;color:#fff;font:900 15px Vazirmatn,Arial,sans-serif;box-shadow:0 8px 30px #000b;cursor:pointer';
       button.addEventListener('click', openDialog);
