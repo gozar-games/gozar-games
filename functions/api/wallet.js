@@ -121,31 +121,11 @@ export async function onRequestGet({ request, env }) {
       throw new Error("Server configuration missing");
     }
 
-    const initData = request.headers.get(
-      "X-Telegram-Init-Data"
-    );
-
-    if (!initData) {
-      return Response.json(
-        {
-          success: false,
-          error: "Telegram authentication required"
-        },
-        { status: 401, headers }
-      );
-    }
-
-    const user = await verifyTelegram(
-      initData,
-      env.TELEGRAM_BOT_TOKEN
-    );
+    const user = await authenticate(request, env, { telegramMaxAgeSeconds: 300 });
 
     if (!user) {
       return Response.json(
-        {
-          success: false,
-          error: "Invalid Telegram authentication"
-        },
+        { success: false, error: "Authentication required" },
         { status: 401, headers }
       );
     }
