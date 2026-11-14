@@ -1,57 +1,4 @@
-async function hmac(key, message) {
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw", key, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
-  );
-  return new Uint8Array(await crypto.subtle.sign(
-    "HMAC", cryptoKey, new TextEncoder().encode(message)
-  ));
-}
-
-function toHex(bytes) {
-  return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
-}
-
-async function verifyTelegram(initData, botToken) {
-  if (typeof initData !== "string" || !initData || initData.length > 8192) return null;
-  const params = new URLSearchParams(initData);
-  const keys = Array.from(params.keys());
-  if (new Set(keys).size !== keys.length) return null;
-
-  const hash = params.get("hash");
-  const authDateText = params.get("auth_date");
-  const userText = params.get("user");
-  if (!hash || !/^[0-9a-f]{64}$/.test(hash) || !authDateText || !userText) return null;
-
-  const authDate = Number(authDateText);
-  const now = Math.floor(Date.now() / 1000);
-  if (!Number.isSafeInteger(authDate) || authDate <= 0 || authDate > now + 30 || now - authDate > 86400) return null;
-
-  params.delete("hash");
-  const dataCheckString = Array.from(params.entries())
-    .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
-    .map(([key, value]) => `${key}=${value}`)
-    .join("\n");
-
-  const secretKey = await hmac(new TextEncoder().encode("WebAppData"), botToken);
-  const calculatedHash = toHex(await hmac(secretKey, dataCheckString));
-  let difference = 0;
-  for (let i = 0; i < 64; i++) difference |= calculatedHash.charCodeAt(i) ^ hash.charCodeAt(i);
-  if (difference !== 0) return null;
-
-  try {
-    const user = JSON.parse(userText);
-    return user && Number.isSafeInteger(user.id) && user.id > 0 ? user : null;
-  } catch {
-    return null;
-  }
-}
-
-async function authenticate(request, env) {
-  if (!env.DB || !env.TELEGRAM_BOT_TOKEN) throw new Error("Server configuration missing");
-  const initData = request.headers.get("X-Telegram-Init-Data");
-  if (!initData) return null;
-  return verifyTelegram(initData, env.TELEGRAM_BOT_TOKEN);
-}
+import { authenticate } from "../_shared/auth.js";
 
 async function ensureTables(db) {
   await db.batch([
@@ -87,8 +34,8 @@ function levelForXp(xp) {
 export async function onRequestGet({ request, env }) {
   const headers = { "Content-Type": "application/json", "Cache-Control": "no-store" };
   try {
-    const user = await authenticate(request, env);
-    if (!user) return Response.json({ success: false, error: "Telegram authentication required" }, { status: 401, headers });
+    const user = await authenticate(request, env, { telegramMaxAgeSeconds: 86400 });
+    if (!user) return Response.json({ success: false, error: "Authentication required" }, { status: 401, headers });
 
     await ensureTables(env.DB);
     const telegramId = String(user.id);
@@ -119,8 +66,8 @@ export async function onRequestGet({ request, env }) {
 export async function onRequestPost({ request, env }) {
   const headers = { "Content-Type": "application/json", "Cache-Control": "no-store" };
   try {
-    const user = await authenticate(request, env);
-    if (!user) return Response.json({ success: false, error: "Telegram authentication required" }, { status: 401, headers });
+    const user = await authenticate(request, env, { telegramMaxAgeSeconds: 86400 });
+    if (!user) return Response.json({ success: false, error: "Authentication required" }, { status: 401, headers });
 
     const body = await request.json();
     const matchId = typeof body.match_id === "string" ? body.match_id : "";
