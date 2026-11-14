@@ -140,7 +140,7 @@
       <div class="card">
         <div style="font-size:42px;margin-bottom:10px">🎮</div>
         <h2>ورود به GOZAR GAMES</h2>
-        <p>برای استفاده از همان حساب، کیف پول و XP تلگرامت، ربات <b>@GozarGamesBot</b> را باز کن و دستور <b>/link</b> را بفرست.</p>
+        <p>برای استفاده از همان حساب، کیف پول و XP تلگرامت، ربات <b>@GozarGamesBot</b> را باز کن و روی دکمه <b>اتصال اپ اندروید</b> بزن یا دستور <b>/link</b> را بفرست.</p>
         <p>کد یک‌بارمصرفی که ربات می‌دهد را در این قسمت وارد کن.</p>
         <input id="gozarLinkCode" maxlength="8" autocomplete="one-time-code" placeholder="کد ۸ رقمی">
         <button id="gozarLinkSubmit" type="button">اتصال حساب تلگرام</button>
