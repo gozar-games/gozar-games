@@ -1,3 +1,5 @@
+import { createNativeLinkCode } from "../_shared/auth.js";
+
 const ADMIN_ID = "7634869996";
 
 async function telegram(env, method, body) {
@@ -85,7 +87,14 @@ export async function onRequestPost({ request, env }) {
       const isAdmin = userId === ADMIN_ID;
 
       if (message.text?.startsWith("/start")) {
-        await send(env, chatId, "🎮 به GOZAR GAMES خوش اومدی!\n\nاز منوی زیر استفاده کن.", menu(isAdmin));
+        await send(env, chatId, "🎮 به GOZAR GAMES خوش اومدی!\n\nاز منوی زیر استفاده کن.\nبرای اتصال اپ اندروید، دستور /link را بفرست.", menu(isAdmin));
+      } else if (message.text?.trim().split(/\s+/)[0].split("@")[0] === "/link") {
+        if (!userId) {
+          await send(env, chatId, "حساب تلگرام شناسایی نشد. دوباره تلاش کن.");
+        } else {
+          const link = await createNativeLinkCode(env.DB, userId);
+          await send(env, chatId, "🔐 کد اتصال یک‌بارمصرف اپ GOZAR GAMES:\n\n" + link.code + "\n\nاین کد فقط ۵ دقیقه معتبر است و فقط یک بار استفاده می‌شود. آن را فقط داخل اپ رسمی GOZAR وارد کن؛ برای هیچ‌کس نفرست.");
+        }
       } else if (isAdmin && message.video) {
         const video = message.video;
         const draft = await env.DB.prepare("SELECT title FROM intro_video_drafts WHERE user_id = ?").bind(userId).first();
