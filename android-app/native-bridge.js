@@ -76,6 +76,7 @@
     };
   }
 
+  // The wallet page also reads this persisted token directly; keep this helper in sync.
   function getSessionToken() {
     try { return localStorage.getItem('gozar_native_session') || ''; }
     catch { return ''; }
