@@ -142,7 +142,7 @@
         <h2>ورود به GOZAR GAMES</h2>
         <p>برای استفاده از همان حساب، کیف پول و XP تلگرامت، ربات <b>@GozarGamesBot</b> را باز کن و روی دکمه <b>اتصال اپ اندروید</b> بزن یا دستور <b>/link</b> را بفرست.</p>
         <p>کد یک‌بارمصرفی که ربات می‌دهد را در این قسمت وارد کن.</p>
-        <input id="gozarLinkCode" maxlength="8" autocomplete="one-time-code" placeholder="کد ۸ رقمی">
+        <input id="gozarLinkCode" maxlength="8" autocomplete="one-time-code" placeholder="کد ۸ کاراکتری">
         <button id="gozarLinkSubmit" type="button">اتصال حساب تلگرام</button>
         <div class="status" id="gozarLinkStatus"></div>
         <div class="hint">کد فقط ۵ دقیقه اعتبار دارد و فقط یک بار قابل استفاده است.</div>
