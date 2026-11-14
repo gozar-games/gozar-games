@@ -76,6 +76,7 @@
     };
   }
 
+  // The wallet page also reads this persisted token directly; keep this helper in sync.
   function getSessionToken() {
     try { return localStorage.getItem('gozar_native_session') || ''; }
     catch { return ''; }
@@ -208,8 +209,27 @@
   }
 
   function initializeNativeHome() {
-    if (getSessionToken()) addNativeAccountControls();
-    else showNativeLogin();
+    if (location.pathname !== '/' && location.pathname !== '/index.html') return;
+
+    if (getSessionToken()) {
+      addNativeAccountControls();
+      return;
+    }
+
+    // Keep a visible entry point in the home header even if a WebView lifecycle
+    // event prevents the automatic login dialog from appearing.
+    const header = document.querySelector('.header');
+    if (header && !document.getElementById('gozarNativeLoginButton')) {
+      const button = document.createElement('button');
+      button.id = 'gozarNativeLoginButton';
+      button.type = 'button';
+      button.textContent = 'اتصال حساب تلگرام';
+      button.style.cssText = 'border:1px solid #8c2731;border-radius:10px;background:#211316;color:#ffb2b7;padding:8px 10px;font:700 11px Vazirmatn,sans-serif';
+      button.addEventListener('click', showNativeLogin);
+      header.appendChild(button);
+    }
+
+    showNativeLogin();
   }
 
   if (document.readyState === 'loading') {
