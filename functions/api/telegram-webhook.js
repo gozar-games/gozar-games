@@ -96,7 +96,7 @@ export async function onRequestPost({ request, env }) {
           await send(env, chatId, "حساب تلگرام شناسایی نشد. دوباره تلاش کن.");
         } else {
           const link = await createNativeLinkCode(env.DB, userId);
-          await send(env, chatId, "🔐 کد اتصال یک‌بارمصرف اپ GOZAR GAMES:\\n\\n" + link.code + "\\n\\nاین کد فقط ۵ دقیقه معتبر است و فقط یک بار استفاده می‌شود. آن را فقط داخل اپ رسمی GOZAR وارد کن؛ برای هیچ‌کس نفرست.");
+          await send(env, chatId, "🔐 کد اتصال یک‌بارمصرف اپ GOZAR GAMES:\n\n" + link.code + "\n\nاین کد فقط ۵ دقیقه معتبر است و فقط یک بار استفاده می‌شود. آن را فقط داخل اپ رسمی GOZAR وارد کن؛ برای هیچ‌کس نفرست.");
         }
       } else if (isAdmin && message.video) {
         const video = message.video;
@@ -145,7 +145,7 @@ export async function onRequestPost({ request, env }) {
           await send(env, chatId, "عنوان ویدیو را به‌صورت یک پیام متنی معمولی بفرست.");
         } else {
           await env.DB.prepare("INSERT INTO intro_video_drafts (user_id, title) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET title = excluded.title, updated_at = CURRENT_TIMESTAMP").bind(userId, title).run();
-          await send(env, chatId, `✅ عنوان ذخیره شد: «${title}»\\nحالا ویدیوی مربوط به همین عنوان را ارسال کن.`);
+          await send(env, chatId, `✅ عنوان ذخیره شد: «${title}»\nحالا ویدیوی مربوط به همین عنوان را ارسال کن.`);
         }
         }
       }
@@ -167,7 +167,7 @@ export async function onRequestPost({ request, env }) {
           await send(env, chatId, "حساب تلگرام شناسایی نشد. دوباره تلاش کن.");
         } else {
           const link = await createNativeLinkCode(env.DB, userId);
-          await send(env, chatId, "🔐 کد اتصال یک‌بارمصرف اپ GOZAR GAMES:\\n\\n" + link.code + "\\n\\nاین کد فقط ۵ دقیقه معتبر است و فقط یک بار استفاده می‌شود. آن را فقط داخل اپ رسمی GOZAR وارد کن؛ برای هیچ‌کس نفرست.");
+          await send(env, chatId, "🔐 کد اتصال یک‌بارمصرف اپ GOZAR GAMES:\n\n" + link.code + "\n\nاین کد فقط ۵ دقیقه معتبر است و فقط یک بار استفاده می‌شود. آن را فقط داخل اپ رسمی GOZAR وارد کن؛ برای هیچ‌کس نفرست.");
         }
       } else if (data === "admin" && isAdmin) {
         await adminPanel(env, chatId);
