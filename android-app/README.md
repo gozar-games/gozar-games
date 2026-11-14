@@ -35,10 +35,11 @@ GitHub Actions also has a manual / branch-triggered debug APK workflow. Its APK 
 
 ## Important current limitations
 
-1. The bridge routes relative `/api/*` requests and room WebSockets to the production Cloudflare Pages origin. The API still authenticates the Telegram Mini App today; the native account-linking/session flow is not implemented in this first shell.
-2. Cross-origin API calls from the Capacitor origin need explicit CORS support in the Pages Functions before wallet, daily reward, and Battle Arena progress can work in the native app.
-3. The native app does not yet have its own secure sign-in/link screen. Do not treat a user-entered Telegram ID as proof of identity.
-4. Google Fonts remain online dependencies; the games should still be tested on a physical Android device with and without connectivity.
-5. Multiplayer WebSockets, background/resume, device back navigation, and the game asset ZIP must be verified on real Android hardware before release.
+1. The bridge routes relative `/api/*` requests and room WebSockets to the production Cloudflare Pages origin. The Android login screen asks the player to send `/link` to `@GozarGamesBot`, then exchanges the short-lived one-time code for a 30-day native session.
+2. The server stores only a SHA-256 hash of the native session token; link codes expire after five minutes, are single-use, and exchange attempts are rate-limited. A revoke endpoint is available at `POST /api/native-auth/revoke`.
+3. The Pages middleware allows the Capacitor `https://localhost` origin and the production Pages origin to call APIs. Wallet, daily reward, and Battle Arena progress accept either verified Telegram initData or a valid native session.
+4. The account-linking flow is implemented in this branch but has not yet been deployed or exercised against the live Telegram bot and D1 database. Do not assume it is live until the branch is merged and Cloudflare Pages has deployed it.
+5. Google Fonts remain online dependencies; the games should still be tested on a physical Android device with and without connectivity.
+6. Multiplayer WebSockets, background/resume, device back navigation, the game asset ZIP, and real wallet/XP synchronization must be verified on real Android hardware before release.
 
 Do not publish this debug APK as a production release. Shared-account authentication and server-side session support are the next required implementation phase.
