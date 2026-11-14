@@ -117,7 +117,7 @@ export async function onRequestGet({ request, env }) {
   };
 
   try {
-    if (!env.DB || !env.TELEGRAM_BOT_TOKEN) {
+    if (!env.DB) {
       throw new Error("Server configuration missing");
     }
 
