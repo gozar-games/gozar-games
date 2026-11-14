@@ -9,7 +9,6 @@ on:
       - 'android-app/**'
       - 'package.json'
       - 'capacitor.config.ts'
-      - 'functions/**'
       - 'index.html'
       - 'snake.html'
       - 'crossy.html'
@@ -28,6 +27,7 @@ on:
       - 'snake.html'
       - 'crossy.html'
       - 'games/battle-arena/**'
+      - 'functions/**'
 
 permissions:
   contents: read
