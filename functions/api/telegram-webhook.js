@@ -17,7 +17,8 @@ function menu(isAdmin) {
   const rows = [
     [{ text: "🎮 اجرای بازی", web_app: { url: "https://gozar-games.pages.dev" } }],
     [{ text: "👤 پروفایل من", callback_data: "profile" }, { text: "🏆 رتبه‌بندی", callback_data: "ranking" }],
-    [{ text: "🎬 تماشای ویدیوها", callback_data: "videos" }]
+    [{ text: "🎬 تماشای ویدیوها", callback_data: "videos" }],
+    [{ text: "📱 اتصال اپ اندروید", callback_data: "native_link" }]
   ];
   if (isAdmin) rows.push([{ text: "👑 پنل مدیریت", callback_data: "admin" }]);
   return { inline_keyboard: rows };
@@ -159,6 +160,15 @@ export async function onRequestPost({ request, env }) {
 
       if (data === "home") {
         await send(env, chatId, "منوی اصلی GOZAR GAMES", menu(isAdmin));
+      } else if (data === "native_link") {
+        if (callback.message.chat?.type !== "private") {
+          await send(env, chatId, "برای امنیت، اتصال اپ را فقط در گفت‌وگوی خصوصی ربات انجام بده.");
+        } else if (!userId) {
+          await send(env, chatId, "حساب تلگرام شناسایی نشد. دوباره تلاش کن.");
+        } else {
+          const link = await createNativeLinkCode(env.DB, userId);
+          await send(env, chatId, "🔐 کد اتصال یک‌بارمصرف اپ GOZAR GAMES:\\n\\n" + link.code + "\\n\\nاین کد فقط ۵ دقیقه معتبر است و فقط یک بار استفاده می‌شود. آن را فقط داخل اپ رسمی GOZAR وارد کن؛ برای هیچ‌کس نفرست.");
+        }
       } else if (data === "admin" && isAdmin) {
         await adminPanel(env, chatId);
       } else if (data === "admin_list" && isAdmin) {
