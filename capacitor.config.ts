@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.gozar.games',
+  appId: 'com.gozar.games.v2',
   appName: 'GOZAR GAMES',
   webDir: 'android-app/www',
   android: {
