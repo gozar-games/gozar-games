@@ -88,7 +88,8 @@
         const path = new URL(prepared.resolved).pathname;
         if (path.startsWith('/api/') && path !== '/api/native-auth/exchange') {
           try { localStorage.removeItem('gozar_native_session'); } catch {}
-          showNativeLogin();
+          if (location.pathname === '/' || location.pathname === '/index.html') showNativeLogin();
+          else location.replace('/');
         }
       }
       return response;
