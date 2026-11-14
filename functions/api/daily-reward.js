@@ -151,24 +151,6 @@ function getNextStreak(player, today) {
     : 1;
 }
 
-// مشترک: بررسی احراز هویت تلگرام
-async function authenticate(request, env) {
-  if (!env.DB || !env.TELEGRAM_BOT_TOKEN) {
-    throw new Error("Server configuration missing");
-  }
-
-  const initData = request.headers.get(
-    "X-Telegram-Init-Data"
-  );
-
-  if (!initData) return null;
-
-  return await verifyTelegram(
-    initData,
-    env.TELEGRAM_BOT_TOKEN
-  );
-}
-
 // GET: نمایش وضعیت جایزه روزانه
 export async function onRequestGet({ request, env }) {
   const headers = {
@@ -183,7 +165,7 @@ export async function onRequestGet({ request, env }) {
       return Response.json(
         {
           success: false,
-          error: "Telegram authentication required"
+          error: "Authentication required"
         },
         { status: 401, headers }
       );
