@@ -115,13 +115,54 @@ jobs:
         working-directory: android
         run: |
           python3 - <<'PY'
-          import re
           from pathlib import Path
+          import re
 
           p = Path('app/build.gradle')
           s = p.read_text()
 
-          signing = '''
+          def block_span(source, opening):
+              brace = source.find('{', opening)
+              if brace < 0:
+                  raise SystemExit('Missing opening brace')
+              depth = 0
+              quote = None
+              escaped = False
+              for i in range(brace, len(source)):
+                  c = source[i]
+                  if quote:
+                      if escaped:
+                          escaped = False
+                      elif c == '\\\\':
+                          escaped = True
+                      elif c == quote:
+                          quote = None
+                      continue
+                  if c in ("'", '"'):
+                      quote = c
+                  elif c == '{':
+                      depth += 1
+                  elif c == '}':
+                      depth -= 1
+                      if depth == 0:
+                          return brace, i + 1
+              raise SystemExit('Unclosed Gradle block')
+
+          def find_named_block(source, name, start=0):
+              m = re.search(r'\\b' + re.escape(name) + r'\\s*\\{', source[start:])
+              if not m:
+                  return None
+              opening = start + m.start()
+              left, right = block_span(source, opening)
+              return opening, left, right
+
+          android = find_named_block(s, 'android')
+          if not android:
+              raise SystemExit('Missing android block')
+          _, android_open, android_end = android
+
+          signing = find_named_block(s, 'signingConfigs', android_open)
+          signing_text = '''
               signingConfigs {
                   debug {
                       storeFile file(System.getenv("GOZAR_ANDROID_KEYSTORE_PATH"))
@@ -131,27 +172,53 @@ jobs:
                   }
               }
           '''
-
-          if 'signingConfigs {' in s:
-              raise SystemExit('Unexpected existing signingConfigs block; refusing to overwrite it')
-          if not re.search(r'(?m)^android\s*\{', s):
-              raise SystemExit('Could not find android { block')
-          s = re.sub(r'(?m)^android\s*\{', lambda m: m.group(0) + signing, s, count=1)
-
-          debug_block = re.search(r'(?m)^\s*debug\s*\{', s)
-          if not debug_block:
-              s = re.sub(
-                  r'(?m)^([ \t]*)buildTypes\s*\{',
-                  lambda m: m.group(0) + '\n' + m.group(1) + '    debug {\n' + m.group(1) + '        signingConfig signingConfigs.debug\n' + m.group(1) + '    }',
-                  s,
-                  count=1
-              )
+          if signing:
+              _, signing_open, signing_end = signing
+              debug = find_named_block(s[signing_open:signing_end], 'debug')
+              if debug:
+                  _, d_open, d_end = debug
+                  abs_open = signing_open + d_open
+                  abs_end = signing_open + d_end
+                  s = s[:abs_open + 1] + '''
+                      storeFile file(System.getenv("GOZAR_ANDROID_KEYSTORE_PATH"))
+                      storePassword "android"
+                      keyAlias "androiddebugkey"
+                      keyPassword "android"
+                  ''' + s[abs_end - 1:]
+              else:
+                  s = s[:signing_end - 1] + '''
+                  debug {
+                      storeFile file(System.getenv("GOZAR_ANDROID_KEYSTORE_PATH"))
+                      storePassword "android"
+                      keyAlias "androiddebugkey"
+                      keyPassword "android"
+                  }
+              ''' + s[signing_end - 1:]
           else:
-              start = debug_block.end()
-              s = s[:start] + '\n        signingConfig signingConfigs.debug' + s[start:]
+              s = s[:android_open + 1] + signing_text + s[android_open + 1:]
+
+          # Explicitly attach the persistent signing config to buildTypes.debug.
+          bt = find_named_block(s, 'buildTypes')
+          if not bt:
+              raise SystemExit('Missing buildTypes block')
+          _, bt_open, bt_end = bt
+          debug = find_named_block(s[bt_open:bt_end], 'debug')
+          if debug:
+              _, d_open, d_end = debug
+              abs_open = bt_open + d_open
+              abs_end = bt_open + d_end
+              body = s[abs_open + 1:abs_end - 1]
+              body = re.sub(r'(?m)^\\s*signingConfig\\s+signingConfigs\\.debug\\s*\\n?', '', body)
+              s = s[:abs_open + 1] + '\\n        signingConfig signingConfigs.debug\\n' + body + s[abs_end - 1:]
+          else:
+              s = s[:bt_end - 1] + '''
+                  debug {
+                      signingConfig signingConfigs.debug
+                  }
+              ''' + s[bt_end - 1:]
 
           p.write_text(s)
-          print('Gradle debug signing explicitly points to the persistent keystore.')
+          print('Configured signingConfigs.debug and buildTypes.debug.')
           PY
 
       - name: Build debug APK
