@@ -93,7 +93,10 @@ let W=0,H=0,dpr=1,running=false,last=0,player,enemies=[],bullets=[],enemyBullets
 let wave=1,kills=0,coins=0,health=100,ammo=12,reloading=false,reloadEnd=0,shieldEnd=0,shieldReady=0,between=0,spawnLeft=0,spawnTimer=0,fireHeld=false,move={x:0,y:0},aim={x:1,y:0},bannerTimer=0,bossIntroUntil=0,damageFlashUntil=0,chestReady=null,nextShotAt=0,currentWeapon='pistol',ownedWeapons=new Set(['pistol']),weaponLevels={},matchId='',spentCoinsThisRun=0,earnedCoinsThisRun=0,savingMatch=false;
 const WORLD_W=3200,WORLD_H=2400;
 let selectedMap='ruined-city';
-const mapImages={},assetImages={};
+const mapImages={},assetImages={},playerSkinImage=new Image();
+playerSkinImage.src='./assets/gozar-player-skin.webp';
+playerSkinImage.onload=()=>{console.info('GOZAR player skin loaded')};
+playerSkinImage.onerror=()=>{console.warn('GOZAR player skin failed to load')};
 async function loadAssetPack(){
  try{
   const response=await fetch('./gozar-battle-arena-assets.zip');
@@ -325,6 +328,13 @@ function draw(){
  for(const b of enemyBullets){if(b.px!==undefined){ctx.strokeStyle='#ff536188';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(sxp(b.px),syp(b.py));ctx.lineTo(sxp(b.x),syp(b.y));ctx.stroke()}ctx.fillStyle='#ff5361';ctx.beginPath();ctx.arc(sxp(b.x),syp(b.y),5,0,Math.PI*2);ctx.fill()}
  for(const w of shockwaves){ctx.globalAlpha=clamp(w.life/w.max,0,1)*.75;ctx.strokeStyle=w.color;ctx.lineWidth=3;ctx.beginPath();ctx.arc(sxp(w.x),syp(w.y),w.r,0,Math.PI*2);ctx.stroke()}ctx.globalAlpha=1;for(const p of particles){ctx.globalAlpha=clamp(p.life/p.max,0,1);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(sxp(p.x),syp(p.y),3,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
  function drawSoldier(x,y,angle,color,kind,isPlayer=false){
+  // The main player uses the exact supplied pixel-art skin; enemy classes keep their existing procedural designs.
+  if(isPlayer&&playerSkinImage.complete&&playerSkinImage.naturalWidth){
+   ctx.save();ctx.translate(x,y);ctx.rotate(angle);
+   const spriteW=62,spriteH=spriteW*(playerSkinImage.naturalHeight/playerSkinImage.naturalWidth);
+   ctx.drawImage(playerSkinImage,-spriteW/2,-spriteH/2,spriteW,spriteH);
+   ctx.restore();return;
+  }
   // Distinct character skins: each class has its own silhouette, armor palette and markings.
   const skins={
    player:{base:'#35433b',mid:'#596b55',light:'#a7aa8b',dark:'#171d1a',accent:'#c2a66b',visor:'#7d9691',pack:'#252e28'},
