@@ -133,7 +133,7 @@ jobs:
                   if quote:
                       if escaped:
                           escaped = False
-                      elif c == '\\\\':
+                      elif c == '\\':
                           escaped = True
                       elif c == quote:
                           quote = None
@@ -149,7 +149,7 @@ jobs:
               raise SystemExit('Unclosed Gradle block')
 
           def find_named_block(source, name, start=0):
-              m = re.search(r'\\b' + re.escape(name) + r'\\s*\\{', source[start:])
+              m = re.search(r'\b' + re.escape(name) + r'\s*\{', source[start:])
               if not m:
                   return None
               opening = start + m.start()
@@ -208,8 +208,8 @@ jobs:
               abs_open = bt_open + d_open
               abs_end = bt_open + d_end
               body = s[abs_open + 1:abs_end - 1]
-              body = re.sub(r'(?m)^\\s*signingConfig\\s+signingConfigs\\.debug\\s*\\n?', '', body)
-              s = s[:abs_open + 1] + '\\n        signingConfig signingConfigs.debug\\n' + body + s[abs_end - 1:]
+              body = re.sub(r'(?m)^\s*signingConfig\s+signingConfigs\.debug\s*\n?', '', body)
+              s = s[:abs_open + 1] + '\n        signingConfig signingConfigs.debug\n' + body + s[abs_end - 1:]
           else:
               s = s[:bt_end - 1] + '''
                   debug {
