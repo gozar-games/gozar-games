@@ -331,15 +331,14 @@ function draw(){
   // The main player uses the exact supplied pixel-art skin; enemy classes keep their existing procedural designs.
   // The supplied side-view pixel-art soldier is the ONLY player skin.
   // Never fall back to the old procedural player drawing.
-  if(isPlayer){
-   if(playerSkinImage.complete&&playerSkinImage.naturalWidth){
-    ctx.save();ctx.translate(x,y);ctx.rotate(angle);
-    const spriteH=78,spriteW=spriteH*(playerSkinImage.naturalWidth/playerSkinImage.naturalHeight);
-    ctx.imageSmoothingEnabled=false;
-    ctx.drawImage(playerSkinImage,-spriteW/2,-spriteH/2,spriteW,spriteH);
-    ctx.restore();
-   }
-   return;
+  if(isPlayer&&playerSkinImage.complete&&playerSkinImage.naturalWidth>0){
+   // Draw the supplied player artwork at a readable size. If the image fails to load,
+   // continue into the procedural renderer below instead of making the player invisible.
+   ctx.save();ctx.translate(x,y);ctx.rotate(angle);
+   const spriteH=108,spriteW=spriteH*(playerSkinImage.naturalWidth/playerSkinImage.naturalHeight);
+   ctx.imageSmoothingEnabled=false;
+   ctx.drawImage(playerSkinImage,-spriteW/2,-spriteH/2,spriteW,spriteH);
+   ctx.restore();return;
   }
   // Distinct character skins: each class has its own silhouette, armor palette and markings.
   const skins={
