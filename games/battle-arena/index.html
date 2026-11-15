@@ -292,40 +292,75 @@ function draw(){
  for(const b of enemyBullets){if(b.px!==undefined){ctx.strokeStyle='#ff536188';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(sxp(b.px),syp(b.py));ctx.lineTo(sxp(b.x),syp(b.y));ctx.stroke()}ctx.fillStyle='#ff5361';ctx.beginPath();ctx.arc(sxp(b.x),syp(b.y),5,0,Math.PI*2);ctx.fill()}
  for(const w of shockwaves){ctx.globalAlpha=clamp(w.life/w.max,0,1)*.75;ctx.strokeStyle=w.color;ctx.lineWidth=3;ctx.beginPath();ctx.arc(sxp(w.x),syp(w.y),w.r,0,Math.PI*2);ctx.stroke()}ctx.globalAlpha=1;for(const p of particles){ctx.globalAlpha=clamp(p.life/p.max,0,1);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(sxp(p.x),syp(p.y),3,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
  function drawSoldier(x,y,angle,color,kind,isPlayer=false){
-  ctx.save();ctx.translate(x,y);
-  const scale=isPlayer?1.48:kind==='boss'?2.02:kind==='heavy'?1.58:kind==='runner'?1.24:1.36;
-  ctx.scale(scale,scale);ctx.rotate(angle);
-  const armor=kind==='runner'?'#b87537':kind==='heavy'?'#39434a':kind==='shooter'?'#67528f':kind==='boss'?'#9f2935':isPlayer?'#8b7653':'#59636a';
-  const trim=kind==='boss'?'#ff6874':kind==='shooter'?'#c1aaff':kind==='runner'?'#ffc16d':isPlayer?'#9de7f2':'#c4d3d8';
-  ctx.fillStyle='#02050799';ctx.beginPath();ctx.ellipse(1,15,kind==='boss'?27:20,8,0,0,Math.PI*2);ctx.fill();
-  ctx.lineCap='round';ctx.strokeStyle='#111719';ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(-6,3);ctx.lineTo(-9,15);ctx.moveTo(6,3);ctx.lineTo(9,15);ctx.stroke();
-  ctx.strokeStyle='#42494b';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-7,6);ctx.lineTo(-10,13);ctx.moveTo(5,6);ctx.lineTo(8,13);ctx.stroke();
-  ctx.fillStyle='#171d20';ctx.beginPath();ctx.roundRect(-15,12,13,7,3);ctx.roundRect(2,12,13,7,3);ctx.fill();
-  ctx.fillStyle='#596165';ctx.fillRect(-13,13,8,2);ctx.fillRect(4,13,8,2);
-  ctx.fillStyle='#20282b';ctx.beginPath();ctx.roundRect(-17,-9,34,22,7);ctx.fill();
-  const bodyGrad=ctx.createLinearGradient(-12,-12,12,13);bodyGrad.addColorStop(0,'#d4d0b5');bodyGrad.addColorStop(.16,armor);bodyGrad.addColorStop(1,'#171e22');
-  ctx.fillStyle=bodyGrad;ctx.beginPath();ctx.roundRect(-13,-12,26,25,7);ctx.fill();ctx.strokeStyle='#0b1013';ctx.lineWidth=1.8;ctx.stroke();
-  ctx.fillStyle='#1b2529';ctx.beginPath();ctx.roundRect(-9,-8,18,16,4);ctx.fill();
-  ctx.fillStyle='#7d8984';ctx.fillRect(-7,-6,5,5);ctx.fillRect(2,-6,5,5);
-  ctx.fillStyle='#252e31';ctx.fillRect(-8,1,16,6);ctx.fillStyle='#c2a875';ctx.fillRect(-7,2,5,4);ctx.fillRect(2,2,5,4);
-  ctx.strokeStyle='#d6c49a';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(0,8);ctx.stroke();
-  ctx.fillStyle=armor;ctx.beginPath();ctx.roundRect(-19,-10,9,11,3);ctx.roundRect(10,-10,9,11,3);ctx.fill();
-  ctx.fillStyle='#aab5b4';ctx.fillRect(-18,-9,6,2);ctx.fillRect(12,-9,6,2);
-  ctx.strokeStyle='#252c30';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-13,-3);ctx.lineTo(-18,4);ctx.moveTo(13,-3);ctx.lineTo(18,3);ctx.stroke();
-  ctx.fillStyle='#171e22';ctx.beginPath();ctx.arc(0,-15,11,Math.PI,Math.PI*2);ctx.lineTo(11,-12);ctx.quadraticCurveTo(0,-7,-11,-12);ctx.closePath();ctx.fill();
-  const helmet=ctx.createLinearGradient(-8,-25,8,-10);helmet.addColorStop(0,'#d0d0bb');helmet.addColorStop(.22,armor);helmet.addColorStop(1,'#20282b');
-  ctx.fillStyle=helmet;ctx.beginPath();ctx.arc(0,-16,9,Math.PI,Math.PI*2);ctx.lineTo(9,-13);ctx.quadraticCurveTo(0,-9,-9,-13);ctx.closePath();ctx.fill();
-  ctx.fillStyle=trim;ctx.globalAlpha=.9;ctx.fillRect(-6,-16,12,3);ctx.globalAlpha=1;
-  ctx.fillStyle='#0b1114';ctx.beginPath();ctx.roundRect(-5,-11,10,5,2);ctx.fill();
-  ctx.fillStyle='#b7c5c6';ctx.fillRect(-3,-10,2,2);ctx.fillRect(2,-10,2,2);
-  if(kind==='boss'){ctx.strokeStyle='#ff5262';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(-12,-20);ctx.lineTo(-18,-26);ctx.moveTo(12,-20);ctx.lineTo(18,-26);ctx.stroke();ctx.fillStyle='#ffd36b';ctx.fillRect(-3,-25,6,3)}
-  else if(kind==='shooter'){ctx.fillStyle='#c8b6ff';ctx.fillRect(-17,2,4,5)}
-  else if(kind==='runner'){ctx.fillStyle='#ffd18a';ctx.fillRect(12,0,4,8)}
-  if(isPlayer){ctx.strokeStyle='#8cecff';ctx.lineWidth=1.6;ctx.beginPath();ctx.roundRect(-16,-13,32,28,8);ctx.stroke();ctx.fillStyle='#8cecff';ctx.fillRect(-2,-27,4,4)}
-  ctx.fillStyle='#101619';ctx.beginPath();ctx.roundRect(7,-4,20,7,2);ctx.fill();
-  ctx.fillStyle='#667478';ctx.fillRect(19,-3,14,3);ctx.fillStyle='#c1c9c5';ctx.fillRect(29,-2,4,1);
-  ctx.fillStyle='#252d30';ctx.beginPath();ctx.roundRect(10,2,5,9,1);ctx.fill();
-  ctx.fillStyle='#b08b54';ctx.fillRect(8,-4,3,2);
+  // Distinct character skins: each class has its own silhouette, armor palette and markings.
+  const skins={
+   player:{base:'#263f4c',mid:'#39788a',light:'#a9e9ef',dark:'#14252e',accent:'#45d7ee',visor:'#9ff6ff',pack:'#1d303a'},
+   grunt:{base:'#4c3431',mid:'#875047',light:'#d59a79',dark:'#251d20',accent:'#e4b28a',visor:'#f2c5a2',pack:'#352526'},
+   runner:{base:'#75421f',mid:'#c8752d',light:'#ffd18a',dark:'#382315',accent:'#ffdf77',visor:'#fff0bd',pack:'#5b3018'},
+   heavy:{base:'#303a43',mid:'#596773',light:'#aab8c2',dark:'#171f27',accent:'#e0a34c',visor:'#f2c56b',pack:'#252f38'},
+   shooter:{base:'#40345f',mid:'#7761a5',light:'#d4c5ff',dark:'#211b36',accent:'#bd9bff',visor:'#e2d7ff',pack:'#302748'},
+   boss:{base:'#5b1725',mid:'#a5283c',light:'#ff9aa2',dark:'#260c16',accent:'#ffd36b',visor:'#ff5365',pack:'#40101c'}
+  };
+  const s=isPlayer?skins.player:(skins[kind]||skins.grunt);
+  const scale=isPlayer?1.52:kind==='boss'?2.08:kind==='heavy'?1.68:kind==='runner'?1.28:kind==='shooter'?1.43:1.38;
+  ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);ctx.rotate(angle);
+  // Ground shadow and class-specific backpack.
+  ctx.fillStyle='#020507aa';ctx.beginPath();ctx.ellipse(1,16,kind==='boss'?29:21,8,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=s.pack;ctx.beginPath();ctx.roundRect(-19,-8,9,19,3);ctx.roundRect(10,-8,9,19,3);ctx.fill();
+  ctx.fillStyle=s.light;ctx.globalAlpha=.42;ctx.fillRect(-17,-5,3,9);ctx.fillRect(14,-5,3,9);ctx.globalAlpha=1;
+  // Boots and armored legs.
+  ctx.lineCap='round';ctx.strokeStyle=s.dark;ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(-7,5);ctx.lineTo(-10,15);ctx.moveTo(7,5);ctx.lineTo(10,15);ctx.stroke();
+  ctx.strokeStyle=s.mid;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-8,8);ctx.lineTo(-10,13);ctx.moveTo(7,8);ctx.lineTo(9,13);ctx.stroke();
+  ctx.fillStyle='#10171b';ctx.beginPath();ctx.roundRect(-16,12,14,7,3);ctx.roundRect(2,12,14,7,3);ctx.fill();
+  ctx.fillStyle=s.light;ctx.fillRect(-14,13,8,2);ctx.fillRect(4,13,8,2);
+  // Torso base, chest plate and layered shoulder armor.
+  ctx.fillStyle=s.dark;ctx.beginPath();ctx.roundRect(-17,-10,34,25,8);ctx.fill();
+  const armorGrad=ctx.createLinearGradient(-14,-14,14,15);armorGrad.addColorStop(0,s.light);armorGrad.addColorStop(.18,s.mid);armorGrad.addColorStop(.72,s.base);armorGrad.addColorStop(1,s.dark);
+  ctx.fillStyle=armorGrad;ctx.beginPath();ctx.roundRect(-14,-13,28,27,7);ctx.fill();ctx.strokeStyle=s.light;ctx.globalAlpha=.55;ctx.lineWidth=1.2;ctx.stroke();ctx.globalAlpha=1;
+  ctx.fillStyle=s.dark;ctx.beginPath();ctx.roundRect(-9,-8,18,16,4);ctx.fill();
+  // Chest plates and center insignia differ by faction.
+  ctx.fillStyle=s.mid;ctx.beginPath();ctx.moveTo(-7,-7);ctx.lineTo(-1,-5);ctx.lineTo(-1,5);ctx.lineTo(-7,7);ctx.closePath();ctx.fill();
+  ctx.fillStyle=s.light;ctx.beginPath();ctx.moveTo(7,-7);ctx.lineTo(1,-5);ctx.lineTo(1,5);ctx.lineTo(7,7);ctx.closePath();ctx.fill();
+  ctx.fillStyle=s.accent;ctx.fillRect(-2,-5,4,10);
+  ctx.fillStyle='#11191e';ctx.fillRect(-6,8,12,3);
+  // Shoulder pads and arm guards.
+  ctx.fillStyle=s.mid;ctx.beginPath();ctx.roundRect(-20,-11,10,12,4);ctx.roundRect(10,-11,10,12,4);ctx.fill();
+  ctx.strokeStyle=s.light;ctx.lineWidth=1.2;ctx.strokeRect(-19,-9,7,7);ctx.strokeRect(12,-9,7,7);
+  ctx.strokeStyle=s.dark;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-14,-2);ctx.lineTo(-19,5);ctx.moveTo(14,-2);ctx.lineTo(19,4);ctx.stroke();
+  ctx.strokeStyle=s.accent;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-18,2);ctx.lineTo(-20,5);ctx.moveTo(18,1);ctx.lineTo(20,4);ctx.stroke();
+  // Helmet silhouette: runner gets a light open helmet, heavy a reinforced dome, boss horns.
+  ctx.fillStyle=s.dark;ctx.beginPath();ctx.arc(0,-16,12,Math.PI,Math.PI*2);ctx.lineTo(12,-11);ctx.quadraticCurveTo(0,-7,-12,-11);ctx.closePath();ctx.fill();
+  const helm=ctx.createLinearGradient(-9,-27,9,-10);helm.addColorStop(0,s.light);helm.addColorStop(.25,s.mid);helm.addColorStop(1,s.dark);
+  ctx.fillStyle=helm;ctx.beginPath();
+  if(kind==='runner'){ctx.moveTo(-10,-17);ctx.lineTo(-7,-27);ctx.lineTo(5,-25);ctx.lineTo(11,-17);ctx.lineTo(8,-11);ctx.lineTo(-9,-11);ctx.closePath()}
+  else{ctx.arc(0,-17,10,Math.PI,Math.PI*2);ctx.lineTo(10,-12);ctx.quadraticCurveTo(0,-8,-10,-12);ctx.closePath()}
+  ctx.fill();ctx.strokeStyle=s.light;ctx.globalAlpha=.6;ctx.lineWidth=1;ctx.stroke();ctx.globalAlpha=1;
+  // Visor and faction identity.
+  ctx.fillStyle=s.visor;ctx.shadowColor=s.accent;ctx.shadowBlur=kind==='boss'?12:5;ctx.beginPath();ctx.roundRect(-7,-17,14,4,2);ctx.fill();ctx.shadowBlur=0;
+  ctx.fillStyle=s.dark;ctx.fillRect(-5,-11,10,3);
+  if(kind==='boss'){
+   ctx.strokeStyle=s.accent;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-9,-22);ctx.lineTo(-17,-31);ctx.moveTo(9,-22);ctx.lineTo(17,-31);ctx.stroke();
+   ctx.fillStyle=s.accent;ctx.beginPath();ctx.moveTo(0,-27);ctx.lineTo(5,-20);ctx.lineTo(0,-17);ctx.lineTo(-5,-20);ctx.closePath();ctx.fill();
+   ctx.strokeStyle='#ff5262';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,23,0,Math.PI*2);ctx.stroke();
+  }else if(kind==='heavy'){
+   ctx.fillStyle=s.accent;ctx.fillRect(-17,-2,5,8);ctx.fillRect(12,-2,5,8);
+   ctx.fillStyle=s.light;ctx.fillRect(-5,-24,10,2);
+  }else if(kind==='runner'){
+   ctx.fillStyle=s.accent;ctx.beginPath();ctx.moveTo(0,-28);ctx.lineTo(4,-22);ctx.lineTo(0,-19);ctx.lineTo(-4,-22);ctx.closePath();ctx.fill();
+  }else if(kind==='shooter'){
+   ctx.fillStyle=s.accent;ctx.fillRect(-17,3,5,5);ctx.fillRect(12,3,5,5);
+  }else if(isPlayer){
+   ctx.strokeStyle=s.accent;ctx.lineWidth=1.8;ctx.beginPath();ctx.roundRect(-17,-14,34,30,8);ctx.stroke();
+   ctx.fillStyle=s.accent;ctx.beginPath();ctx.arc(0,-29,3,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle='#d8fbff';ctx.fillRect(-3,-4,6,2);
+  }else{
+   ctx.fillStyle=s.accent;ctx.fillRect(-3,-25,6,2);
+  }
+  // Weapon silhouette held forward.
+  ctx.fillStyle='#0b1115';ctx.beginPath();ctx.roundRect(8,-4,21,7,2);ctx.fill();
+  ctx.fillStyle='#52636b';ctx.fillRect(19,-3,13,3);ctx.fillStyle='#d3dde0';ctx.fillRect(29,-2,4,1);
+  ctx.fillStyle=s.dark;ctx.beginPath();ctx.roundRect(10,2,5,9,1);ctx.fill();
+  ctx.fillStyle=s.accent;ctx.fillRect(8,-4,3,2);
   ctx.restore();
  }
  for(const e of enemies){const ex=sxp(e.x),ey=syp(e.y),ang=Math.atan2(player.y-e.y,player.x-e.x);let c=e.type==='runner'?'#8a4e2e':e.type==='heavy'?'#626c70':e.type==='shooter'?'#514477':e.type==='boss'?'#742b32':'#704238';drawSoldier(ex,ey,ang,c,e.type,false);if(e.type==='boss'){ctx.strokeStyle='#ff5964';ctx.lineWidth=3;ctx.beginPath();ctx.arc(ex,ey,e.r+8,0,Math.PI*2);ctx.stroke()}ctx.fillStyle='#1a1011';ctx.fillRect(ex-e.r,ey-e.r-13,e.r*2,5);ctx.fillStyle=e.type==='boss'?'#ff4655':'#e9a0a0';ctx.fillRect(ex-e.r,ey-e.r-13,e.r*2*clamp(e.hp/(e.maxHp|| (e.type==='heavy'?95+wave*12:e.type==='shooter'?42+wave*6:e.type==='runner'?22+wave*4:32+wave*5)),0,1),5);}
