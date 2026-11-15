@@ -108,11 +108,67 @@ jobs:
           mkdir -p "$HOME/.android"
           printf '%s' "$GOZAR_ANDROID_KEYSTORE_BASE64" | base64 --decode > "$HOME/.android/debug.keystore"
           chmod 600 "$HOME/.android/debug.keystore"
+          echo "GOZAR_ANDROID_KEYSTORE_PATH=$HOME/.android/debug.keystore" >> "$GITHUB_ENV"
           keytool -list -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey
+
+      - name: Force Gradle to use the persistent signing key
+        working-directory: android
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+
+          p = Path('app/build.gradle')
+          s = p.read_text()
+
+          signing = '''
+              signingConfigs {
+                  debug {
+                      storeFile file(System.getenv("GOZAR_ANDROID_KEYSTORE_PATH"))
+                      storePassword "android"
+                      keyAlias "androiddebugkey"
+                      keyPassword "android"
+                  }
+              }
+          '''
+
+          if 'signingConfigs {' in s:
+              raise SystemExit('Unexpected existing signingConfigs block; refusing to overwrite it')
+          if not re.search(r'(?m)^android\\s*\\{', s):
+              raise SystemExit('Could not find android { block')
+          s = re.sub(r'(?m)^android\\s*\\{', lambda m: m.group(0) + signing, s, count=1)
+
+          debug_block = re.search(r'(?m)^\\s*debug\\s*\\{', s)
+          if not debug_block:
+              s = re.sub(
+                  r'(?m)^([ \\t]*)buildTypes\\s*\\{',
+                  lambda m: m.group(0) + '\\n' + m.group(1) + '    debug {\\n' + m.group(1) + '        signingConfig signingConfigs.debug\\n' + m.group(1) + '    }',
+                  s,
+                  count=1
+              )
+          else:
+              start = debug_block.end()
+              s = s[:start] + '\\n        signingConfig signingConfigs.debug' + s[start:]
+
+          p.write_text(s)
+          print('Gradle debug signing explicitly points to the persistent keystore.')
+          PY
 
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug
+
+      - name: Verify APK signing certificate
+        run: |
+          expected="$(keytool -list -v -keystore "$GOZAR_ANDROID_KEYSTORE_PATH" -storepass android -alias androiddebugkey | awk -F': ' '/SHA256:/{print $2; exit}' | tr -d ':')"
+          actual="$($ANDROID_HOME/build-tools/35.0.0/apksigner verify --print-certs android/app/build/outputs/apk/debug/app-debug.apk | awk -F': ' '/Signer #1 certificate SHA-256 digest:/{print $2; exit}' | tr -d ':')"
+          echo "Expected signing certificate: $expected"
+          echo "Actual APK signing certificate: $actual"
+          if [ -z "$expected" ] || [ "$expected" != "$actual" ]; then
+            echo "APK was not signed with the persistent GOZAR key."
+            exit 1
+          fi
+          echo "APK signing certificate verified."
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
