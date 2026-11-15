@@ -23,7 +23,7 @@
 .menu{background:linear-gradient(150deg,#17212bed,#080c12f5);border-color:#a43a46;box-shadow:0 24px 80px #000d,0 0 35px #ed172522,inset 0 1px #ffffff18}
 .primary{background:linear-gradient(115deg,#ff3947,#a70e1a 75%);box-shadow:0 8px 22px #ed172544,inset 0 1px #ffffff55}
 
-.brand{font-weight:900;letter-spacing:1px;color:#fff}.brand b{color:var(--red)}
+.brand{font-weight:900;letter-spacing:1px;color:#fff}#audioToggle{border:1px solid #ffffff55;border-radius:9px;background:#111a22;color:#fff;font:700 11px Vazirmatn;padding:5px 8px;pointer-events:auto;touch-action:manipulation}.brand b{color:var(--red)}
 .stats{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
 .bar{width:150px;height:9px;background:#343b42;border-radius:9px;overflow:hidden;margin-top:5px}.bar i{display:block;height:100%;background:#e6323c;width:100%}
 #banner{position:absolute;top:24%;left:50%;transform:translate(-50%,-50%);font-size:clamp(25px,6vw,54px);font-weight:900;letter-spacing:2px;text-shadow:0 3px 20px #000,0 0 20px #ed1725;opacity:0;transition:opacity .25s;white-space:nowrap}
@@ -69,7 +69,7 @@ h1{font-size:clamp(27px,7vw,42px);margin:0;font-weight:900}h1 span{color:var(--r
 </div></div>
 <div id="hud" hidden>
  <div class="top">
-  <div class="panel"><div class="brand">GOZAR <b>ARENA</b></div><div id="wave">WAVE 1</div><div class="bar"><i id="health"></i></div><div id="hptext">سلامت 100%</div></div>
+  <div class="panel"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><div class="brand">GOZAR <b>ARENA</b></div><button id="audioToggle" type="button">🔊 صدا روشن</button></div><div id="wave">WAVE 1</div><div class="bar"><i id="health"></i></div><div id="hptext">سلامت 100%</div></div>
   <div class="stats">
    <div class="panel">🪙 <span id="coins">0</span></div>
    <div class="panel">⭐ LV <span id="level">1</span><br>XP <span id="xp">0</span></div>
@@ -127,6 +127,39 @@ async function loadAssetPack(){
  }catch(error){console.warn('GOZAR asset pack could not be loaded:',error)}
 }
 
+// Original procedural audio: weapon-specific SFX and subtle ambient battle tones.
+let audioCtx=null,masterGain=null,musicGain=null,soundEnabled=localStorage.getItem('gozarArenaSound')!=='off';
+function audioInit(){
+ if(audioCtx){if(audioCtx.state==='suspended')audioCtx.resume();return}
+ try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;audioCtx=new AC();masterGain=audioCtx.createGain();masterGain.gain.value=soundEnabled?.72:0;masterGain.connect(audioCtx.destination);musicGain=audioCtx.createGain();musicGain.gain.value=.10;musicGain.connect(masterGain);
+ const a=audioCtx.createOscillator(),b=audioCtx.createOscillator(),lfo=audioCtx.createOscillator(),lg=audioCtx.createGain();a.type='triangle';a.frequency.value=54;b.type='sine';b.frequency.value=81.5;lfo.frequency.value=.8;lg.gain.value=.025;a.connect(musicGain);b.connect(musicGain);lfo.connect(lg);lg.connect(musicGain);a.start();b.start();lfo.start();
+ }catch(e){console.warn('Audio unavailable',e)}
+}
+function tone(freq,duration,type='sine',volume=.1,endFreq=null,delay=0){
+ if(!soundEnabled)return;audioInit();if(!audioCtx)return;const t=audioCtx.currentTime+delay,o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type;o.frequency.setValueAtTime(Math.max(1,freq),t);if(endFreq)o.frequency.exponentialRampToValueAtTime(Math.max(1,endFreq),t+duration);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(Math.max(.001,volume),t+.008);g.gain.exponentialRampToValueAtTime(.0001,t+duration);o.connect(g);g.connect(masterGain);o.start(t);o.stop(t+duration+.02)
+}
+function noise(duration=.1,volume=.07,filter=1000){
+ if(!soundEnabled)return;audioInit();if(!audioCtx)return;const n=Math.max(1,Math.floor(audioCtx.sampleRate*duration)),buf=audioCtx.createBuffer(1,n,audioCtx.sampleRate),d=buf.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*(1-i/n);const src=audioCtx.createBufferSource(),f=audioCtx.createBiquadFilter(),g=audioCtx.createGain(),t=audioCtx.currentTime;src.buffer=buf;f.type='lowpass';f.frequency.value=filter;g.gain.setValueAtTime(volume,t);g.gain.exponentialRampToValueAtTime(.0001,t+duration);src.connect(f);f.connect(g);g.connect(masterGain);src.start(t);src.stop(t+duration)
+}
+function playSound(name){
+ if(!soundEnabled)return;
+ if(name==='pistol'){tone(190,.09,'square',.11,75);noise(.055,.045,1800)}
+ else if(name==='smg'){tone(230,.055,'sawtooth',.07,100);noise(.04,.035,2200)}
+ else if(name==='shotgun'){noise(.22,.17,700);tone(95,.2,'triangle',.13,38)}
+ else if(name==='rifle'){tone(155,.085,'sawtooth',.1,55);noise(.07,.06,1300)}
+ else if(name==='sniper'){tone(115,.28,'triangle',.18,28);noise(.16,.12,520)}
+ else if(name==='reload'){tone(480,.06,'square',.045,330);tone(620,.08,'square',.05,420,.13);noise(.08,.04,1200)}
+ else if(name==='hit'){tone(105,.16,'sawtooth',.12,48);noise(.12,.08,500)}
+ else if(name==='kill'){tone(520,.07,'triangle',.08,760);tone(780,.12,'sine',.07,980,.07)}
+ else if(name==='boss'){tone(95,.65,'sawtooth',.16,42);tone(145,.5,'triangle',.1,65,.18)}
+ else if(name==='wave'){tone(330,.14,'triangle',.08,440);tone(495,.22,'triangle',.09,660,.15)}
+ else if(name==='shield'){tone(260,.25,'sine',.1,780);tone(520,.3,'sine',.07,1040,.05)}
+ else if(name==='pickup'){tone(660,.1,'sine',.08,880);tone(990,.14,'sine',.07,1320,.09)}
+ else if(name==='chest'){tone(440,.18,'triangle',.1,660);tone(660,.22,'sine',.1,1100,.16);tone(880,.28,'sine',.08,1320,.3)}
+ else if(name==='gameover'){tone(240,.5,'triangle',.12,75);tone(110,.7,'sine',.08,45,.3)}
+ else if(name==='empty')tone(170,.045,'square',.045,120)
+}
+function toggleSound(){soundEnabled=!soundEnabled;localStorage.setItem('gozarArenaSound',soundEnabled?'on':'off');const b=$('audioToggle');if(b)b.textContent=soundEnabled?'🔊 صدا روشن':'🔇 صدا خاموش';if(soundEnabled){audioInit();if(masterGain)masterGain.gain.setTargetAtTime(.72,audioCtx.currentTime,.04);tone(660,.09,'sine',.06,880)}else if(masterGain)masterGain.gain.setTargetAtTime(0,audioCtx.currentTime,.025)}
 const rand=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const WEAPONS={pistol:{name:'تپانچه',cost:0,damage:20,rate:320,mag:12,reload:1250},smg:{name:'مسلسل سبک',cost:450,damage:13,rate:105,mag:32,reload:1500},shotgun:{name:'شاتگان',cost:700,damage:58,rate:720,mag:6,reload:1750},rifle:{name:'تفنگ تهاجمی',cost:900,damage:25,rate:190,mag:24,reload:1650},sniper:{name:'تک‌تیرانداز',cost:1200,damage:105,rate:950,mag:5,reload:1900}};
 const UPGRADE_NAMES={damage:'قدرت آسیب',rate:'سرعت شلیک',mag:'ظرفیت خشاب',reload:'سرعت تعویض خشاب'};
@@ -142,10 +175,10 @@ function updateProgressUI(progress){if(!progress)return;$('level').textContent=p
 async function loadBattleProgress(){const initData=telegramInitData();if(!initData)return null;try{const response=await fetch('/api/battle-progress',{headers:{'X-Telegram-Init-Data':initData}});if(!response.ok)return null;const data=await response.json();if(data.success){updateProgressUI(data.progress);if(window.Telegram.WebApp.ready)window.Telegram.WebApp.ready()}return data}catch(error){console.warn('Battle progress load failed',error);return null}}
 function newMatchId(){return window.crypto&&crypto.randomUUID?crypto.randomUUID():(Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2))}
 async function saveBattleProgress(){const initData=telegramInitData();if(!initData)return{success:false,message:'اطلاعات ورود تلگرام دریافت نشد'};const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),10000);try{const response=await fetch('/api/battle-progress',{method:'POST',headers:{'Content-Type':'application/json','X-Telegram-Init-Data':initData},body:JSON.stringify({match_id:matchId,kills,wave,spent_coins:spentCoinsThisRun,earned_coins:earnedCoinsThisRun}),signal:controller.signal});let data;try{data=await response.json()}catch{data={}}if(data.success){coins=data.wallet_coins||0;$('coins').textContent=coins;updateProgressUI({...data.progress,coins});return data}const message=data.message||data.error||(response.status===409?'این مسابقه قبلاً ثبت شده یا سقف پاداش روزانه پر شده':'خطای سرور ('+response.status+')');return{success:false,message,status:response.status}}catch(error){console.warn('Battle progress save failed',error);return{success:false,message:error.name==='AbortError'?'زمان ذخیره‌سازی تمام شد (۱۰ ثانیه)':'ارتباط با سرور برقرار نشد'}}finally{clearTimeout(timeout)}}
-async function start(){await loadBattleProgress();matchId=newMatchId();spentCoinsThisRun=0;earnedCoinsThisRun=0;savingMatch=false;$('overlay').style.display='none';$('hud').hidden=false;$('controls').hidden=false;running=true;const startPoint=findFreePosition(WORLD_W/2,WORLD_H/2,17,320)||{x:WORLD_W/2,y:WORLD_H/2};player={x:startPoint.x,y:startPoint.y,r:17,speed:255,angle:0};aim={x:1,y:0};equipWeapon('pistol');spawnWave();last=performance.now();requestAnimationFrame(loop)}
+async function start(){audioInit();if(soundEnabled)playSound("wave");await loadBattleProgress();matchId=newMatchId();spentCoinsThisRun=0;earnedCoinsThisRun=0;savingMatch=false;$('overlay').style.display='none';$('hud').hidden=false;$('controls').hidden=false;running=true;const startPoint=findFreePosition(WORLD_W/2,WORLD_H/2,17,320)||{x:WORLD_W/2,y:WORLD_H/2};player={x:startPoint.x,y:startPoint.y,r:17,speed:255,angle:0};aim={x:1,y:0};equipWeapon('pistol');spawnWave();last=performance.now();requestAnimationFrame(loop)}
 function announce(t){$('banner').textContent=t;$('banner').style.opacity=1;bannerTimer=1.5}
-function spawnWave(){between=0;spawnTimer=.45;$('wave').textContent='WAVE '+wave;if(wave%5===0){spawnLeft=0;spawnBoss()}else{spawnLeft=Math.min(5+wave*2,32);announce('WAVE '+wave)}}
-function spawnBoss(){const a=rand(0,Math.PI*2),x=clamp(player.x+Math.cos(a)*470,80,WORLD_W-80),y=clamp(player.y+Math.sin(a)*470,80,WORLD_H-80),point=findFreePosition(x,y,34,640);if(!point){announce('BOSS SPAWN BLOCKED');return}const boss={x:point.x,y:point.y,type:'boss',r:34,hp:900+wave*90,maxHp:900+wave*90,speed:42+wave,color:'#a8323b',hit:0,shotAt:performance.now()+500,phase:0};enemies.push(boss);bossIntroUntil=performance.now()+5000;announce('⚠ BOSS INCOMING')}
+function spawnWave(){playSound("wave");between=0;spawnTimer=.45;$('wave').textContent='WAVE '+wave;if(wave%5===0){spawnLeft=0;spawnBoss()}else{spawnLeft=Math.min(5+wave*2,32);announce('WAVE '+wave)}}
+function spawnBoss(){const a=rand(0,Math.PI*2),x=clamp(player.x+Math.cos(a)*470,80,WORLD_W-80),y=clamp(player.y+Math.sin(a)*470,80,WORLD_H-80),point=findFreePosition(x,y,34,640);if(!point){announce('BOSS SPAWN BLOCKED');return}const boss={x:point.x,y:point.y,type:'boss',r:34,hp:900+wave*90,maxHp:900+wave*90,speed:42+wave,color:'#a8323b',hit:0,shotAt:performance.now()+500,phase:0};enemies.push(boss);bossIntroUntil=performance.now()+5000;playSound('boss');announce('⚠ BOSS INCOMING')}
 function spawnEnemy(){let a=rand(0,Math.PI*2),dist=rand(360,520),roll=Math.random(),type=wave>=3&&roll>.78?'shooter':roll>.58?'runner':roll>.35?'heavy':'grunt';const cfg={grunt:{r:16,hp:32+wave*5,speed:76+wave*2,color:'#a83b40'},runner:{r:12,hp:22+wave*4,speed:125+wave*2,color:'#e08b36'},heavy:{r:23,hp:95+wave*12,speed:39+wave,color:'#666f79'},shooter:{r:17,hp:42+wave*6,speed:48+wave,color:'#8b65bd'}}[type],x=clamp(player.x+Math.cos(a)*dist,80,WORLD_W-80),y=clamp(player.y+Math.sin(a)*dist,80,WORLD_H-80),point=findFreePosition(x,y,cfg.r,224);if(!point)return;enemies.push({x:point.x,y:point.y,type,...cfg,hit:0,shotAt:performance.now()+rand(700,1500),phase:rand(0,6.28)})}
 function drop(x,y,type){drops.push({x,y,type,r:13,life:18})}
 const CELL=160,MAP_TILE=320;
@@ -167,10 +200,10 @@ function moveEnemy(e,vx,vy,dt,targetX,targetY){
  }
 function burst(x,y,color,n=8){shockwaves.push({x,y,r:4,life:.32,max:.32,color});for(let i=0;i<n;i++){let a=rand(0,Math.PI*2),v=rand(45,190);particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:rand(.18,.5),max:.5,color});if(particles.length>180)particles.splice(0,particles.length-180)}}
 function showChest(x,y,legendary){chestReady={x,y,legendary};const chest=$('chest');if(chest){chest.style.display='block';chest.disabled=false;chest.style.pointerEvents='auto';chest.style.zIndex='20'}announce('🎁 صندوق جایزه آماده است؛ برای دریافت لمس کن')}
-function openChest(){if(!chestReady||!running)return;const chest=chestReady;let roll=Math.random(),rarity=chest.legendary&&roll<.08?'افسانه‌ای':roll<.32?'کمیاب':'معمولی';let reward=rarity==='افسانه‌ای'?1000:rarity==='کمیاب'?400:180;coins+=reward;if(rarity==='افسانه‌ای'){player.speed+=18;announce('صندوق افسانه‌ای! +۱۰۰۰ سکه و افزایش سرعت')}else if(rarity==='کمیاب'){ammo=weaponStat('mag');health=Math.min(100,health+35);announce('صندوق کمیاب! +۴۰۰ سکه، مهمات و سلامتی')}else{health=Math.min(100,health+20);ammo=weaponStat('mag');announce('صندوق معمولی! +۱۸۰ سکه، مهمات و سلامتی')}const button=$('chest');button.style.display='none';button.disabled=true;chestReady=null;$('coins').textContent=coins;$('health').style.width=health+'%';$('hptext').textContent='سلامت '+Math.round(health)+'%';$('ammo').textContent=ammo+' / '+weaponStat('mag')+' · '+WEAPONS[currentWeapon].name;setTimeout(()=>{if(running)button.disabled=false},250)}
-function shoot(){const now=performance.now();if(!running||$('shopPanel').style.display==='flex'||reloading||ammo<=0||now<nextShotAt)return;nextShotAt=now+weaponStat('rate');ammo--;muzzleFlash={x:player.x+Math.cos(aim.x?Math.atan2(aim.y,aim.x):0)*31,y:player.y+Math.sin(aim.x?Math.atan2(aim.y,aim.x):0)*31,angle:Math.atan2(aim.y,aim.x),until:now+75};for(let i=0;i<3;i++){const a=muzzleFlash.angle+rand(-.7,.7),v=rand(45,110);particles.push({x:muzzleFlash.x,y:muzzleFlash.y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:.12,max:.12,color:'#ffd36b'})}let a=Math.atan2(aim.y,aim.x);player.angle=a;const damage=weaponStat('damage');if(currentWeapon==='shotgun'){for(let i=-2;i<=2;i++){let q=a+i*.105;bullets.push({x:player.x+Math.cos(q)*23,y:player.y+Math.sin(q)*23,vx:Math.cos(q)*570,vy:Math.sin(q)*570,life:.55,damage:damage/2.4})}}else bullets.push({x:player.x+Math.cos(a)*23,y:player.y+Math.sin(a)*23,vx:Math.cos(a)*(currentWeapon==='sniper'?900:650),vy:Math.sin(a)*(currentWeapon==='sniper'?900:650),life:currentWeapon==='sniper'?1.1:.8,damage});if(ammo===0)reload()}
-function reload(){if(reloading||ammo>=weaponStat('mag'))return;reloading=true;reloadEnd=performance.now()+weaponStat('reload')}
-function activateShield(){const now=performance.now();if(!running||now<shieldReady)return;shieldEnd=now+6000;shieldReady=now+26000;const button=$('shield');if(button)button.disabled=true}
+function openChest(){if(!chestReady||!running)return;playSound("chest");const chest=chestReady;let roll=Math.random(),rarity=chest.legendary&&roll<.08?'افسانه‌ای':roll<.32?'کمیاب':'معمولی';let reward=rarity==='افسانه‌ای'?1000:rarity==='کمیاب'?400:180;coins+=reward;if(rarity==='افسانه‌ای'){player.speed+=18;announce('صندوق افسانه‌ای! +۱۰۰۰ سکه و افزایش سرعت')}else if(rarity==='کمیاب'){ammo=weaponStat('mag');health=Math.min(100,health+35);announce('صندوق کمیاب! +۴۰۰ سکه، مهمات و سلامتی')}else{health=Math.min(100,health+20);ammo=weaponStat('mag');announce('صندوق معمولی! +۱۸۰ سکه، مهمات و سلامتی')}const button=$('chest');button.style.display='none';button.disabled=true;chestReady=null;$('coins').textContent=coins;$('health').style.width=health+'%';$('hptext').textContent='سلامت '+Math.round(health)+'%';$('ammo').textContent=ammo+' / '+weaponStat('mag')+' · '+WEAPONS[currentWeapon].name;setTimeout(()=>{if(running)button.disabled=false},250)}
+function shoot(){const now=performance.now();if(!running||$('shopPanel').style.display==='flex'||reloading||ammo<=0||now<nextShotAt)return;playSound(currentWeapon);nextShotAt=now+weaponStat('rate');ammo--;muzzleFlash={x:player.x+Math.cos(aim.x?Math.atan2(aim.y,aim.x):0)*31,y:player.y+Math.sin(aim.x?Math.atan2(aim.y,aim.x):0)*31,angle:Math.atan2(aim.y,aim.x),until:now+75};for(let i=0;i<3;i++){const a=muzzleFlash.angle+rand(-.7,.7),v=rand(45,110);particles.push({x:muzzleFlash.x,y:muzzleFlash.y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:.12,max:.12,color:'#ffd36b'})}let a=Math.atan2(aim.y,aim.x);player.angle=a;const damage=weaponStat('damage');if(currentWeapon==='shotgun'){for(let i=-2;i<=2;i++){let q=a+i*.105;bullets.push({x:player.x+Math.cos(q)*23,y:player.y+Math.sin(q)*23,vx:Math.cos(q)*570,vy:Math.sin(q)*570,life:.55,damage:damage/2.4})}}else bullets.push({x:player.x+Math.cos(a)*23,y:player.y+Math.sin(a)*23,vx:Math.cos(a)*(currentWeapon==='sniper'?900:650),vy:Math.sin(a)*(currentWeapon==='sniper'?900:650),life:currentWeapon==='sniper'?1.1:.8,damage});if(ammo===0)reload()}
+function reload(){if(reloading||ammo>=weaponStat('mag'))return;playSound("reload");reloading=true;reloadEnd=performance.now()+weaponStat('reload')}
+function activateShield(){const now=performance.now();if(!running||now<shieldReady)return;playSound("shield");shieldEnd=now+6000;shieldReady=now+26000;const button=$('shield');if(button)button.disabled=true}
 function loop(now){if(!running)return;let dt=Math.min((now-last)/1000,.033);last=now;update(dt,now);draw();requestAnimationFrame(loop)}
 function update(dt,now){
  // The joystick controls movement only. Aim is selected automatically from visible enemies.
@@ -186,7 +219,7 @@ function update(dt,now){
 else if(e.type==='shooter'){if(d>260){moveEnemy(e,nx*e.speed,ny*e.speed,dt,player.x,player.y)}else if(d<185){moveEnemy(e,-nx*e.speed*.7,-ny*e.speed*.7,dt,e.x-nx*80,e.y-ny*80)}else{const side=(Math.floor((e.phase||0)*10)%2)?1:-1;moveEnemy(e,-ny*e.speed*.75*side,nx*e.speed*.75*side,dt,e.x-ny*side*100,e.y+nx*side*100)}if(now>e.shotAt&&d<520){enemyBullets.push({x:e.x+nx*e.r,y:e.y+ny*e.r,vx:nx*260,vy:ny*260,life:2.4,damage:7});e.shotAt=now+rand(1500,2200)}}
   else if(e.type==='runner'){const sway=Math.sin(now/180+e.phase)*.65;moveEnemy(e,(nx-sway*ny)*e.speed,(ny+sway*nx)*e.speed,dt,player.x,player.y)}
   else {moveEnemy(e,nx*e.speed,ny*e.speed,dt,player.x,player.y)}
-  if(d<e.r+player.r&&now>e.hit){e.hit=now+(e.type==='boss'?1000:e.type==='heavy'?900:650);if(now>shieldEnd){health=Math.max(0,health-(e.type==='boss'?22:e.type==='heavy'?15:8));damageFlashUntil=now+140;burst(player.x,player.y,'#ed1725',5)}}
+  if(d<e.r+player.r&&now>e.hit){e.hit=now+(e.type==='boss'?1000:e.type==='heavy'?900:650);if(now>shieldEnd){health=Math.max(0,health-(e.type==='boss'?22:e.type==='heavy'?15:8));damageFlashUntil=now+140;playSound('hit');burst(player.x,player.y,'#ed1725',5)}}
  }
  // Automatically aim at the nearest enemy with a clear line of sight, independent of joystick direction.
  let autoTarget=null,bestTargetDistance=Infinity;
@@ -202,7 +235,7 @@ else if(e.type==='shooter'){if(d>260){moveEnemy(e,nx*e.speed,ny*e.speed,dt,playe
   aim={x:dx/dist,y:dy/dist};player.angle=Math.atan2(aim.y,aim.x);
   if(!reloading&&ammo>0&&now>=nextShotAt&&$('shopPanel').style.display!=='flex')shoot();
  }
- for(const b of bullets){b.px=b.x;b.py=b.y;b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;if(circleHitsWall(b.x,b.y,3)){b.life=0;burst(b.x,b.y,'#d4c5a0',3)}for(const e of enemies){if(e.hp>0&&Math.hypot(e.x-b.x,e.y-b.y)<e.r+5){e.hp-=b.damage;b.life=0;if(e.hp<=0){kills++;const coinReward=e.type==='boss'?500:e.type==='heavy'?18:e.type==='shooter'?14:10;coins+=coinReward;earnedCoinsThisRun=Math.min(500,earnedCoinsThisRun+coinReward);burst(e.x,e.y,e.type==='boss'?'#ff4655':'#ffb45c',e.type==='boss'?30:10);if(e.type==='boss'){drop(e.x,e.y,'ammo');drop(e.x+28,e.y,'med');showChest(e.x,e.y,wave>=10);announce('BOSS DEFEATED')}else if(Math.random()<(e.type==='heavy'?.4:.25))drop(e.x,e.y,Math.random()<.5?'ammo':'med');}break}}}
+ for(const b of bullets){b.px=b.x;b.py=b.y;b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;if(circleHitsWall(b.x,b.y,3)){b.life=0;burst(b.x,b.y,'#d4c5a0',3)}for(const e of enemies){if(e.hp>0&&Math.hypot(e.x-b.x,e.y-b.y)<e.r+5){e.hp-=b.damage;b.life=0;if(e.hp<=0){kills++;playSound("kill");const coinReward=e.type==='boss'?500:e.type==='heavy'?18:e.type==='shooter'?14:10;coins+=coinReward;earnedCoinsThisRun=Math.min(500,earnedCoinsThisRun+coinReward);burst(e.x,e.y,e.type==='boss'?'#ff4655':'#ffb45c',e.type==='boss'?30:10);if(e.type==='boss'){drop(e.x,e.y,'ammo');drop(e.x+28,e.y,'med');showChest(e.x,e.y,wave>=10);announce('BOSS DEFEATED')}else if(Math.random()<(e.type==='heavy'?.4:.25))drop(e.x,e.y,Math.random()<.5?'ammo':'med');}break}}}
  for(const b of enemyBullets){b.px=b.x;b.py=b.y;b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;if(circleHitsWall(b.x,b.y,4)){b.life=0;burst(b.x,b.y,'#a9a9a9',3)}else if(Math.hypot(b.x-player.x,b.y-player.y)<player.r+5){if(now>shieldEnd){health=Math.max(0,health-b.damage);damageFlashUntil=now+140;burst(player.x,player.y,'#ed1725',5)}b.life=0}}
  bullets=bullets.filter(b=>b.life>0);enemyBullets=enemyBullets.filter(b=>b.life>0);enemies=enemies.filter(e=>e.hp>0);
  for(const d of drops){d.life-=dt;if(Math.hypot(d.x-player.x,d.y-player.y)<d.r+player.r){if(d.type==='ammo'){ammo=weaponStat('mag');reloading=false}else health=Math.min(100,health+30);d.life=0}}
@@ -210,7 +243,7 @@ else if(e.type==='shooter'){if(d>260){moveEnemy(e,nx*e.speed,ny*e.speed,dt,playe
  for(const w of shockwaves){w.r+=dt*260;w.life-=dt}shockwaves=shockwaves.filter(w=>w.life>0);for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;p.vx*=.94;p.vy*=.94}particles=particles.filter(p=>p.life>0);
  $('health').style.width=health+'%';$('hptext').textContent='سلامت '+Math.round(health)+'%';$('coins').textContent=coins;$('kills').textContent=kills;$('ammo').textContent=reloading?'در حال تعویض…':ammo+' / '+weaponStat('mag')+' · '+WEAPONS[currentWeapon].name;
  $('damageFlash').style.opacity=now<damageFlashUntil?'1':'0';const shieldButton=$('shield');if(shieldButton){shieldButton.disabled=now<shieldReady;shieldButton.textContent=now<shieldEnd?'🛡️ فعال':now<shieldReady?'🛡️ شارژ':'🛡️ سپر'}
- if(health<=0){running=false;if(!savingMatch){savingMatch=true;saveBattleProgress().then(result=>{const saved=result&&result.success?'\\n⭐ XP ذخیره‌شده: +'+result.xp_awarded+' | 🪙 سکه ذخیره‌شده: +'+result.coins_awarded:'\\n⚠️ ذخیره انجام نشد: '+((result&&result.message)||'خطای نامشخص');setTimeout(()=>{alert('پایان بازی! موج '+wave+' — کشتار '+kills+' — سکه '+coins+saved);location.reload()},100)})}}
+ if(health<=0){running=false;playSound("gameover");if(!savingMatch){savingMatch=true;saveBattleProgress().then(result=>{const saved=result&&result.success?'\\n⭐ XP ذخیره‌شده: +'+result.xp_awarded+' | 🪙 سکه ذخیره‌شده: +'+result.coins_awarded:'\\n⚠️ ذخیره انجام نشد: '+((result&&result.message)||'خطای نامشخص');setTimeout(()=>{alert('پایان بازی! موج '+wave+' — کشتار '+kills+' — سکه '+coins+saved);location.reload()},100)})}}
 }
 function draw(){
  ctx.fillStyle='#252a2c';ctx.fillRect(0,0,W,H);
@@ -403,7 +436,7 @@ document.querySelectorAll('.mapChoice').forEach(button=>button.addEventListener(
  document.querySelectorAll('.mapChoice').forEach(item=>item.classList.toggle('active',item===button));
 }));
 loadAssetPack();
-$('start').addEventListener('click',start);
+$('start').addEventListener('click',start);$('audioToggle').textContent=soundEnabled?'🔊 صدا روشن':'🔇 صدا خاموش';$('audioToggle').addEventListener('click',e=>{e.stopPropagation();audioInit();toggleSound()});
 $('shop').addEventListener('click',openShop);
 $('shield').addEventListener('click',activateShield);
 $('chest').addEventListener('pointerup',e=>{e.preventDefault();e.stopPropagation();openChest()});$('chest').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openChest()});
