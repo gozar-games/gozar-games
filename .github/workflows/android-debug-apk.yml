@@ -227,8 +227,8 @@ jobs:
 
       - name: Verify APK signing certificate
         run: |
-          expected="$(keytool -list -v -keystore "$GOZAR_ANDROID_KEYSTORE_PATH" -storepass android -alias androiddebugkey | awk -F': ' '/SHA256:/{print $2; exit}' | tr -d ':')"
-          actual="$($ANDROID_HOME/build-tools/35.0.0/apksigner verify --print-certs android/app/build/outputs/apk/debug/app-debug.apk | awk -F': ' '/Signer #1 certificate SHA-256 digest:/{print $2; exit}' | tr -d ':')"
+          expected="$(keytool -list -v -keystore "$GOZAR_ANDROID_KEYSTORE_PATH" -storepass android -alias androiddebugkey | awk -F': ' '/SHA256:/{print $2; exit}' | tr -d ':' | tr '[:lower:]' '[:upper:]')"
+          actual="$($ANDROID_HOME/build-tools/35.0.0/apksigner verify --print-certs android/app/build/outputs/apk/debug/app-debug.apk | awk -F': ' '/Signer #1 certificate SHA-256 digest:/{print $2; exit}' | tr -d ':' | tr '[:lower:]' '[:upper:]')"
           echo "Expected signing certificate: $expected"
           echo "Actual APK signing certificate: $actual"
           if [ -z "$expected" ] || [ "$expected" != "$actual" ]; then
