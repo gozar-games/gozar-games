@@ -327,12 +327,12 @@ function draw(){
  function drawSoldier(x,y,angle,color,kind,isPlayer=false){
   // Distinct character skins: each class has its own silhouette, armor palette and markings.
   const skins={
-   player:{base:'#263f4c',mid:'#39788a',light:'#a9e9ef',dark:'#14252e',accent:'#45d7ee',visor:'#9ff6ff',pack:'#1d303a'},
-   grunt:{base:'#4c3431',mid:'#875047',light:'#d59a79',dark:'#251d20',accent:'#e4b28a',visor:'#f2c5a2',pack:'#352526'},
-   runner:{base:'#75421f',mid:'#c8752d',light:'#ffd18a',dark:'#382315',accent:'#ffdf77',visor:'#fff0bd',pack:'#5b3018'},
-   heavy:{base:'#303a43',mid:'#596773',light:'#aab8c2',dark:'#171f27',accent:'#e0a34c',visor:'#f2c56b',pack:'#252f38'},
-   shooter:{base:'#40345f',mid:'#7761a5',light:'#d4c5ff',dark:'#211b36',accent:'#bd9bff',visor:'#e2d7ff',pack:'#302748'},
-   boss:{base:'#5b1725',mid:'#a5283c',light:'#ff9aa2',dark:'#260c16',accent:'#ffd36b',visor:'#ff5365',pack:'#40101c'}
+   player:{base:'#35433b',mid:'#596b55',light:'#a7aa8b',dark:'#171d1a',accent:'#c2a66b',visor:'#7d9691',pack:'#252e28'},
+   grunt:{base:'#45463a',mid:'#68664d',light:'#aaa184',dark:'#20221c',accent:'#b79b68',visor:'#777d78',pack:'#292d25'},
+   runner:{base:'#4c4030',mid:'#796449',light:'#b7a17b',dark:'#241f19',accent:'#c29b5d',visor:'#777d79',pack:'#33291f'},
+   heavy:{base:'#343b3d',mid:'#515b5b',light:'#929995',dark:'#171c1d',accent:'#a98a55',visor:'#6e7777',pack:'#242b2c'},
+   shooter:{base:'#353e3c',mid:'#59665c',light:'#a0a28b',dark:'#1b211e',accent:'#b7a16c',visor:'#777e78',pack:'#252c27'},
+   boss:{base:'#3d3932',mid:'#62594a',light:'#b5a27e',dark:'#1c1a17',accent:'#c09a57',visor:'#827b6d',pack:'#29251f'}
   };
   const s=isPlayer?skins.player:(skins[kind]||skins.grunt);
   const scale=isPlayer?1.52:kind==='boss'?2.08:kind==='heavy'?1.68:kind==='runner'?1.28:kind==='shooter'?1.43:1.38;
@@ -389,6 +389,46 @@ function draw(){
   }else{
    ctx.fillStyle=s.accent;ctx.fillRect(-3,-25,6,2);
   }
+  // Realistic field gear pass: muted camouflage, webbing, magazine pouches and worn fabric.
+  // Keep the pattern clipped to the armor so it reads as material rather than glowing decoration.
+  ctx.save();ctx.beginPath();ctx.roundRect(-13,-12,26,25,6);ctx.clip();
+  const camo=[s.dark,s.mid,s.base,'#77745d','#343a32'];
+  for(let i=0;i<34;i++){
+   const px=((i*17)%25)-12,py=((i*11)%23)-11;
+   ctx.fillStyle=camo[(i*7+kind.length)%camo.length];ctx.globalAlpha=.22+(i%3)*.08;
+   ctx.beginPath();ctx.ellipse(px,py,1.2+(i%3)*.55,.7+(i%2)*.45,(i%5)*.35,0,Math.PI*2);ctx.fill();
+  }
+  ctx.globalAlpha=1;ctx.restore();
+  // Tactical plate-carrier straps and stitched seams.
+  ctx.strokeStyle='#171b18';ctx.lineWidth=2.2;ctx.beginPath();ctx.moveTo(-10,-10);ctx.lineTo(-5,11);ctx.moveTo(10,-10);ctx.lineTo(5,11);ctx.stroke();
+  ctx.strokeStyle=s.light;ctx.globalAlpha=.42;ctx.lineWidth=.8;ctx.beginPath();ctx.moveTo(-12,-7);ctx.lineTo(-12,8);ctx.moveTo(12,-7);ctx.lineTo(12,8);ctx.stroke();ctx.globalAlpha=1;
+  // Three individually shaded magazine / utility pouches across the lower vest.
+  for(let p=0;p<3;p++){
+   const px=-10+p*10;
+   ctx.fillStyle='#171c19';ctx.beginPath();ctx.roundRect(px-3,3,7,8,1.5);ctx.fill();
+   ctx.fillStyle=p===1?s.accent:s.mid;ctx.beginPath();ctx.roundRect(px-2.5,3.5,6,5.5,1);ctx.fill();
+   ctx.fillStyle='#c0b99c';ctx.globalAlpha=.55;ctx.fillRect(px-1.5,4.5,4,1);ctx.globalAlpha=1;
+  }
+  // Heavy class receives reinforced shoulder and knee protection; scout gets a slim radio pack.
+  if(kind==='heavy'||kind==='boss'){
+   ctx.fillStyle='#242a29';ctx.beginPath();ctx.roundRect(-19,-12,9,9,3);ctx.roundRect(10,-12,9,9,3);ctx.fill();
+   ctx.strokeStyle=s.light;ctx.globalAlpha=.5;ctx.lineWidth=1;ctx.strokeRect(-18,-11,7,7);ctx.strokeRect(11,-11,7,7);ctx.globalAlpha=1;
+   ctx.fillStyle='#252b29';ctx.beginPath();ctx.roundRect(-12,8,8,5,2);ctx.roundRect(4,8,8,5,2);ctx.fill();
+  }else if(kind==='runner'){
+   ctx.fillStyle='#252a25';ctx.beginPath();ctx.roundRect(13,-7,8,13,2);ctx.fill();
+   ctx.strokeStyle=s.light;ctx.lineWidth=1;ctx.strokeRect(14,-5,6,8);
+  }else if(kind==='shooter'){
+   ctx.strokeStyle='#292d28';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-16,-7);ctx.lineTo(-22,1);ctx.stroke();
+   ctx.fillStyle='#303630';ctx.beginPath();ctx.roundRect(-25,-1,6,9,2);ctx.fill();
+  }
+  // Cloth face wrap and helmet fittings; subdued glass instead of neon visor.
+  ctx.fillStyle='#292d29';ctx.beginPath();ctx.roundRect(-7,-14,14,7,3);ctx.fill();
+  ctx.fillStyle='#68716d';ctx.globalAlpha=.8;ctx.fillRect(-5,-16,10,2);ctx.globalAlpha=1;
+  ctx.strokeStyle='#9a9a82';ctx.globalAlpha=.45;ctx.lineWidth=.8;ctx.beginPath();ctx.arc(0,-17,11,Math.PI,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;
+  // Fabric wear: small edge highlights and fasteners.
+  ctx.fillStyle='#c4b99a';ctx.globalAlpha=.5;
+  for(let i=0;i<6;i++){ctx.fillRect(-13+i*5,12,1,1);ctx.fillRect(-14+i*5,-10,1,1)}
+  ctx.globalAlpha=1;
   // Weapon skins: five distinct silhouettes with dedicated components and highlights.
   const gun=isPlayer?currentWeapon:'rifle';
   const metal='#a9bac2',steel='#536873',black='#101a20',glow=isPlayer?'#5deaff':s.accent;
