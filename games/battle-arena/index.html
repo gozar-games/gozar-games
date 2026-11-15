@@ -94,7 +94,7 @@ let wave=1,kills=0,coins=0,health=100,ammo=12,reloading=false,reloadEnd=0,shield
 const WORLD_W=3200,WORLD_H=2400;
 let selectedMap='ruined-city';
 const mapImages={},assetImages={},playerSkinImage=new Image();
-playerSkinImage.src='./assets/gozar-player-skin.webp';
+playerSkinImage.src='./assets/gozar-player-skin.png';
 playerSkinImage.onload=()=>{console.info('GOZAR player skin loaded')};
 playerSkinImage.onerror=()=>{console.warn('GOZAR player skin failed to load')};
 async function loadAssetPack(){
@@ -329,11 +329,17 @@ function draw(){
  for(const w of shockwaves){ctx.globalAlpha=clamp(w.life/w.max,0,1)*.75;ctx.strokeStyle=w.color;ctx.lineWidth=3;ctx.beginPath();ctx.arc(sxp(w.x),syp(w.y),w.r,0,Math.PI*2);ctx.stroke()}ctx.globalAlpha=1;for(const p of particles){ctx.globalAlpha=clamp(p.life/p.max,0,1);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(sxp(p.x),syp(p.y),3,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
  function drawSoldier(x,y,angle,color,kind,isPlayer=false){
   // The main player uses the exact supplied pixel-art skin; enemy classes keep their existing procedural designs.
-  if(isPlayer&&playerSkinImage.complete&&playerSkinImage.naturalWidth){
-   ctx.save();ctx.translate(x,y);ctx.rotate(angle);
-   const spriteW=62,spriteH=spriteW*(playerSkinImage.naturalHeight/playerSkinImage.naturalWidth);
-   ctx.drawImage(playerSkinImage,-spriteW/2,-spriteH/2,spriteW,spriteH);
-   ctx.restore();return;
+  // The supplied side-view pixel-art soldier is the ONLY player skin.
+  // Never fall back to the old procedural player drawing.
+  if(isPlayer){
+   if(playerSkinImage.complete&&playerSkinImage.naturalWidth){
+    ctx.save();ctx.translate(x,y);ctx.rotate(angle);
+    const spriteH=78,spriteW=spriteH*(playerSkinImage.naturalWidth/playerSkinImage.naturalHeight);
+    ctx.imageSmoothingEnabled=false;
+    ctx.drawImage(playerSkinImage,-spriteW/2,-spriteH/2,spriteW,spriteH);
+    ctx.restore();
+   }
+   return;
   }
   // Distinct character skins: each class has its own silhouette, armor palette and markings.
   const skins={
