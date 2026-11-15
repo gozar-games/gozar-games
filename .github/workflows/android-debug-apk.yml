@@ -134,21 +134,21 @@ jobs:
 
           if 'signingConfigs {' in s:
               raise SystemExit('Unexpected existing signingConfigs block; refusing to overwrite it')
-          if not re.search(r'(?m)^android\\s*\\{', s):
+          if not re.search(r'(?m)^android\s*\{', s):
               raise SystemExit('Could not find android { block')
-          s = re.sub(r'(?m)^android\\s*\\{', lambda m: m.group(0) + signing, s, count=1)
+          s = re.sub(r'(?m)^android\s*\{', lambda m: m.group(0) + signing, s, count=1)
 
-          debug_block = re.search(r'(?m)^\\s*debug\\s*\\{', s)
+          debug_block = re.search(r'(?m)^\s*debug\s*\{', s)
           if not debug_block:
               s = re.sub(
-                  r'(?m)^([ \\t]*)buildTypes\\s*\\{',
-                  lambda m: m.group(0) + '\\n' + m.group(1) + '    debug {\\n' + m.group(1) + '        signingConfig signingConfigs.debug\\n' + m.group(1) + '    }',
+                  r'(?m)^([ \t]*)buildTypes\s*\{',
+                  lambda m: m.group(0) + '\n' + m.group(1) + '    debug {\n' + m.group(1) + '        signingConfig signingConfigs.debug\n' + m.group(1) + '    }',
                   s,
                   count=1
               )
           else:
               start = debug_block.end()
-              s = s[:start] + '\\n        signingConfig signingConfigs.debug' + s[start:]
+              s = s[:start] + '\n        signingConfig signingConfigs.debug' + s[start:]
 
           p.write_text(s)
           print('Gradle debug signing explicitly points to the persistent keystore.')
